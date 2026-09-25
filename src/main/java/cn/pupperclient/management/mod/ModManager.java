@@ -129,7 +129,7 @@ public class ModManager {
 		designs.add(new ClearDesign());
 		designs.add(new MaterialYouDesign());
 		designs.add(new SimpleDesign());
-		setCurrentDesign("design.simple");
+		setCurrentDesign("design.materialyou");
 	}
 
 	public List<Mod> getMods() {

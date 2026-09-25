@@ -5,6 +5,9 @@ import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModCategory;
 import cn.pupperclient.management.mod.api.Position;
 import cn.pupperclient.management.mod.api.hud.design.HUDDesign;
+import cn.pupperclient.management.mod.api.hud.design.HUDColors;
+import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
+import cn.pupperclient.management.mod.impl.settings.HUDModSettings;
 import cn.pupperclient.skia.Skia;
 
 import io.github.humbleui.skija.Font;
@@ -32,16 +35,18 @@ public abstract class HUDMod extends Mod {
 		getDesign().drawBackground(x, y, width, height, getRadius());
 	}
 	
-	public void drawBlurBackground(float x, float y, float width, float height) {
-		Skia.drawRoundedBlur(x, y, width, height, getRadius());
-		Skia.drawShadow(x, y, width, height, getRadius());
-	}
 
 	public void drawText(String text, float x, float y, Font font) {
 		getDesign().drawText(text, x, y, font);
 	}
 
-	public abstract float getRadius();
+	public float getRadius() { return HUDTokens.RADIUS; }
+
+	public HUDColors colors() { return getDesign().colors(); }
+
+	protected boolean reducedMotion() {
+		return HUDModSettings.getInstance().getReducedMotionSetting().isEnabled();
+	}
 
 	public HUDDesign getDesign() {
 		return PupperClient.getInstance().getModManager().getCurrentDesign();

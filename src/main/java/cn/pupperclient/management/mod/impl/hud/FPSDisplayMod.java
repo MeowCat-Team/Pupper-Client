@@ -24,4 +24,5 @@ public class FPSDisplayMod extends SimpleHUDMod {
 	public String getIcon() {
 		return Icon.MONITOR;
 	}
+    @Override protected String getUnit() { return "FPS"; }
 }

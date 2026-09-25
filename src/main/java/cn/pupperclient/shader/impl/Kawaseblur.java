@@ -4,7 +4,6 @@ import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.EventListener;
 import cn.pupperclient.event.client.ResolutionChangedEvent;
 import cn.pupperclient.gui.modmenu.GuiModMenu;
-import cn.pupperclient.management.mod.impl.settings.HUDModSettings;
 import cn.pupperclient.management.mod.impl.settings.ModMenuSettings;
 import cn.pupperclient.shader.*;
 import cn.pupperclient.shader.patch.FixedUniformStorage;
@@ -200,7 +199,7 @@ public class Kawaseblur {
     }
 
     private int getBlurIntensity() {
-        if (HUDModSettings.getInstance().getBlurSetting().isEnabled()) {
+        if (ModMenuSettings.getInstance().getBlurSetting().isEnabled()) {
             return (int) ModMenuSettings.getInstance().getBlurIntensitySetting().getValue();
         }
         return 5;

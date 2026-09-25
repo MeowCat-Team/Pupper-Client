@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.io.File;
 
 import net.minecraft.resources.Identifier;
-import cn.pupperclient.management.mod.impl.settings.HUDModSettings;
 import cn.pupperclient.skia.context.SkiaContext;
 import cn.pupperclient.skia.image.ImageHelper;
 import io.github.humbleui.skija.Canvas;
@@ -105,38 +104,6 @@ public class Skia {
             bottomLeft };
 
         getCanvas().drawRRect(RRect.makeComplexXYWH(x, y, width, height, corners), setupPaint(color));
-    }
-
-    // TODO: fix Draw Blur Texture in anywhere
-    public static void drawBlur(float x, float y, float width, float height) {
-
-        if (HUDModSettings.getInstance().getBlurSetting().isEnabled()) {
-
-//            Window window = Minecraft.getInstance().getWindow();
-//            try (Path path = Path.makeRect(Rect.makeXYWH(x, y, width, height))) {
-//                save();
-//                getCanvas().clipPath(path, ClipMode.INTERSECT, true);
-//                drawImage(Kawaseblur.INGAME_BLUR.getTexture(), 0, 0, window.getGuiScaledWidth(), window.getGuiScaledHeight(), 1F,
-//                    SurfaceOrigin.BOTTOM_LEFT);
-//                restore();
-//            }
-        }
-    }
-
-    // TODO: fix Draw Blur Texture in anywhere
-    public static void drawRoundedBlur(float x, float y, float width, float height, float radius) {
-
-        if (HUDModSettings.getInstance().getBlurSetting().isEnabled()) {
-
-//            Window window = Minecraft.getInstance().getWindow();
-//            try (Path path = Path.makeRRect(RRect.makeXYWH(x, y, width, height, radius))) {
-//                save();
-//                getCanvas().clipPath(path, ClipMode.INTERSECT, true);
-//                drawImage(Kawaseblur.INGAME_BLUR.getTexture(), 0, 0, window.getGuiScaledWidth(), window.getGuiScaledHeight(), 1F,
-//                    SurfaceOrigin.BOTTOM_LEFT);
-//                restore();
-//            }
-        }
     }
 
     /**
@@ -724,20 +691,18 @@ public class Skia {
      */
     public static String getLimitText(String text, Font font, float width) {
 
-        boolean isInRange = false;
-        boolean isRemoved = false;
-
-        while (!isInRange) {
-
-            if (getTextBounds(text, font).getWidth() > width - getTextBounds("...", font).getWidth()) {
-                text = text.substring(0, text.length() - 1);
-                isRemoved = true;
-            } else {
-                isInRange = true;
-            }
+        if (text == null || text.isEmpty() || !(width > 0)) return "";
+        if (getTextBounds(text, font).getWidth() <= width) return text;
+        String ellipsis = "…";
+        if (getTextBounds(ellipsis, font).getWidth() > width) return "";
+        int low = 0, high = text.codePointCount(0, text.length());
+        while (low < high) {
+            int middle = (low + high + 1) / 2;
+            int end = text.offsetByCodePoints(0, middle);
+            if (getTextBounds(text.substring(0, end) + ellipsis, font).getWidth() <= width) low = middle;
+            else high = middle - 1;
         }
-
-        return text + (isRemoved ? "..." : "");
+        return text.substring(0, text.offsetByCodePoints(0, low)) + ellipsis;
     }
 
     /**

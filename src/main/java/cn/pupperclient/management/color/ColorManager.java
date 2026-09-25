@@ -22,17 +22,10 @@ public class ColorManager {
 		ModMenuSettings m = ModMenuSettings.getInstance();
 		Hct hct = m.getHctColorSetting().getHct();
 
-		if (palette == null) {
-			updatePalette();
-		}
-
-		if (palette.isDarkMode() != m.getDarkModeSetting().isEnabled()) {
-			updatePalette();
-		}
-
-		if (palette.getHct() != hct) {
-			updatePalette();
-		}
+        if (palette == null || palette.isDarkMode() != m.getDarkModeSetting().isEnabled()
+                || palette.getHct().toInt() != hct.toInt()) {
+            updatePalette();
+        }
 	}
 
 	private void updatePalette() {

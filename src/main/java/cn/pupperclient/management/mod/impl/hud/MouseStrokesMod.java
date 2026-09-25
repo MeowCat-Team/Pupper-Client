@@ -1,6 +1,6 @@
 package cn.pupperclient.management.mod.impl.hud;
 
-import cn.pupperclient.animation.SimpleAnimation;
+import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
 import cn.pupperclient.event.client.PlayerDirectionChangeEvent;
@@ -13,8 +13,9 @@ import net.minecraft.util.Mth;
 public class MouseStrokesMod extends HUDMod {
 
 	private float mouseX, mouseY, lastMouseX, lastMouseY;
-	private final SimpleAnimation xAnimation = new SimpleAnimation();
-	private final SimpleAnimation yAnimation = new SimpleAnimation();
+	private final HUDMotion motion = new HUDMotion();
+	private final HUDMotion.Spring xAnimation = new HUDMotion.Spring(0);
+	private final HUDMotion.Spring yAnimation = new HUDMotion.Spring(0);
 
 	public MouseStrokesMod() {
 		super("mod.mousestrokes.name", "mod.mousestrokes.description", Icon.TOUCHPAD_MOUSE);
@@ -25,13 +26,15 @@ public class MouseStrokesMod extends HUDMod {
 		float calculatedMouseX = lastMouseX + (mouseX - lastMouseX);
 		float calculatedMouseY = lastMouseY + (mouseY - lastMouseY);
 
-		xAnimation.onTick(calculatedMouseX, 20);
-		yAnimation.onTick(calculatedMouseY, 20);
+		float dt = motion.deltaSeconds();
+		float x = xAnimation.update(calculatedMouseX, dt, reducedMotion());
+		float y = yAnimation.update(calculatedMouseY, dt, reducedMotion());
 
 		this.begin();
 		this.drawBackground(getX(), getY(), 58, 58);
-		Skia.drawCircle(getX() + xAnimation.getValue() + 29, getY() + yAnimation.getValue() + 29, 4.5F,
-				this.getDesign().getTextColor());
+		Skia.drawRoundedRect(getX() + 12, getY() + 28.5f, 34, 1, 0.5f, colors().outline());
+		Skia.drawRoundedRect(getX() + 28.5f, getY() + 12, 1, 34, 0.5f, colors().outline());
+		Skia.drawCircle(getX() + x + 29, getY() + y + 29, 4.5F, colors().accent());
 		this.finish();
 		position.setSize(58, 58);
 	};
@@ -52,6 +55,6 @@ public class MouseStrokesMod extends HUDMod {
 
 	@Override
 	public float getRadius() {
-		return 6;
+		return 14;
 	}
 }

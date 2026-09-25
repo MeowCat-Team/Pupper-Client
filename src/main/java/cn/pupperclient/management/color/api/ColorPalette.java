@@ -7,19 +7,18 @@ import cn.pupperclient.libraries.material3.dynamiccolor.DynamicScheme;
 import cn.pupperclient.libraries.material3.dynamiccolor.MaterialDynamicColors;
 import cn.pupperclient.libraries.material3.hct.Hct;
 import cn.pupperclient.libraries.material3.utils.ColorUtils;
-import org.checkerframework.checker.units.qual.C;
 
 public class ColorPalette {
 
 	private final DynamicScheme scheme;
 	private final MaterialDynamicColors colors;
-	private boolean dark;
-	private Hct hct;
+	private final boolean dark;
+	private final Hct hct;
 
 	public ColorPalette(Hct hct, boolean dark, float contrast) {
-		this.hct = hct;
+		this.hct = Hct.fromInt(hct.toInt());
 		this.dark = dark;
-		scheme = Material3.getDynamicScheme(hct, dark, contrast);
+		scheme = Material3.getDynamicScheme(this.hct, dark, contrast);
 		colors = new MaterialDynamicColors();
 	}
 

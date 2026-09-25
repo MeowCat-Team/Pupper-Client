@@ -3,10 +3,8 @@ package cn.pupperclient.management.mod.impl.hud;
 import cn.pupperclient.event.EventListener;
 import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
-import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.system.JNAWindowChecker;
-import io.github.humbleui.skija.Font;
 
 public class CloudMusicHudMod extends SimpleHUDMod {
     public CloudMusicHudMod() {
@@ -41,8 +39,4 @@ public class CloudMusicHudMod extends SimpleHUDMod {
         return Icon.MUSIC_NOTE;
     }
 
-	@Override
-	protected Font getTextFont(float size) {
-		return Fonts.getGoogleSansRegular(size);
-	}
 }

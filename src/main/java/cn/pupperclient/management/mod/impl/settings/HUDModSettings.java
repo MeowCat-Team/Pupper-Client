@@ -9,25 +9,17 @@ import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModCategory;
 import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
 import cn.pupperclient.management.mod.settings.impl.ComboSetting;
-import cn.pupperclient.management.mod.settings.impl.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
 
 public class HUDModSettings extends Mod {
 
 	private static HUDModSettings instance;
 
-	private BooleanSetting blurSetting = new BooleanSetting("setting.blur", "setting.blur.description", Icon.LENS_BLUR,
-			this, true);
+	private final BooleanSetting reducedMotionSetting = new BooleanSetting("setting.hud.reducedmotion",
+			"setting.hud.reducedmotion.description", Icon.MOVIE, this, false);
 	private ComboSetting designSetting = new ComboSetting("setting.design", "setting.design.description", Icon.PALETTE,
 			this, Arrays.asList("design.simple", "design.classic", "design.clear", "design.materialyou"),
-			"design.simple");
-	private final NumberSetting blurIntensitySetting = new NumberSetting("setting.blurintensity",
-			"setting.blurintensity.description", Icon.BLUR_LINEAR, this, 5, 1, 20, 1){
-        @Override
-        public boolean isVisible() {
-            return blurSetting.isEnabled();
-        }
-    };
+			"design.materialyou");
 
 	public HUDModSettings() {
 		super("mod.hudsettings.name", "mod.hudsettings.description", Icon.BROWSE_ACTIVITY, ModCategory.MISC);
@@ -52,11 +44,5 @@ public class HUDModSettings extends Mod {
 		return instance;
 	}
 
-	public BooleanSetting getBlurSetting() {
-		return blurSetting;
-	}
-
-	public NumberSetting getBlurIntensitySetting() {
-		return blurIntensitySetting;
-	}
+	public BooleanSetting getReducedMotionSetting() { return reducedMotionSetting; }
 }

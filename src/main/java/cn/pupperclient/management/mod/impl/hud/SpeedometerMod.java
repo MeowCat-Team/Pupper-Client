@@ -44,4 +44,5 @@ public class SpeedometerMod extends SimpleHUDMod {
 	public String getIcon() {
 		return Icon.SPEED;
 	}
+    @Override protected String getUnit() { return "m/s"; }
 }

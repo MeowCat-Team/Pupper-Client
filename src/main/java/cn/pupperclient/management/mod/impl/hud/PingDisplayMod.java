@@ -66,4 +66,5 @@ public class PingDisplayMod extends SimpleHUDMod {
 	public String getIcon() {
 		return Icon.WIFI;
 	}
+    @Override protected String getUnit() { return "ms"; }
 }

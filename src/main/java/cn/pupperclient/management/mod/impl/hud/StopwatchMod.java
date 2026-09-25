@@ -75,4 +75,5 @@ public class StopwatchMod extends SimpleHUDMod {
 	public String getIcon() {
 		return Icon.TIMER;
 	}
+    @Override protected String getUnit() { return "s"; }
 }

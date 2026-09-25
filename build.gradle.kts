@@ -137,6 +137,31 @@ java {
     withSourcesJar()
 }
 
+// Standalone checks have their own source set; they are not JUnit tests.
+val hudVerification = sourceSets.create("hudVerification") {
+    compileClasspath += sourceSets.main.get().output + configurations.compileClasspath.get()
+    runtimeClasspath += output + compileClasspath + configurations.runtimeClasspath.get()
+}
+
+// Dependency-free design checks run on the same Java/toolchain and color library as the client.
+val verifyHudDesign = tasks.register<JavaExec>("verifyHudDesign") {
+    group = "verification"
+    description = "Checks HUD color contrast and frame-rate-independent motion."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.HUDDesignChecks")
+}
+tasks.check { dependsOn(verifyHudDesign) }
+
+tasks.register<JavaExec>("previewHudTheme") {
+    group = "verification"
+    description = "Renders the HUD theme specimen with the bundled Skia fonts (Windows)."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.HUDThemePreview")
+    args(layout.buildDirectory.file("reports/hud/theme-preview.png").get().asFile.absolutePath)
+}
+
 val releaseType = when {
     modVersion.contains("alpha", ignoreCase = true) -> "alpha"
     modVersion.contains("beta", ignoreCase = true) -> "beta"

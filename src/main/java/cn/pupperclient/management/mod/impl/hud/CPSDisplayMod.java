@@ -54,4 +54,5 @@ public class CPSDisplayMod extends SimpleHUDMod {
     public String getIcon() {
         return Icon.MOUSE;
     }
+    @Override protected String getUnit() { return "CPS"; }
 }

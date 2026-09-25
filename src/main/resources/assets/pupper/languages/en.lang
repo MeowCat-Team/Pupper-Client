@@ -24,8 +24,8 @@ text.cape=Cape
 
 design.simple=Simple
 design.classic=Classic
-design.clear=Clear
-design.materialyou=MaterialYou
+design.clear=Outlined
+design.materialyou=Material 3 Expressive
 
 menu.modmenu=Mod Menu
 
@@ -561,3 +561,16 @@ musictool.name.downloading=Downloading music tool...
 musictool.name.failed=Music tool installation failed
 musictool.name.done=Music tool ready
 
+
+setting.hud.reducedmotion=Reduce HUD motion
+setting.hud.reducedmotion.description=Show state changes immediately and disable decorative movement
+hud.empty=No active items
+hud.singleplayer=Singleplayer
+hud.nextgame=Joining the next game
+hud.enabled=Enabled
+hud.disabled=Disabled
+hud.music.preview=Your music
+hud.music.artist=Artist
+hud.music.idle=Nothing is playing
+hud.player=Player
+hud.level=Level

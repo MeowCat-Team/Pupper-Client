@@ -27,4 +27,6 @@ public class HealthDisplayMod extends SimpleHUDMod {
 	public String getIcon() {
 		return Icon.FAVORITE;
 	}
+    @Override protected String getUnit() { return "Health"; }
+    @Override protected boolean isUrgent() { return client.player != null && client.player.getHealth() <= client.player.getMaxHealth() * 0.25f; }
 }

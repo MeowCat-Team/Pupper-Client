@@ -7,7 +7,6 @@ import cn.pupperclient.skia.font.Icon;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.scores.DisplaySlot;
@@ -50,6 +49,8 @@ public class Scoreboard extends SimpleListHUDMod {
     private void updateDisplayLines() {
         displayLines.clear();
 
+        if (client.level == null) return;
+
         Objective scoreboardObjective = client.level.getScoreboard().getDisplayObjective(DisplaySlot.SIDEBAR);
         if (scoreboardObjective == null) {
             return;
@@ -76,7 +77,7 @@ public class Scoreboard extends SimpleListHUDMod {
         sortedScores.sort((a, b) -> Integer.compare(b.value(), a.value()));
 
         // 添加积分项
-        int maxLines = Math.min(sortedScores.size(), 199);
+        int maxLines = Math.min(sortedScores.size(), 15);
         for (int i = 0; i < maxLines; i++) {
             PlayerScoreEntry entry = sortedScores.get(i);
             String line = getFormattedScoreText(entry, scoreboard);
@@ -90,7 +91,7 @@ public class Scoreboard extends SimpleListHUDMod {
 
         String displayName;
         if (team != null) {
-            Component formattedName = entry.ownerName();
+            Component formattedName = PlayerTeam.formatNameForTeam(team, entry.ownerName());
             // 使用新的格式化方法
             displayName = convertTextToFormattedString(formattedName);
         } else {
@@ -100,69 +101,9 @@ public class Scoreboard extends SimpleListHUDMod {
         return displayName + " " + entry.value();
     }
 
-    /**
-     * 将 Minecraft Text 对象转换为包含格式化字符的字符串
-     * 保留颜色代码和格式化信息
-     */
+    // Skia HUD typography uses the theme color. Component#getString already includes siblings.
     private String convertTextToFormattedString(Component text) {
-        StringBuilder result = new StringBuilder();
-        convertTextRecursive(text, result);
-        return result.toString();
-    }
-
-    /**
-     * 递归处理 Text 对象及其子组件
-     */
-    private void convertTextRecursive(Component text, StringBuilder result) {
-        // 处理当前文本的样式
-        if (text.getStyle() != null) {
-            // 添加颜色代码
-            if (text.getStyle().getColor() != null) {
-                ChatFormatting formatting = ChatFormatting.getByName(text.getStyle().getColor().serialize());
-                if (formatting != null && formatting.isColor()) {
-                    result.append("§").append(formatting.getChar());
-                }
-            }
-
-            // 添加格式化代码（粗体、斜体等）
-            if (text.getStyle().isBold()) {
-                result.append("§l");
-            }
-            if (text.getStyle().isItalic()) {
-                result.append("§o");
-            }
-            if (text.getStyle().isUnderlined()) {
-                result.append("§n");
-            }
-            if (text.getStyle().isStrikethrough()) {
-                result.append("§m");
-            }
-            if (text.getStyle().isObfuscated()) {
-                result.append("§k");
-            }
-        }
-
-        // 添加文本内容
-        String content = text.getString();
-        if (!content.isEmpty()) {
-            result.append(content);
-        }
-
-        // 递归处理子组件
-        for (Component sibling : text.getSiblings()) {
-            convertTextRecursive(sibling, result);
-        }
-
-        // 在必要时重置格式（当有样式变化时）
-        if (text.getStyle() != null && (
-            text.getStyle().getColor() != null ||
-                text.getStyle().isBold() ||
-                text.getStyle().isItalic() ||
-                text.getStyle().isUnderlined() ||
-                text.getStyle().isStrikethrough() ||
-                text.getStyle().isObfuscated())) {
-            result.append("§r");
-        }
+        return text.getString();
     }
 
     @Override

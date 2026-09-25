@@ -24,8 +24,8 @@ text.cape=披风
 
 design.simple=简约
 design.classic=经典
-design.clear=清晰
-design.materialyou=MaterialYou
+design.clear=描边
+design.materialyou=Material 3 Expressive
 
 mod.hudsettings.name=界面
 mod.hudsettings.description=自定义界面
@@ -560,3 +560,16 @@ musictool.name.installed=音乐工具已安装!
 musictool.name.downloading=正在下载音乐工具...
 musictool.name.failed=音乐工具安装失败
 musictool.name.done=音乐工具准备就绪
+
+setting.hud.reducedmotion=减少 HUD 动效
+setting.hud.reducedmotion.description=即时显示状态变化并关闭装饰性运动
+hud.empty=暂无活动项目
+hud.singleplayer=单人游戏
+hud.nextgame=正在进入下一局
+hud.enabled=已启用
+hud.disabled=已关闭
+hud.music.preview=正在播放的音乐
+hud.music.artist=音乐人
+hud.music.idle=暂无播放内容
+hud.player=玩家
+hud.level=等级
