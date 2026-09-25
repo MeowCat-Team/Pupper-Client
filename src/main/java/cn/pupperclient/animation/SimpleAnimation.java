@@ -5,45 +5,56 @@ public class SimpleAnimation {
 	private float currentValue;
 	private boolean firstTick;
     private float targetValue;
-    private long lastUpdateTime;
+    private long lastUpdateNanos;
 
 	public SimpleAnimation() {
 		this.firstTick = true;
         this.currentValue = 0;
         this.targetValue = 0;
-        this.lastUpdateTime = System.currentTimeMillis();
+		resetClock();
 	}
 
     public void setValue(float value) {
         this.currentValue = value;
         this.targetValue = value;
+		resetClock();
     }
     public void setTarget(float target) {
         this.targetValue = target;
-        this.lastUpdateTime = System.currentTimeMillis();
+		resetClock();
     }
 
     public void update(float speed) {
-        long currentTime = System.currentTimeMillis();
-        long deltaTime = currentTime - lastUpdateTime;
-        lastUpdateTime = currentTime;
-        if (deltaTime <= 0) return;
-        float delta = (targetValue - currentValue) * (speed * deltaTime / 1000.0f);
-        currentValue += delta;
-
-        if (Math.abs(targetValue - currentValue) < 0.01f) {
-            currentValue = targetValue;
-        }
+		approach(targetValue, speed);
     }
 
 	public void onTick(float value, float speed) {
 		if (firstTick) {
 			currentValue = value;
 			firstTick = false;
+			resetClock();
 		} else {
-			float delta = (float) (((value - currentValue) * (speed / 1000)) * Delta.getDeltaTime());
-			currentValue += delta;
+			approach(value, speed);
 		}
+	}
+
+	private void approach(float value, float speed) {
+		long now = System.nanoTime();
+		float deltaSeconds = (now - lastUpdateNanos) / 1_000_000_000F;
+		lastUpdateNanos = now;
+		if (deltaSeconds <= 0) {
+			return;
+		}
+
+		float factor = Math.min(1, Math.max(0, speed) * deltaSeconds);
+		currentValue += (value - currentValue) * factor;
+		if (Math.abs(value - currentValue) < 0.01F) {
+			currentValue = value;
+		}
+	}
+
+	private void resetClock() {
+		lastUpdateNanos = System.nanoTime();
 	}
 
 	public float getValue() {
@@ -52,5 +63,6 @@ public class SimpleAnimation {
 
 	public void setFirstTick(boolean firstTick) {
 		this.firstTick = firstTick;
+		resetClock();
 	}
 }

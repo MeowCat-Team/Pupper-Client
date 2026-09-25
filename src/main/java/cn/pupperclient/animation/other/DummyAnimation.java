@@ -1,7 +1,6 @@
 package cn.pupperclient.animation.other;
 
 import cn.pupperclient.animation.Animation;
-import cn.pupperclient.animation.Delta;
 
 public class DummyAnimation extends Animation {
 
@@ -22,7 +21,6 @@ public class DummyAnimation extends Animation {
 
 	@Override
 	public float getValue() {
-		timePassed += (float) Delta.getDeltaTime();
 		return value;
 	}
 
@@ -31,8 +29,4 @@ public class DummyAnimation extends Animation {
 		return x;
 	}
 
-    @Override
-    protected double getEquation(double x) {
-        return 0;
-    }
 }

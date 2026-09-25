@@ -19,9 +19,16 @@ public class GuiModMenu extends SoarGui {
 	@Override
 	public void init() {
 		components.clear();
-		navigationRail = new NavigationRail(this, getX(), getY(), 90, getHeight());
+		navigationRail = new NavigationRail(this, getX(), getY(), 104, getHeight());
 		components.add(navigationRail);
 		super.init();
+	}
+
+	public void navigateTo(Class<? extends SimplePage> pageClass) {
+		SimplePage page = getPage(pageClass);
+		if (page != null) {
+			navigationRail.selectPage(page);
+		}
 	}
 
 	@Override
@@ -49,12 +56,12 @@ public class GuiModMenu extends SoarGui {
 
 	@Override
 	public float getX() {
-		return ((float) client.getWindow().getGuiScaledWidth() / 2) - (getWidth() / 2);
+		return ((float) client.getWindow().getWidth() / 2) - (getWidth() / 2);
 	}
 
 	@Override
 	public float getY() {
-		return ((float) client.getWindow().getGuiScaledHeight() / 2) - (getHeight() / 2);
+		return ((float) client.getWindow().getHeight() / 2) - (getHeight() / 2);
 	}
 
 	@Override

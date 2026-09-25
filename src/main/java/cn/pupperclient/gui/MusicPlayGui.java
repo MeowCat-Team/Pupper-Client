@@ -68,16 +68,16 @@ public class MusicPlayGui extends SimpleSoarGui {
     }
 
     private float getUiScale() {
-        float availableWidth = Math.max(1, width - SCREEN_MARGIN * 2);
-        float availableHeight = Math.max(1, height - SCREEN_MARGIN * 2);
+        float availableWidth = Math.max(1, client.getWindow().getWidth() - SCREEN_MARGIN * 2);
+        float availableHeight = Math.max(1, client.getWindow().getHeight() - SCREEN_MARGIN * 2);
         return Math.min(1, Math.min(availableWidth / UI_WIDTH, availableHeight / UI_HEIGHT));
     }
 
     private float getUiOffsetX(float scale) {
-        return (width - UI_WIDTH * scale) / 2;
+        return (client.getWindow().getWidth() - UI_WIDTH * scale) / 2;
     }
 
     private float getUiOffsetY(float scale) {
-        return (height - UI_HEIGHT * scale) / 2;
+        return (client.getWindow().getHeight() - UI_HEIGHT * scale) / 2;
     }
 }

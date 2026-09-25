@@ -17,9 +17,11 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.ui.component.Component;
 
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.util.Util;
 
 public abstract class SoarGui extends SimpleSoarGui {
+	private static final float MIN_SCREEN_SCALE = 0.96F;
+	private static final int SCREEN_ANIMATION_DURATION = Duration.MEDIUM_1;
+	private static final float SCREEN_CORNER_RADIUS = 28;
 
 	protected List<Component> components = new ArrayList<>();
 	protected List<SimplePage> pages;
@@ -30,7 +32,6 @@ public abstract class SoarGui extends SimpleSoarGui {
 	private Animation inOutAnimation;
 	private boolean closable;
 	private boolean closing;
-	private long closeStartedAt;
 	private Screen nextScreen;
 
 	public SoarGui() {
@@ -46,13 +47,15 @@ public abstract class SoarGui extends SimpleSoarGui {
 	@Override
 	public void init() {
 		super.init();
-		setPageSize(currentPage);
-		inOutAnimation = new EaseEmphasizedDecelerate(Duration.EXTRA_LONG_1, 0, 1);
+		inOutAnimation = new EaseEmphasizedDecelerate(SCREEN_ANIMATION_DURATION, 0, 1);
 		closable = true;
 		closing = false;
-		closeStartedAt = 0L;
 		nextScreen = null;
-		currentPage.init();
+		lastPage = null;
+		if (currentPage != null) {
+			setPageSize(currentPage);
+			currentPage.init();
+		}
 	}
 
 	public void setPageSize(SimplePage p) {
@@ -67,44 +70,45 @@ public abstract class SoarGui extends SimpleSoarGui {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 		float animationValue = inOutAnimation.getValue();
+		float screenScale = MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue);
+		double contentMouseX = toContentMouseX(mouseX, screenScale);
+		double contentMouseY = toContentMouseY(mouseY, screenScale);
 
 		Skia.save();
 		Skia.setAlpha((int) (animationValue * 255));
-		Skia.scale(getX(), getY(), getWidth(), getHeight(), 2 - animationValue);
+		Skia.scale(getX(), getY(), getWidth(), getHeight(), screenScale);
 
-		Skia.clip(getX(), getY(), getWidth(), getHeight(), 35);
-		Skia.drawRoundedRect(getX(), getY(), getWidth(), getHeight(), 35, palette.getSurfaceContainer());
+		Skia.drawShadow(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS);
+		Skia.clip(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS);
+		Skia.drawRoundedRect(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS,
+				palette.getSurfaceContainer());
 
 		if (currentPage != null && lastPage == null) {
-			currentPage.draw(mouseX, mouseY);
+			currentPage.draw(contentMouseX, contentMouseY);
 		}
 
-		if (lastPage != null) {
+		if (currentPage != null && lastPage != null) {
 
-			GuiTransition transition = lastPage.getTransition();
+			GuiTransition currentTransition = currentPage.getTransition();
+			GuiTransition lastTransition = lastPage.getTransition();
 
-			if (currentPage.getTransition().isConsecutive()) {
+			if (currentTransition != null && currentTransition.isConsecutive()) {
 
 				Skia.save();
-
-				if (transition != null) {
-					float[] result = transition.onTransition(lastPage.getAnimation());
-					Skia.translate(result[0] * getWidth(), result[1] * getHeight());
-				}
-
-				lastPage.draw(mouseX, mouseY);
+				float[] offset = getTransitionOffset(lastTransition, lastPage);
+				float offsetX = offset[0] * getWidth();
+				float offsetY = offset[1] * getHeight();
+				Skia.translate(offsetX, offsetY);
+				lastPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
 				Skia.restore();
 			}
 
 			Skia.save();
-			transition = currentPage.getTransition();
-
-			if (transition != null) {
-				float[] result = transition.onTransition(currentPage.getAnimation());
-				Skia.translate(result[0] * getWidth(), result[1] * getHeight());
-			}
-
-			currentPage.draw(mouseX, mouseY);
+			float[] offset = getTransitionOffset(currentTransition, currentPage);
+			float offsetX = offset[0] * getWidth();
+			float offsetY = offset[1] * getHeight();
+			Skia.translate(offsetX, offsetY);
+			currentPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
 			Skia.restore();
 
 			if (lastPage.getAnimation().isFinished()) {
@@ -113,7 +117,7 @@ public abstract class SoarGui extends SimpleSoarGui {
 		}
 
 		for (Component c : components) {
-			c.draw(mouseX, mouseY);
+			c.draw(contentMouseX, contentMouseY);
 		}
 
 		Skia.restore();
@@ -124,7 +128,7 @@ public abstract class SoarGui extends SimpleSoarGui {
 	@Override
 	public void tick() {
 		super.tick();
-		if (closing && Util.getMillis() - closeStartedAt >= Duration.EXTRA_LONG_1) {
+		if (closing && inOutAnimation.isFinished()) {
 			Screen target = nextScreen;
 			closing = false;
 			nextScreen = null;
@@ -136,38 +140,63 @@ public abstract class SoarGui extends SimpleSoarGui {
 
 	@Override
 	public boolean onMousePressed(double mouseX, double mouseY, int button, boolean doubled) {
+		if (closing) {
+			return true;
+		}
+
+		float screenScale = getScreenScale();
+		double contentMouseX = toContentMouseX(mouseX, screenScale);
+		double contentMouseY = toContentMouseY(mouseY, screenScale);
+		double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
 
 		if (currentPage != null) {
-			currentPage.mousePressed(mouseX, mouseY, button);
+			currentPage.mousePressed(pageMouse[0], pageMouse[1], button);
 		}
 
 		for (Component c : components) {
-			c.mousePressed(mouseX, mouseY, button);
+			c.mousePressed(contentMouseX, contentMouseY, button);
 		}
         return true;
 	}
 
 	@Override
 	public boolean onMouseReleased(double mouseX, double mouseY, int button) {
+		if (closing) {
+			return true;
+		}
+
+		float screenScale = getScreenScale();
+		double contentMouseX = toContentMouseX(mouseX, screenScale);
+		double contentMouseY = toContentMouseY(mouseY, screenScale);
+		double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
 
 		if (currentPage != null) {
-			currentPage.mouseReleased(mouseX, mouseY, button);
+			currentPage.mouseReleased(pageMouse[0], pageMouse[1], button);
 		}
 
 		for (Component c : components) {
-			c.mouseReleased(mouseX, mouseY, button);
+			c.mouseReleased(contentMouseX, contentMouseY, button);
 		}
         return true;
 	}
 
 	@Override
 	public boolean onMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+		if (closing) {
+			return true;
+		}
+
+		float screenScale = getScreenScale();
+		double contentMouseX = toContentMouseX(mouseX, screenScale);
+		double contentMouseY = toContentMouseY(mouseY, screenScale);
+		double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
+
 		if (currentPage != null) {
-			currentPage.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+			currentPage.mouseScrolled(pageMouse[0], pageMouse[1], horizontalAmount, verticalAmount);
 		}
 
 		for (Component c : components) {
-			c.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+			c.mouseScrolled(contentMouseX, contentMouseY, horizontalAmount, verticalAmount);
 		}
 		return true;
 	}
@@ -207,8 +236,7 @@ public abstract class SoarGui extends SimpleSoarGui {
 		if (!closing && inOutAnimation.getEnd() == 1) {
 			this.nextScreen = nextScreen;
 			closing = true;
-			closeStartedAt = Util.getMillis();
-			inOutAnimation = new EaseEmphasizedDecelerate(Duration.EXTRA_LONG_1, 1, 0);
+			inOutAnimation = new EaseEmphasizedDecelerate(SCREEN_ANIMATION_DURATION, 1, 0);
 			client.execute(() -> {
 				PupperClient.getInstance().getConfigManager().save(ConfigType.MOD);
 			});
@@ -231,20 +259,25 @@ public abstract class SoarGui extends SimpleSoarGui {
 	}
 
 	public void setCurrentPage(SimplePage page) {
-
-		if (currentPage != null) {
-			lastPage = currentPage;
-			currentPage.onClosed();
+		if (page == null || page == currentPage) {
+			return;
 		}
 
+		if (currentPage == null) {
+			currentPage = page;
+			setPageSize(currentPage);
+			currentPage.init();
+			return;
+		}
+
+		lastPage = currentPage;
+		currentPage.onClosed();
 		this.currentPage = page;
 		currentPage.setAnimation(new EaseEmphasizedDecelerate(Duration.MEDIUM_1, 0, 1));
 		lastPage.setAnimation(new EaseEmphasizedDecelerate(Duration.MEDIUM_1, 1, 0));
 
-		if (currentPage != null) {
-			setPageSize(currentPage);
-			currentPage.init();
-		}
+		setPageSize(currentPage);
+		currentPage.init();
 	}
 
 	public void setCurrentPage(Class<? extends SimplePage> clazz) {
@@ -280,6 +313,39 @@ public abstract class SoarGui extends SimpleSoarGui {
 
 	public void setClosable(boolean closable) {
 		this.closable = closable;
+	}
+
+	private float getScreenScale() {
+		if (inOutAnimation == null) {
+			return 1;
+		}
+		float animationValue = inOutAnimation.getValue();
+		return MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue);
+	}
+
+	private double toContentMouseX(double mouseX, float screenScale) {
+		double centerX = getX() + getWidth() / 2.0;
+		return centerX + ((mouseX - centerX) / screenScale);
+	}
+
+	private double toContentMouseY(double mouseY, float screenScale) {
+		double centerY = getY() + getHeight() / 2.0;
+		return centerY + ((mouseY - centerY) / screenScale);
+	}
+
+	private double[] toCurrentPageMouse(double mouseX, double mouseY) {
+		if (currentPage == null || lastPage == null) {
+			return new double[] { mouseX, mouseY };
+		}
+		float[] offset = getTransitionOffset(currentPage.getTransition(), currentPage);
+		return new double[] {
+				mouseX - offset[0] * getWidth(),
+				mouseY - offset[1] * getHeight()
+		};
+	}
+
+	private float[] getTransitionOffset(GuiTransition transition, SimplePage page) {
+		return transition == null ? new float[] { 0, 0 } : transition.onTransition(page.getAnimation());
 	}
 
 	public abstract List<SimplePage> createPages();

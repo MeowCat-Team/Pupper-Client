@@ -1,6 +1,5 @@
 package cn.pupperclient;
 
-import cn.pupperclient.animation.Delta;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.server.PacketHandler;
 import cn.pupperclient.management.cape.CapeManager;
@@ -95,7 +94,6 @@ public class PupperClient implements IMinecraft {
         EventBus eventBus = EventBus.getInstance();
         eventBus.register(new PupperEventHandle());
         eventBus.register(new PacketHandler());
-        eventBus.register(new Delta());
     }
 
     private void handleFirstLaunch() throws IOException {

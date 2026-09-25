@@ -18,7 +18,7 @@ public class LeftRightTransition extends GuiTransition {
 		if (animation.getEnd() == 1) {
 			x = -1 + progress;
 		} else {
-			x = -1 + progress;
+			x = 1 - progress;
 		}
 
 		return new float[] { x, 0 };

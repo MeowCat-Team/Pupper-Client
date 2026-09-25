@@ -40,7 +40,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
-import cn.pupperclient.event.client.GameLoopEvent;
 import cn.pupperclient.management.config.ConfigType;
 import cn.pupperclient.management.mod.impl.player.HitDelayFixMod;
 import cn.pupperclient.management.mod.impl.player.OldAnimationsMod;
@@ -174,11 +173,6 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
 		EventBus.getInstance().post(new ClientTickEvent());
 	}
 
-	@Inject(method = "run", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiling/SingleTickProfiler;createTickProfiler(Ljava/lang/String;)Lnet/minecraft/util/profiling/SingleTickProfiler;"))
-	public void onGameLoop(CallbackInfo ci) {
-		EventBus.getInstance().post(new GameLoopEvent());
-	}
-
     @Inject(
         method = {"renderFrame"},
         at = @At(
@@ -191,22 +185,26 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
             return;
         }
         SkiaContext.draw((canvas) -> {
-            Skia.save();
             Minecraft minecraft = Minecraft.getInstance();
             Window currentWindow = minecraft.getWindow();
-            Skia.scale((float) currentWindow.getGuiScale());
 
             if (level != null) {
+                Skia.save();
+                Skia.scale((float) currentWindow.getGuiScale());
                 EventBus.getInstance().post(new RenderSkiaEvent(canvas));
+                Skia.restore();
             }
 
             if (screen instanceof SimpleSoarGui skiaScreen) {
                 double mouseX = minecraft.mouseHandler.getScaledXPos(currentWindow);
                 double mouseY = minecraft.mouseHandler.getScaledYPos(currentWindow);
+                Skia.save();
+                if (skiaScreen.usesMinecraftGuiScale()) {
+                    Skia.scale((float) currentWindow.getGuiScale());
+                }
                 skiaScreen.renderSkia(mouseX, mouseY);
+                Skia.restore();
             }
-
-            Skia.restore();
         });
     }
 

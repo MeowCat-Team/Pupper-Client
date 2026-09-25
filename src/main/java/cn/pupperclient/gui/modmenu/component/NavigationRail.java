@@ -56,7 +56,7 @@ public class NavigationRail extends Component {
         }
 
         IconButton.Size buttonSize = IconButton.Size.NORMAL;
-        float buttonY = y + 44;
+        float buttonY = y + 24;
 
         editButton = new IconButton(Icon.EDIT, x, buttonY, buttonSize, IconButton.Style.TERTIARY);
         editButton.setX(x + (width / 2) - (editButton.getWidth() / 2));
@@ -74,13 +74,17 @@ public class NavigationRail extends Component {
 
         ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-        float borderRadius = 35;
-        Skia.drawRoundedRectVarying(x, y, width, height, borderRadius, 0, 0, borderRadius, palette.getSurface());
+        float borderRadius = 28;
+        Skia.drawRoundedRectVarying(x, y, width, height, borderRadius, 0, 0, borderRadius,
+            palette.getSurfaceContainerLowest());
+        Skia.drawLine(x + width - 1, y + 20, x + width - 1, y + height - 20, 1,
+            ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.5F));
 
         editButton.draw(mouseX, mouseY);
+        Skia.drawCenteredText("HUD", x + width / 2, y + 84, palette.getOnSurfaceVariant(), Fonts.getMedium(10));
 
-        float offsetY = 140;
-        float itemSpacing = 68;
+        float offsetY = 112;
+        float itemSpacing = 70;
 
         Skia.save();
         Skia.translate(0, scrollHelper.getValue());
@@ -92,7 +96,7 @@ public class NavigationRail extends Component {
             offsetY += itemSpacing;
         }
 
-        scrollHelper.setMaxScroll(offsetY - 140, height - 140);
+        scrollHelper.setMaxScroll(offsetY - 112, height - 112);
         Skia.restore();
     }
 
@@ -111,8 +115,8 @@ public class NavigationRail extends Component {
         Color c1 = isSelected ? palette.getOnSurface() : palette.getOnSurfaceVariant();
 
         Animation animation = n.animation;
-        float selWidth = 56;
-        float selHeight = 32;
+        float selWidth = 64;
+        float selHeight = 34;
         boolean focus = MouseUtils.isInside(mouseX, mouseY, x + (width / 2) - (selWidth / 2), y + offsetY, selWidth, selHeight) || n.pressed;
 
         n.focusAnimation.onTick(focus ? n.pressed ? 0.12F : 0.08F : 0, 8);
@@ -124,7 +128,7 @@ public class NavigationRail extends Component {
         }
 
         Skia.drawText(icon, x + (width / 2) - (iconWidth / 2), y + (offsetY + (selHeight / 2)) - (iconHeight / 2), c0, font);
-        Skia.drawCenteredText(I18n.get(title), x + (width / 2), y + offsetY + selHeight + 5, c1, Fonts.getMedium(12));
+        Skia.drawCenteredText(I18n.get(title), x + (width / 2), y + offsetY + selHeight + 6, c1, Fonts.getMedium(12));
     }
 
 
@@ -132,12 +136,12 @@ public class NavigationRail extends Component {
     public void mousePressed(double mouseX, double mouseY, int button) {
         editButton.mousePressed(mouseX, mouseY, button);
         double translatedMouseY = mouseY - scrollHelper.getValue();
-        float offsetY = 140;
-        float itemSpacing = 68;
+        float offsetY = 112;
+        float itemSpacing = 70;
 
         for (Navigation n : navigations) {
-            float selWidth = 56;
-            float selHeight = 32;
+            float selWidth = 64;
+            float selHeight = 34;
             float itemX = x + width / 2 - selWidth / 2;
             float itemY = y + offsetY;
 
@@ -154,20 +158,17 @@ public class NavigationRail extends Component {
 
         double translatedMouseY = mouseY - scrollHelper.getValue();
 
-        float offsetY = 140;
-        float itemSpacing = 68;
+        float offsetY = 112;
+        float itemSpacing = 70;
 
         for (Navigation n : navigations) {
-            float selWidth = 56;
-            float selHeight = 32;
+            float selWidth = 64;
+            float selHeight = 34;
             float itemX = x + (width / 2) - (selWidth / 2);
             float itemY = y + offsetY;
 
             if (MouseUtils.isInside(mouseX, translatedMouseY, itemX, itemY, selWidth, selHeight) && button == GLFW.GLFW_MOUSE_BUTTON_LEFT && !currentNavigation.equals(n)) {
-                currentNavigation.animation = new EaseStandard(Duration.MEDIUM_3, 1, 0);
-                currentNavigation = n;
-                parent.setCurrentPage(n.page);
-                currentNavigation.animation = new EaseStandard(Duration.MEDIUM_3, 0, 1);
+                selectNavigation(n);
             }
             n.pressed = false;
             offsetY += itemSpacing;
@@ -176,6 +177,23 @@ public class NavigationRail extends Component {
 
     public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         scrollHelper.onScroll(verticalAmount);
+    }
+
+    public void selectPage(SimplePage page) {
+        navigations.stream()
+            .filter(navigation -> navigation.page == page)
+            .findFirst()
+            .ifPresent(this::selectNavigation);
+    }
+
+    private void selectNavigation(Navigation navigation) {
+        if (navigation == currentNavigation) {
+            return;
+        }
+        currentNavigation.animation = new EaseStandard(Duration.MEDIUM_3, 1, 0);
+        currentNavigation = navigation;
+        parent.setCurrentPage(navigation.page);
+        currentNavigation.animation = new EaseStandard(Duration.MEDIUM_3, 0, 1);
     }
 
     private static class Navigation {
