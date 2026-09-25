@@ -25,6 +25,9 @@ public class Component {
 	public void mouseReleased(double mouseX, double mouseY, int button) {
 	}
 
+	public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+	}
+
 	public void charTyped(int chr) {
 	}
 

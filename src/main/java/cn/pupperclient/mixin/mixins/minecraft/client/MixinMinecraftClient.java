@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import cn.pupperclient.event.client.ResolutionChangedEvent;
-import cn.pupperclient.event.skia.DrawSkiaEvent;
+import cn.pupperclient.gui.api.SimpleSoarGui;
 import cn.pupperclient.skia.Skia;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
@@ -187,19 +187,25 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
         )
     )
     private void onBeforeFlipFrame(CallbackInfo ci) {
-        if (level == null) {
+        if (level == null && !(screen instanceof SimpleSoarGui)) {
             return;
         }
         SkiaContext.draw((canvas) -> {
             Skia.save();
-            Skia.scale((float) Minecraft.getInstance().getWindow().getGuiScale());
-            EventBus.getInstance().post(new RenderSkiaEvent(canvas));
-            Skia.restore();
-        });
+            Minecraft minecraft = Minecraft.getInstance();
+            Window currentWindow = minecraft.getWindow();
+            Skia.scale((float) currentWindow.getGuiScale());
 
-        SkiaContext.draw((canvas) -> {
-            Skia.save();
-            EventBus.getInstance().post(new DrawSkiaEvent(canvas));
+            if (level != null) {
+                EventBus.getInstance().post(new RenderSkiaEvent(canvas));
+            }
+
+            if (screen instanceof SimpleSoarGui skiaScreen) {
+                double mouseX = minecraft.mouseHandler.getScaledXPos(currentWindow);
+                double mouseY = minecraft.mouseHandler.getScaledYPos(currentWindow);
+                skiaScreen.renderSkia(mouseX, mouseY);
+            }
+
             Skia.restore();
         });
     }

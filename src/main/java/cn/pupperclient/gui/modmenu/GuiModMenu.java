@@ -13,7 +13,7 @@ public class GuiModMenu extends SoarGui {
 	private NavigationRail navigationRail;
 
 	public GuiModMenu() {
-		super(true);
+		super();
 	}
 
 	@Override

@@ -17,6 +17,7 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.ui.component.Component;
 
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.util.Util;
 
 public abstract class SoarGui extends SimpleSoarGui {
 
@@ -28,10 +29,12 @@ public abstract class SoarGui extends SimpleSoarGui {
 
 	private Animation inOutAnimation;
 	private boolean closable;
+	private boolean closing;
+	private long closeStartedAt;
 	private Screen nextScreen;
 
-	public SoarGui(boolean mcScale) {
-		super(mcScale);
+	public SoarGui() {
+		super();
 
 		this.pages = createPages();
 
@@ -42,9 +45,13 @@ public abstract class SoarGui extends SimpleSoarGui {
 
 	@Override
 	public void init() {
+		super.init();
 		setPageSize(currentPage);
 		inOutAnimation = new EaseEmphasizedDecelerate(Duration.EXTRA_LONG_1, 0, 1);
 		closable = true;
+		closing = false;
+		closeStartedAt = 0L;
+		nextScreen = null;
 		currentPage.init();
 	}
 
@@ -59,10 +66,11 @@ public abstract class SoarGui extends SimpleSoarGui {
 	public void draw(double mouseX, double mouseY) {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+		float animationValue = inOutAnimation.getValue();
 
 		Skia.save();
-		Skia.setAlpha((int) (inOutAnimation.getValue() * 255));
-		Skia.scale(getX(), getY(), getWidth(), getHeight(), 2 - inOutAnimation.getValue());
+		Skia.setAlpha((int) (animationValue * 255));
+		Skia.scale(getX(), getY(), getWidth(), getHeight(), 2 - animationValue);
 
 		Skia.clip(getX(), getY(), getWidth(), getHeight(), 35);
 		Skia.drawRoundedRect(getX(), getY(), getWidth(), getHeight(), 35, palette.getSurfaceContainer());
@@ -109,10 +117,20 @@ public abstract class SoarGui extends SimpleSoarGui {
 		}
 
 		Skia.restore();
+		Skia.restore();
 
-		if (inOutAnimation.getEnd() == 0 && inOutAnimation.isFinished()) {
-			client.setScreen(nextScreen);
+	}
+
+	@Override
+	public void tick() {
+		super.tick();
+		if (closing && Util.getMillis() - closeStartedAt >= Duration.EXTRA_LONG_1) {
+			Screen target = nextScreen;
+			closing = false;
 			nextScreen = null;
+			if (client.screen == this) {
+				client.setScreen(target);
+			}
 		}
 	}
 
@@ -147,7 +165,11 @@ public abstract class SoarGui extends SimpleSoarGui {
 		if (currentPage != null) {
 			currentPage.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
 		}
-        return true;
+
+		for (Component c : components) {
+			c.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+		}
+		return true;
 	}
 
 	@Override
@@ -166,9 +188,9 @@ public abstract class SoarGui extends SimpleSoarGui {
 	@Override
 	public boolean onKeyPressed(int keyCode, int scanCode, int modifiers) {
 
-		if (keyCode == GLFW.GLFW_KEY_ESCAPE && inOutAnimation.getEnd() == 1 && closable) {
-			close();
-            return true;
+		if (keyCode == GLFW.GLFW_KEY_ESCAPE && closable) {
+			onClose();
+			return true;
 		}
 
 		if (currentPage != null) {
@@ -182,8 +204,10 @@ public abstract class SoarGui extends SimpleSoarGui {
 	}
 
 	public void close(Screen nextScreen) {
-		if (inOutAnimation.getEnd() == 1) {
+		if (!closing && inOutAnimation.getEnd() == 1) {
 			this.nextScreen = nextScreen;
+			closing = true;
+			closeStartedAt = Util.getMillis();
 			inOutAnimation = new EaseEmphasizedDecelerate(Duration.EXTRA_LONG_1, 1, 0);
 			client.execute(() -> {
 				PupperClient.getInstance().getConfigManager().save(ConfigType.MOD);
@@ -193,6 +217,13 @@ public abstract class SoarGui extends SimpleSoarGui {
 
 	public void close() {
 		close(null);
+	}
+
+	@Override
+	public void onClose() {
+		if (closable) {
+			close();
+		}
 	}
 
 	public SimplePage getCurrentPage() {

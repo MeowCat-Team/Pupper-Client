@@ -31,7 +31,7 @@ public class GuiEditHUD extends SimpleSoarGui {
 	private boolean snapping;
 
 	public GuiEditHUD(Screen prevScreen) {
-		super(true);
+		super();
 		this.prevScreen = prevScreen;
 		this.snappingDistance = 6;
 		this.mods = initializeMods();

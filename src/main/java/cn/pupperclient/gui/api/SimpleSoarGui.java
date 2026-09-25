@@ -1,8 +1,5 @@
 package cn.pupperclient.gui.api;
 
-import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.EventListener;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.skia.Skia;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -19,20 +16,9 @@ import net.minecraft.network.chat.Component;
 public abstract class SimpleSoarGui extends Screen {
     
     protected final Minecraft client = Minecraft.getInstance();
-    protected final boolean mcScale;
-    private boolean registered;
 
-    protected SimpleSoarGui(boolean mcScale) {
+    protected SimpleSoarGui() {
         super(Component.empty());
-        this.mcScale = true;
-    }
-
-    @Override
-    protected void init() {
-        if (client.level != null && !registered) {
-            EventBus.getInstance().register(this);
-            registered = true;
-        }
     }
 
     /**
@@ -42,28 +28,32 @@ public abstract class SimpleSoarGui extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
-        if (client.level != null && !registered) {
-            EventBus.getInstance().register(this);
-            registered = true;
-        }
+        super.extractRenderState(context, mouseX, mouseY, delta);
+    }
+
+    /**
+     * Called directly by the Skia render bridge for the active screen.
+     * Coordinates are always Minecraft GUI-scaled coordinates.
+     */
+    public final void renderSkia(double mouseX, double mouseY) {
+        Skia.save();
+        draw(mouseX, mouseY);
+        Skia.restore();
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
-        double guiScale = client.getWindow().getGuiScale();
-        return onMousePressed(client.mouseHandler.xpos() / guiScale, client.mouseHandler.ypos() / guiScale, click.button(), doubled);
+        return onMousePressed(click.x(), click.y(), click.button(), doubled);
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent click) {
-        double guiScale = client.getWindow().getGuiScale();
-        return onMouseReleased(client.mouseHandler.xpos() / guiScale, client.mouseHandler.ypos() / guiScale, click.button());
+        return onMouseReleased(click.x(), click.y(), click.button());
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        double guiScale = client.getWindow().getGuiScale();
-        return onMouseScrolled(client.mouseHandler.xpos() / guiScale, client.mouseHandler.ypos() / guiScale, horizontalAmount, verticalAmount);
+        return onMouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
@@ -85,29 +75,7 @@ public abstract class SimpleSoarGui extends Screen {
     public boolean onCharTyped(int chr) { return super.charTyped(new CharacterEvent(chr)); }
 
     @Override
-    public void removed() {
-        if (registered) {
-            EventBus.getInstance().unregister(this);
-            registered = false;
-        }
-        super.removed();
-    }
-
-    @Override
     public boolean isPauseScreen() {
         return false;
-    }
-
-    @EventListener
-    public void onRenderSkia(RenderSkiaEvent event) {
-        if (client.level == null) {
-            return;
-        }
-        if (client.screen == this) {
-            double guiScale = client.getWindow().getGuiScale();
-            Skia.save();
-            draw(client.mouseHandler.xpos() / guiScale, client.mouseHandler.ypos() / guiScale);
-            Skia.restore();
-        }
     }
 }
