@@ -17,6 +17,7 @@ import cn.pupperclient.utils.minecraft.interfaces.IMinecraft;
 import cn.pupperclient.utils.thread.Multithreading;
 import cn.pupperclient.utils.file.FileLocation;
 import cn.pupperclient.utils.language.*;
+import net.fabricmc.loader.api.FabricLoader;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
@@ -28,8 +29,8 @@ public class PupperClient implements IMinecraft {
     private static final String CONFIG_FILE_NAME = "pupper.ok";
     private static final String ICON_PATH = "assets/pupper/logo.png";
     private static final String CLIENT_NAME = "Pupper Client";
-    private static final String CLIENT_VERSION = "mc26.1.2-9.0.0a";
     private static final String MOD_ID = "pupper";
+    private static final String UNKNOWN_VERSION = "unknown";
 
     private static final PupperClient INSTANCE = new PupperClient();
 
@@ -111,7 +112,7 @@ public class PupperClient implements IMinecraft {
             Files.createFile(configFile);
             var configContent = String.format(
                 "First launch: %d%nPupperClient Version: %s%n",
-                launchTime, CLIENT_VERSION
+                launchTime, getVersion()
             );
             Files.writeString(configFile, configContent);
         } catch (IOException e) {
@@ -137,7 +138,24 @@ public class PupperClient implements IMinecraft {
     }
 
     public String getVersion() {
-        return CLIENT_VERSION;
+        return FabricLoader.getInstance()
+            .getModContainer(MOD_ID)
+            .map(container -> container.getMetadata().getVersion().getFriendlyString())
+            .orElse(UNKNOWN_VERSION);
+    }
+
+    public String getClientVersion() {
+        String version = getVersion();
+        int metadataSeparator = version.indexOf('+');
+        return metadataSeparator >= 0 ? version.substring(0, metadataSeparator) : version;
+    }
+
+    public String getDisplayVersion() {
+        String version = getVersion();
+        if (UNKNOWN_VERSION.equals(version)) {
+            return "Development build";
+        }
+        return "v" + version.replace("+mc", " · MC ");
     }
 
     public long getLaunchTime() {

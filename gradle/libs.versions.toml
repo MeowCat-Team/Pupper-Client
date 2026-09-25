@@ -1,9 +1,6 @@
 [versions]
 # base
 jdk = "25"
-minecraft = "26.1.2"
-fabric-loader = "0.18.6"
-fabric-api = "0.145.4+26.1.2"
 
 # fabric
 loom = "1.16-SNAPSHOT"
@@ -34,13 +31,9 @@ jlayer-google = "1.0.1.4"
 mcping = "1.4.2"
 reflect = "1.4.0"
 jna = "5.12.1"
+modrinth-minotaur = "2.10.0"
 
 [libraries]
-# Fabric
-minecraft = { module = "com.mojang:minecraft", version.ref = "minecraft" }
-fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
-fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
-
 # mod
 sodium = { module = "maven.modrinth:sodium", version.ref = "sodium" }
 lithium = { module = "maven.modrinth:lithium", version.ref = "lithium" }
@@ -74,3 +67,4 @@ lwjgl-nfd = { module = "org.lwjgl:lwjgl-nfd", version.ref = "lwjgl" }
 
 [plugins]
 fabric-loom = { id = "net.fabricmc.fabric-loom", version.ref = "loom" }
+modrinth-minotaur = { id = "com.modrinth.minotaur", version.ref = "modrinth-minotaur" }

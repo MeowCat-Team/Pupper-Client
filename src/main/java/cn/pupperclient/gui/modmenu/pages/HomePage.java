@@ -92,7 +92,7 @@ public class HomePage extends SimplePage {
         drawRightAligned(currentDate.toUpperCase(Locale.ENGLISH), right, y + 82,
             palette.getOnSurfaceVariant(), Fonts.getMedium(12));
 
-        String version = PupperClient.getInstance().getVersion().replaceFirst("mc", "MC ").replace('-', ' ');
+        String version = PupperClient.getInstance().getDisplayVersion();
         drawRightAligned(version, right, y + 111, palette.getOnSurfaceVariant(), Fonts.getRegular(13));
     }
 

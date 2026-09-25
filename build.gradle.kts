@@ -1,13 +1,17 @@
 plugins {
     alias(libs.plugins.fabric.loom)
+    alias(libs.plugins.modrinth.minotaur)
 }
 
 val lwjglVersion = "3.4.1"
 
-val suffix: String = providers.gradleProperty("build_number").getOrElse("local")
-version = "${libs.versions.minecraft.get()}-$suffix"
+val modVersion = providers.gradleProperty("mod_version").get()
+val minecraftVersion = providers.gradleProperty("minecraft_version").get()
+val loaderVersion = providers.gradleProperty("loader_version").get()
+val fabricApiVersion = providers.gradleProperty("fabric_api_version").get()
+
+version = "$modVersion+mc$minecraftVersion"
 group = property("maven_group") as String
-val minecraftVersion = property("minecraft_version") as String
 
 base {
     archivesName = property("archives_base_name") as String
@@ -51,9 +55,9 @@ configurations {
 
 dependencies {
     // Minecraft & Fabric base
-    minecraft(libs.minecraft)
-    implementation(libs.fabric.loader)
-    implementation(libs.fabric.api)
+    minecraft("com.mojang:minecraft:$minecraftVersion")
+    implementation("net.fabricmc:fabric-loader:$loaderVersion")
+    implementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
 
     // Mod runtime
     implementation(libs.viafabricplus.api)
@@ -131,4 +135,27 @@ java {
         languageVersion = JavaLanguageVersion.of(25)
     }
     withSourcesJar()
+}
+
+val releaseType = when {
+    modVersion.contains("alpha", ignoreCase = true) -> "alpha"
+    modVersion.contains("beta", ignoreCase = true) -> "beta"
+    else -> "release"
+}
+
+modrinth {
+    token.set(providers.environmentVariable("MODRINTH_TOKEN"))
+    projectId.set("pupper-client")
+    versionNumber.set(project.version.toString())
+    versionName.set("Pupper Client $modVersion for Minecraft $minecraftVersion")
+    versionType.set(releaseType)
+    uploadFile.set(tasks.named("jar"))
+    gameVersions.add(minecraftVersion)
+    loaders.add("fabric")
+    changelog.set(providers.environmentVariable("CHANGELOG").orElse("No changelog was provided."))
+
+    dependencies {
+        required.project("fabric-api")
+        required.project("viafabricplus")
+    }
 }

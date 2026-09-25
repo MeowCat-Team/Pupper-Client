@@ -35,7 +35,7 @@ public class DiscordRPCMod extends Mod {
 
 				RichPresence.Builder builder = new RichPresence.Builder();
 
-				builder.setState("Playing PupperClient Client v" + PupperClient.getInstance().getVersion())
+				builder.setState("Playing Pupper Client " + PupperClient.getInstance().getClientVersion())
 						.setStartTimestamp(OffsetDateTime.now().toEpochSecond()).setLargeImage("icon")
 						.setActivityType(ActivityType.Playing);
 

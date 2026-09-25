@@ -145,8 +145,8 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
 	 */
 	@Overwrite
 	public void updateTitle() {
-		this.window.setTitle(PupperClient.getInstance().getName() + " | " + PupperClient.getInstance().getVersion() + " for "
-				+ createTitle());
+		this.window.setTitle(PupperClient.getInstance().getName() + " "
+				+ PupperClient.getInstance().getClientVersion() + " | " + createTitle());
 	}
 
 	@Inject(method = "<init>", at = @At("TAIL"))
