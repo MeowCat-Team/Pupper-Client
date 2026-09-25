@@ -9,7 +9,7 @@ import com.viaversion.viafabricplus.ViaFabricPlus;
 public class ProtocolVersionMod extends SimpleHUDMod {
 
 	public ProtocolVersionMod() {
-		super("mod.protocolversion.name", "mod.playtimedisplay.description", Icon.BRING_YOUR_OWN_IP);
+		super("mod.protocolversion.name", "mod.protocolversion.description", Icon.BRING_YOUR_OWN_IP);
 	}
 
 	public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {

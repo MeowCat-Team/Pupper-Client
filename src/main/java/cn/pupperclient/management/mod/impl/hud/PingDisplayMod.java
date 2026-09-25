@@ -1,6 +1,7 @@
 package cn.pupperclient.management.mod.impl.hud;
 
 import cn.pupperclient.event.EventBus;
+import cn.pupperclient.event.client.ClientTickEvent;
 import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.management.mod.settings.impl.NumberSetting;
@@ -10,8 +11,6 @@ import cn.pupperclient.utils.time.TimerUtils;
 import cn.pupperclient.utils.server.ServerUtils;
 
 import net.lenni0451.mcping.MCPing;
-
-import java.util.Objects;
 
 public class PingDisplayMod extends SimpleHUDMod {
 
@@ -29,20 +28,26 @@ public class PingDisplayMod extends SimpleHUDMod {
 	public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
 		this.draw();
 	};
+	public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> updatePing();
 
 	private void updatePing() {
 
 		if (timer.delay((long) (1000 * refreshTimeSetting.getValue()))) {
 
-			if (ServerUtils.isMultiplayer()) {
-				if (Objects.requireNonNull(client.getCurrentServer()).ping <= 1 && !pinging) {
+			if (ServerUtils.isMultiplayer() && client.getCurrentServer() != null) {
+				var server = client.getCurrentServer();
+				if (server.ping <= 1 && !pinging) {
+					String address = server.ip;
+					pinging = true;
 					Multithreading.runAsync(() -> {
-						pinging = true;
-						ping = MCPing.pingModern().address(client.getCurrentServer().ip).getSync().getPing();
-						pinging = false;
+						try {
+							ping = MCPing.pingModern().address(address).getSync().getPing();
+						} finally {
+							pinging = false;
+						}
 					});
 				} else {
-					ping = Objects.requireNonNull(client.getCurrentServer()).ping;
+					ping = server.ping;
 				}
 			} else if (client.hasSingleplayerServer()) {
 				ping = 0;
@@ -54,7 +59,6 @@ public class PingDisplayMod extends SimpleHUDMod {
 
 	@Override
 	public String getText() {
-		updatePing();
 		return ping + " ms";
 	}
 

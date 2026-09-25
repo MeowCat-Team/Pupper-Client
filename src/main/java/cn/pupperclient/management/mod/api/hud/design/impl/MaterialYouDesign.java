@@ -35,11 +35,11 @@ public class MaterialYouDesign extends HUDDesign {
 
 	@Override
 	public Color getTextColor() {
-		return Color.WHITE;
+		return PupperClient.getInstance().getColorManager().getPalette().getOnPrimaryContainer();
 	}
 
 	@Override
 	public Color getOnTextColor() {
-		return Color.BLACK;
+		return PupperClient.getInstance().getColorManager().getPalette().getPrimaryContainer();
 	}
 }

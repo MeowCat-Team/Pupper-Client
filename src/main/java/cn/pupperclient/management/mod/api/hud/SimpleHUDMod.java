@@ -5,7 +5,7 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
 
-import io.github.humbleui.skija.FontMetrics;
+import io.github.humbleui.skija.Font;
 import io.github.humbleui.types.Rect;
 
 public abstract class SimpleHUDMod extends HUDMod {
@@ -22,24 +22,27 @@ public abstract class SimpleHUDMod extends HUDMod {
 		float fontSize = 9;
 		float iconSize = 10.5F;
 		float padding = 5;
-		boolean hasIcon = getIcon() != null && iconSetting.isEnabled();
-		Rect textBounds = Skia.getTextBounds(getText(), Fonts.getRegular(fontSize));
-		Rect iconBounds = Skia.getTextBounds(getIcon(), Fonts.getIcon(iconSize));
-		FontMetrics metrics = Fonts.getRegular(fontSize).getMetrics();
+		String text = getText();
+		String icon = getIcon();
+		Font textFont = getTextFont(fontSize);
+		Font iconFont = getIconFont(iconSize);
+		boolean hasIcon = icon != null && !icon.isBlank() && iconSetting.isEnabled();
+		Rect textBounds = Skia.getTextBounds(text, textFont);
+		Rect iconBounds = hasIcon ? Skia.getTextBounds(icon, iconFont) : Rect.makeWH(0, 0);
 		float width = textBounds.getWidth() + (padding * 2) + (hasIcon ? iconBounds.getWidth() + 4 : 0);
 		float height = fontSize + (padding * 2) - 1.5F;
-		float textCenterY = (metrics.getAscent() - metrics.getDescent()) / 2 - metrics.getAscent();
 
 		this.begin();
 		this.drawBackground(getX(), getY(), width, height);
 
 		if (hasIcon) {
-			this.drawText(getIcon(), getX() + padding, getY() + (height / 2) - (iconBounds.getHeight() / 2),
-					Fonts.getIcon(iconSize));
+			Skia.drawFullCenteredText(icon, getX() + padding + iconBounds.getWidth() / 2,
+				getY() + height / 2, getDesign().getTextColor(), iconFont);
 		}
 
-		this.drawText(getText(), getX() + padding + (hasIcon ? iconBounds.getWidth() + 4 : 0),
-				getY() + (height / 2) - textCenterY, Fonts.getRegular(fontSize));
+		Skia.drawFullCenteredText(text,
+			getX() + padding + (hasIcon ? iconBounds.getWidth() + 4 : 0) + textBounds.getWidth() / 2,
+			getY() + height / 2, getDesign().getTextColor(), textFont);
 		this.finish();
 
 		position.setSize(width, height);
@@ -53,4 +56,12 @@ public abstract class SimpleHUDMod extends HUDMod {
 	public abstract String getText();
 
 	public abstract String getIcon();
+
+	protected Font getTextFont(float size) {
+		return Fonts.getRegular(size);
+	}
+
+	protected Font getIconFont(float size) {
+		return Fonts.getIcon(size);
+	}
 }

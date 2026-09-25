@@ -23,9 +23,10 @@ public class BossBarMod extends HUDMod {
 	public boolean isVanillaPosition() {
 		return vanillaPosition.isEnabled();
 	}
-	
+
 	@Override
 	public float getRadius() {
 		return 0;
 	}
+
 }

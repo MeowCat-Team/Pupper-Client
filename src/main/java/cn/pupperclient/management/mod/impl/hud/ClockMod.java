@@ -1,9 +1,7 @@
 package cn.pupperclient.management.mod.impl.hud;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Locale;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.skia.RenderSkiaEvent;
@@ -12,7 +10,7 @@ import cn.pupperclient.skia.font.Icon;
 
 public class ClockMod extends SimpleHUDMod{
 
-	private DateFormat df = new SimpleDateFormat("HH:mm a", Locale.US);
+	private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 	
 	public ClockMod() {
 		super("mod.clock.name", "mod.clock.description", Icon.SCHEDULE);
@@ -24,7 +22,7 @@ public class ClockMod extends SimpleHUDMod{
 	
 	@Override
 	public String getText() {
-		return df.format(Calendar.getInstance().getTime());
+		return TIME_FORMAT.format(LocalTime.now());
 	}
 
 	@Override

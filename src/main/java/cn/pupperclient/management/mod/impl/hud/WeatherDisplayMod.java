@@ -26,6 +26,9 @@ public class WeatherDisplayMod extends SimpleHUDMod {
 		String prefix = "Weather: ";
 		ClientLevel world = client.level;
 		LocalPlayer player = client.player;
+		if (world == null || player == null) {
+			return prefix + "Unknown";
+		}
 		BlockPos playerPos = player.blockPosition();
 		Holder<Biome> biomeEntry = world.getBiome(playerPos);
 
@@ -41,13 +44,16 @@ public class WeatherDisplayMod extends SimpleHUDMod {
 			}
 		}
 
-		return prefix + "Cleaning";
+		return prefix + "Clear";
 	}
 
 	@Override
 	public String getIcon() {
 		ClientLevel world = client.level;
 		LocalPlayer player = client.player;
+		if (world == null || player == null) {
+			return Icon.SUNNY;
+		}
 		BlockPos playerPos = player.blockPosition();
 		Holder<Biome> biomeEntry = world.getBiome(playerPos);
 

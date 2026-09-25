@@ -10,6 +10,7 @@ import cn.pupperclient.management.mod.settings.impl.StringSetting;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
+import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.minecraft.interfaces.IMinecraft;
 import io.github.humbleui.skija.FontMetrics;
 import io.github.humbleui.types.Rect;
@@ -79,7 +80,7 @@ public class DynamicIsland extends HUDMod implements IMinecraft {
         float fontSize = 9;
         float iconSize = 10.5F;
         float padding = 5;
-        boolean hasIcon = getIcon() != null;
+        boolean hasIcon = getIcon() != null && !getIcon().isBlank();
 
         // 基础高度
         float baseHeight = fontSize + (padding * 2);
@@ -349,7 +350,7 @@ public class DynamicIsland extends HUDMod implements IMinecraft {
     }
 
     private void drawTextWithAlpha(String text, float x, float y, io.github.humbleui.skija.Font font, float alpha) {
-        Color color = new Color(1.0f, 1.0f, 1.0f, alpha);
+		Color color = ColorUtils.applyAlpha(getDesign().getTextColor(), alpha);
         Skia.drawText(text, x, y, color, font);
     }
 

@@ -19,8 +19,6 @@ import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 
-import static cn.pupperclient.management.mod.impl.hud.ArrayListMod.ICON_TEXT_SPACING;
-
 @SuppressWarnings("unused")
 public class PotionHudMod extends HUDMod {
     private static PotionHudMod instance;
@@ -35,10 +33,12 @@ public class PotionHudMod extends HUDMod {
     // Design constants
     private static final float FONT_SIZE = 8.5f;
     private static final float ROW_HEIGHT = 14f;
-    private static final float HORIZONTAL_PADDING = 6f;
+    private static final float HORIZONTAL_PADDING = 7f;
     private static final float VERTICAL_PADDING = 3f;
     private static final float ITEM_SPACING = 2f;
-    private static final float EFFECT_TIME_SPACING = 4f; // 效果名称和时间之间的间距
+    private static final float ICON_TEXT_SPACING = 4f;
+    private static final float EFFECT_TIME_SPACING = 8f;
+    private static final long ANIMATION_DURATION = 300L;
 
     // Animation states
     private final Map<String, PotionAnimationState> animationStates = new ConcurrentHashMap<>();
@@ -110,7 +110,7 @@ public class PotionHudMod extends HUDMod {
 
             // Remove effects that have finished exit animation
             if (state.animationType == AnimationType.EXIT) {
-                float progress = getAnimationProgress(currentTime, state.animationStartTime, 200);
+                float progress = getAnimationProgress(currentTime, state.animationStartTime, ANIMATION_DURATION);
                 if (progress >= 1.0f) {
                     iterator.remove();
                 }
@@ -127,7 +127,7 @@ public class PotionHudMod extends HUDMod {
         // Add all active effects (both entering and stable)
         for (PotionAnimationState state : animationStates.values()) {
             if (state.animationType != AnimationType.EXIT ||
-                getAnimationProgress(System.currentTimeMillis(), state.animationStartTime, 200) < 1.0f) {
+                getAnimationProgress(System.currentTimeMillis(), state.animationStartTime, ANIMATION_DURATION) < 1.0f) {
                 sortedDisplayPotions.add(state.potionInfo);
             }
         }
@@ -172,41 +172,35 @@ public class PotionHudMod extends HUDMod {
         String titleText = "Active Potions";
 
         // Calculate widths
-        float iconWidth = Skia.getTextBounds(titleIcon, Fonts.getRegular(FONT_SIZE)).getWidth();
+        float iconWidth = Skia.getTextBounds(titleIcon, Fonts.getIcon(9.25F)).getWidth();
         float textWidth = Skia.getTextBounds(titleText, Fonts.getRegular(FONT_SIZE)).getWidth();
 
         // Calculate background dimensions
-        float textBgWidth = textWidth + HORIZONTAL_PADDING * 2;
-        float iconBgWidth = iconWidth + HORIZONTAL_PADDING * 2;
-        float totalWidth = iconBgWidth + ICON_TEXT_SPACING + textBgWidth;
+        float totalWidth = iconWidth + ICON_TEXT_SPACING + textWidth + HORIZONTAL_PADDING * 2;
 
         // Calculate positions
-        float bgX = getX() + (isRightAligned ? (maxWidth - textBgWidth) : 0);
+        float bgX = getX() + (isRightAligned ? (maxWidth - totalWidth) : 0);
         float bgY = getY() + y;
 
         // Draw backgrounds
         if (backgroundSetting.isEnabled()) {
-            // Draw icon background
-            drawRoundedBackground(bgX, bgY, iconBgWidth, 255);
-
-            // Draw text background
-            float textBgX = bgX + iconBgWidth + ICON_TEXT_SPACING;
-            drawRoundedBackground(textBgX, bgY, textBgWidth, 255);
+            drawRoundedBackground(bgX, bgY, totalWidth, 255);
         }
 
         // Draw title icon and text
         float iconX = bgX + HORIZONTAL_PADDING;
-        float textX = bgX + iconBgWidth + ICON_TEXT_SPACING + HORIZONTAL_PADDING;
+        float textX = iconX + iconWidth + ICON_TEXT_SPACING;
         float contentY = bgY + VERTICAL_PADDING;
 
-        Skia.drawText(titleIcon, iconX, contentY, Color.WHITE, Fonts.getIcon(9.25F));
-        Skia.drawText(titleText, textX, contentY, Color.WHITE, Fonts.getRegular(FONT_SIZE));
+        Color contentColor = getContentColor(255);
+        Skia.drawText(titleIcon, iconX, contentY, contentColor, Fonts.getIcon(9.25F));
+        Skia.drawText(titleText, textX, contentY, contentColor, Fonts.getRegular(FONT_SIZE));
     }
 
     private void drawPotionEntry(PotionDisplayInfo potionInfo, PotionAnimationState state, float maxWidth,
                                  float y, int index, boolean isRightAligned) {
         long currentTime = System.currentTimeMillis();
-        float progress = getAnimationProgress(currentTime, state.animationStartTime, 300);
+        float progress = getAnimationProgress(currentTime, state.animationStartTime, ANIMATION_DURATION);
 
         // Apply easing
         float easedProgress = easeOutCubic(progress);
@@ -229,26 +223,21 @@ public class PotionHudMod extends HUDMod {
         }
 
         // Calculate positions
-        float totalWidth = potionInfo.effectBgWidth + EFFECT_TIME_SPACING + potionInfo.timeBgWidth;
+        float totalWidth = potionInfo.totalWidth;
         float bgX = getX() + (isRightAligned ? (maxWidth - totalWidth) : 0) + animationOffset;
         float bgY = getY() + y;
 
         // Draw backgrounds with alpha
         if (backgroundSetting.isEnabled()) {
-            // Draw effect name background
-            drawRoundedBackground(bgX, bgY, potionInfo.effectBgWidth, (int)alpha);
-
-            // Draw time background
-            float timeBgX = bgX + potionInfo.effectBgWidth + EFFECT_TIME_SPACING;
-            drawRoundedBackground(timeBgX, bgY, potionInfo.timeBgWidth, (int)alpha);
+            drawRoundedBackground(bgX, bgY, totalWidth, (int) alpha);
         }
 
         // Draw content with alpha
-        Color contentColor = new Color(255, 255, 255, (int)alpha);
+        Color contentColor = getContentColor((int) alpha);
 
         // Draw effect name and time
         float effectX = bgX + HORIZONTAL_PADDING;
-        float timeX = bgX + potionInfo.effectBgWidth + EFFECT_TIME_SPACING + HORIZONTAL_PADDING;
+        float timeX = effectX + potionInfo.effectWidth + EFFECT_TIME_SPACING;
         float contentY = bgY + VERTICAL_PADDING;
 
         Skia.drawText(potionInfo.effectName, effectX, contentY, contentColor, Fonts.getRegular(FONT_SIZE));
@@ -257,8 +246,17 @@ public class PotionHudMod extends HUDMod {
 
     private void drawRoundedBackground(float x, float y, float width, int alpha) {
         float radius = ROW_HEIGHT / 2;
+        Color color = PupperClient.getInstance().getColorManager().getPalette().getPrimary();
+        int backgroundAlpha = Math.round(120 * Math.max(0, Math.min(255, alpha)) / 255F);
         Skia.drawRoundedRect(x, y, width, ROW_HEIGHT, radius,
-            new Color(255, 255, 255, Math.min(120, alpha)));
+            new Color(color.getRed(), color.getGreen(), color.getBlue(), backgroundAlpha));
+    }
+
+    private Color getContentColor(int alpha) {
+        Color color = backgroundSetting.isEnabled()
+            ? PupperClient.getInstance().getColorManager().getPalette().getOnPrimary()
+            : getDesign().getTextColor();
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), Math.max(0, Math.min(255, alpha)));
     }
 
     private List<PotionDisplayInfo> getActivePotions() {
@@ -273,8 +271,8 @@ public class PotionHudMod extends HUDMod {
         for (MobEffectInstance effect : effects) {
             Holder <MobEffect> statusEffect = effect.getEffect();
             String effectkey = statusEffect.value().getDescriptionId();
-            String roman_converter = RomanConverter.intToRomanByPlace(effect.getAmplifier());
-            String amplifier = roman_converter.equals("0") ? " " : " " + roman_converter;
+            int level = effect.getAmplifier() + 1;
+            String amplifier = level > 1 ? " " + RomanConverter.intToRomanByPlace(level) : "";
             String effectName = statusEffect.value().getDisplayName().getString() + amplifier;
             String timeText = formatDuration(effect);
 
@@ -283,12 +281,10 @@ public class PotionHudMod extends HUDMod {
             float timeWidth = Skia.getTextBounds(timeText, Fonts.getRegular(FONT_SIZE)).getWidth();
 
             // Calculate background widths
-            float effectBgWidth = effectWidth + HORIZONTAL_PADDING * 2;
-            float timeBgWidth = timeWidth + HORIZONTAL_PADDING * 2;
-            float totalWidth = effectBgWidth + EFFECT_TIME_SPACING + timeBgWidth;
+            float totalWidth = effectWidth + EFFECT_TIME_SPACING + timeWidth + HORIZONTAL_PADDING * 2;
 
             activePotions.add(new PotionDisplayInfo(effectkey, effectName, timeText,
-                totalWidth, effectBgWidth, timeBgWidth));
+                totalWidth, effectWidth));
         }
 
         return activePotions;
@@ -316,9 +312,10 @@ public class PotionHudMod extends HUDMod {
 
         // Calculate title width
         String titleText = "Active Potions";
+        float titleIconWidth = Skia.getTextBounds(Icon.SCIENCE, Fonts.getIcon(9.25F)).getWidth();
         float titleWidth = Skia.getTextBounds(titleText, Fonts.getRegular(FONT_SIZE)).getWidth();
-        float titleBgWidth = titleWidth + HORIZONTAL_PADDING * 2;
-        maxWidth = Math.max(maxWidth, titleBgWidth);
+        float titleTotalWidth = titleIconWidth + ICON_TEXT_SPACING + titleWidth + HORIZONTAL_PADDING * 2;
+        maxWidth = Math.max(maxWidth, titleTotalWidth);
 
         // Calculate max width from active potions
         for (PotionDisplayInfo potionInfo : sortedDisplayPotions) {
@@ -352,18 +349,16 @@ public class PotionHudMod extends HUDMod {
         String effectId;
         String effectName;
         String timeText;
-        float totalWidth; // Total width including both backgrounds and spacing
-        float effectBgWidth;  // Effect name background width
-        float timeBgWidth;  // Time background width
+        float totalWidth;
+        float effectWidth;
 
         PotionDisplayInfo(String effectId, String effectName, String timeText,
-                          float totalWidth, float effectBgWidth, float timeBgWidth) {
+                          float totalWidth, float effectWidth) {
             this.effectId = effectId;
             this.effectName = effectName;
             this.timeText = timeText;
             this.totalWidth = totalWidth;
-            this.effectBgWidth = effectBgWidth;
-            this.timeBgWidth = timeBgWidth;
+            this.effectWidth = effectWidth;
         }
     }
 

@@ -1,21 +1,17 @@
 package cn.pupperclient.management.mod.impl.hud;
 
-import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
 
-import cn.pupperclient.PupperClient;
 import cn.pupperclient.PupperLogger;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.skia.RenderSkiaEvent;
-import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.mod.api.hud.HUDMod;
 import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
 import cn.pupperclient.management.mod.settings.impl.StringSetting;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
-import cn.pupperclient.utils.color.ColorUtils;
 
 import io.github.humbleui.skija.FontMetrics;
 import io.github.humbleui.skija.Image;
@@ -25,12 +21,10 @@ public class WatermarkMod extends HUDMod {
 
     private static WatermarkMod instance;
     private Image logoImage;
-    private long lastColorUpdate = 0;
-    private Color currentColor = Color.WHITE;
 
     // Settings
     private final StringSetting textSetting = new StringSetting("setting.text",
-        "setting.text.description", Icon.TEXT_FIELDS, this, "PupperClient Client");
+        "setting.text.description", Icon.TEXT_FIELDS, this, "Pupper Client");
     private final BooleanSetting showLogoSetting = new BooleanSetting("setting.showLogo",
         "setting.showLogo.description", Icon.IMAGE, this, true);
 
@@ -72,76 +66,38 @@ public class WatermarkMod extends HUDMod {
 
     private void drawContent() {
         float padding = 5f;
-        float currentX = getX() + padding;
-        float contentHeight = 0;
-
-        if (showLogoSetting.isEnabled() && logoImage != null) {
-            float logoHeight = 28f;
-            float logoWidth = logoHeight * (logoImage.getWidth() / (float) logoImage.getHeight());
-
-            Skia.drawImage("logo.png", currentX, getY() + padding, logoWidth, logoHeight);
-            currentX += logoWidth + padding;
-            contentHeight = logoHeight;
-        }
-
-        // Draw text
+        float logoSize = 18f;
+        float fontSize = 12f;
+        boolean showLogo = showLogoSetting.isEnabled() && logoImage != null;
         String text = textSetting.getValue();
-        if (!text.isEmpty()) {
-            float fontSize = 24f;
-            Rect textBounds = Skia.getTextBounds(text, Fonts.getGoogleSansRegular(fontSize));
+        boolean showText = text != null && !text.isBlank();
+        Rect textBounds = showText
+            ? Skia.getTextBounds(text, Fonts.getGoogleSansRegular(fontSize))
+            : Rect.makeWH(0, 0);
+
+        float contentWidth = (showLogo ? logoSize : 0)
+            + (showLogo && showText ? padding : 0)
+            + textBounds.getWidth();
+        float contentHeight = Math.max(showLogo ? logoSize : 0, showText ? textBounds.getHeight() : 0);
+        float panelWidth = contentWidth + padding * 2;
+        float panelHeight = contentHeight + padding * 2;
+
+        drawBackground(getX(), getY(), panelWidth, panelHeight);
+        float currentX = getX() + padding;
+
+		if (showLogo) {
+			Skia.drawImage("logo.png", currentX, getY() + (panelHeight - logoSize) / 2, logoSize, logoSize);
+			currentX += logoSize + (showText ? padding : 0);
+        }
+
+		if (showText) {
             FontMetrics metrics = Fonts.getGoogleSansRegular(fontSize).getMetrics();
-
             float textCenterY = (metrics.getAscent() - metrics.getDescent()) / 2 - metrics.getAscent();
-            float textY = getY() + padding + (contentHeight / 2) - textCenterY;
-
-            Color textColor = getSmoothAnimatedColor();
-            Skia.drawText(text, currentX, textY, textColor, Fonts.getGoogleSansRegular(fontSize));
-
-            contentHeight = fontSize;
-            currentX += textBounds.getWidth() + padding;
+			float textY = getY() + panelHeight / 2 - textCenterY;
+			drawText(text, currentX, textY, Fonts.getGoogleSansRegular(fontSize));
         }
 
-        position.setSize(currentX - getX() + padding, contentHeight + padding * 2);
-    }
-
-
-    private Color getSmoothAnimatedColor() {
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastColorUpdate < 16) { // ~60fps
-            return currentColor;
-        }
-        lastColorUpdate = currentTime;
-
-        try {
-            ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
-            if (palette == null) {
-                return Color.WHITE;
-            }
-
-            // Get colors from palette with fallbacks
-            Color color1 = palette.getPrimary() != null ? palette.getPrimary() : new Color(240,255,255);
-            Color color2 = palette.getSecondary() != null ? palette.getSecondary() : new Color(240,255,255);
-            Color color3 = palette.getTertiary() != null ? palette.getTertiary() : new Color(240,255,255);
-
-            double speed = 0.0001;
-            double cycle = (currentTime * speed) % 1.0;
-
-            double wave = Math.sin(cycle * Math.PI * 2);
-            double normalizedWave = (wave + 1) / 2;
-
-            if (normalizedWave < 0.33) {
-                currentColor = ColorUtils.blend(color1, color2, (float) (normalizedWave * 3));
-            } else if (normalizedWave < 0.66) {
-                currentColor = ColorUtils.blend(color2, color3, (float) ((normalizedWave - 0.33) * 3));
-            } else {
-                currentColor = ColorUtils.blend(color3, color1, (float) ((normalizedWave - 0.66) * 3));
-            }
-
-            return currentColor;
-        } catch (Exception e) {
-            PupperLogger.error("WatermarkMod", "Error in getSmoothAnimatedColor(): ", e);
-            return Color.WHITE;
-        }
+		position.setSize(panelWidth, panelHeight);
     }
 
     @Override

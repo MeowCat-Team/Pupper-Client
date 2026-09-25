@@ -3,6 +3,7 @@ package cn.pupperclient.management.mod.impl.hud;
 import cn.pupperclient.event.EventListener;
 import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
+import cn.pupperclient.skia.font.Icon;
 
 public class CooldownHudMod extends SimpleHUDMod {
     public CooldownHudMod() {
@@ -31,11 +32,11 @@ public class CooldownHudMod extends SimpleHUDMod {
             cooldownProgress = client.player.getAttackStrengthScale(0.0F);
         }
         boolean isCooldown = cooldownProgress < 1.0f;
-        return isCooldown ? ("Cooldown: " + cooldownProgress) : "Done";
+		return isCooldown ? "Cooldown " + Math.round(cooldownProgress * 100) + "%" : "Ready";
     }
 
     @Override
     public String getIcon() {
-        return "";
+		return Icon.TIMER;
     }
 }

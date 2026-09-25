@@ -79,7 +79,7 @@ public class MusicInfoMod extends SimpleHUDMod {
         @Override
         public boolean isVisible() {
             String type = typeSetting.getOption();
-            return type.equals("setting.normal.name") || type.equals("setting.cover.name");
+            return type.equals("setting.normal") || type.equals("setting.cover");
         }
     };
 
@@ -87,7 +87,7 @@ public class MusicInfoMod extends SimpleHUDMod {
         @Override
         public boolean isVisible() {
             String type = typeSetting.getOption();
-            return type.equals("setting.normal.name") || type.equals("setting.cover.name");
+            return type.equals("setting.normal") || type.equals("setting.cover");
         }
     };
 

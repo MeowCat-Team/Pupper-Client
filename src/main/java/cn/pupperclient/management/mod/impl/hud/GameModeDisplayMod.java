@@ -19,6 +19,9 @@ public class GameModeDisplayMod extends SimpleHUDMod {
 	public String getText() {
 
 		String prefix = "Mode: ";
+		if (client.player == null) {
+			return prefix + "Unknown";
+		}
 
 		if (client.player.isCreative()) {
 			return prefix + "Creative";

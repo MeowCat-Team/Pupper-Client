@@ -9,9 +9,9 @@ public class Position {
 	private float scale;
 
 	public Position(float x, float y, float width, float height) {
+		scale = 1.0F;
 		setSize(width, height);
 		setPosition(x, y);
-		scale = 1.0F;
 	}
 
 	public void setPosition(float x, float y) {
@@ -133,6 +133,16 @@ public class Position {
 	}
 
 	public void setScale(float scale) {
-		this.scale = Math.max(0.2F, Math.min(5.0F, scale));
+		float newScale = Math.max(0.2F, Math.min(5.0F, scale));
+		if (this.scale == newScale) {
+			return;
+		}
+
+		float previousScale = this.scale <= 0 ? 1.0F : this.scale;
+		float unscaledWidth = width / previousScale;
+		float unscaledHeight = height / previousScale;
+		this.scale = newScale;
+		this.width = unscaledWidth * newScale;
+		this.height = unscaledHeight * newScale;
 	}
 }
