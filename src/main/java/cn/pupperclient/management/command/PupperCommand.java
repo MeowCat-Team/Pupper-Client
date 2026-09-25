@@ -70,11 +70,6 @@ public class PupperCommand implements IMinecraft {
                 BindCommand.handleCommand(args);
                 break;
 
-            case "i":
-            case "irc":
-                IRCCommand.handleCommand(args);
-                break;
-
             case "music", "m", "163":
                 if (args.length >= 2) {
                     MusicCommand.handleCommand(args);
@@ -83,7 +78,7 @@ public class PupperCommand implements IMinecraft {
                 }
                 break;
 
-            case "login":  // 新增登录命令
+            case "login":
                 if (args.length >= 2) {
                     LoginCommand.handleCommand(args);
                 } else {

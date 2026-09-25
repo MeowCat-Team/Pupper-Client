@@ -111,7 +111,6 @@ public class ModManager {
         mods.add(new HypixelMod());
         mods.add(new TimeChangerMod());
         mods.add(new WeatherChangerMod());
-        mods.add(new IRCChatMod());
     }
 
     private void initFunMods() {
