@@ -58,9 +58,10 @@ public class KeystrokesMod extends HUDMod {
             float inset = state;
             float px = getX() + x + inset, py = getY() + y + inset;
             float w = width - inset * 2, h = height - inset * 2;
-            // Switch foreground and background together; morph only the shape.
-            Skia.drawRoundedRect(px, py, w, h, 8 + state * 4,
-                pressed ? colors().accentContainer() : colors().surface());
+            float radius = 8 + state * 4;
+            // Keep every key on the selected HUD surface, including Glass.
+            getDesign().drawBackground(px, py, w, h, radius);
+            if (pressed) Skia.drawRoundedRect(px, py, w, h, radius, colors().accentContainer());
             var foreground = pressed ? colors().onAccentContainer() : colors().text();
             if (!unmarkSetting.isEnabled()) {
                 if (jump) Skia.drawRoundedRect(px + 18, py + h / 2 - 1, w - 36, 2, 1, foreground);

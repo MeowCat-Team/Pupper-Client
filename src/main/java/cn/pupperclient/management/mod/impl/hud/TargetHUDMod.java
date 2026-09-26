@@ -72,12 +72,13 @@ public class TargetHUDMod extends HUDMod {
                 colors().text(), HUDTokens.title());
             String value = String.format(Locale.ROOT, "%.1f / %.1f HP", health, maxHealth);
             var color = fraction <= 0.25f ? colors().danger() : colors().secondaryText();
-            Skia.drawText(value, x, getY() + 25, color, HUDTokens.label());
+            Skia.drawFullCenteredText(Icon.FAVORITE, x + 5, getY() + 30, color, HUDTokens.icon());
+            Skia.drawText(value, x + 13, getY() + 25, color, HUDTokens.label());
             if (healthDisplaySetting.getOption().equals("setting.health.display.bar")) {
                 float barWidth = WIDTH - 56;
-                Skia.drawRoundedRect(x, getY() + 42, barWidth, 5, 2.5f, colors().track());
+                Skia.drawRoundedRect(x, getY() + 42, barWidth, 6, 3, colors().track());
                 if (progress > 0.001f)
-                    Skia.drawRoundedRect(x, getY() + 42, barWidth * progress, 5, 2.5f,
+                    Skia.drawRoundedRect(x, getY() + 42, barWidth * progress, 6, 3,
                         fraction <= 0.25f ? colors().danger() : colors().accent());
             }
         } finally { finish(); }
@@ -90,6 +91,7 @@ public class TargetHUDMod extends HUDMod {
             File skin = SkinUtils.getSkin(clientPlayer.getSkin().body().texturePath());
             if (skin != null && skin.exists()) {
                 Skia.drawPlayerHead(skin, x, y, AVATAR, AVATAR, HUDTokens.COMPACT_RADIUS);
+                Skia.drawOutline(x, y, AVATAR, AVATAR, HUDTokens.COMPACT_RADIUS, 0.75f, colors().outline());
                 return;
             }
         }

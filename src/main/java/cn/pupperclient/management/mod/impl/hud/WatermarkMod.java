@@ -31,7 +31,7 @@ public class WatermarkMod extends HUDMod {
             drawBackground(getX(), getY(), width, 32);
             float x = getX() + 8;
             if (logo) {
-                Skia.drawRoundedRect(x - 2, getY() + 4, 24, 24, 8, colors().accentContainer());
+                Skia.drawRoundedRect(x - 2, getY() + 4, 24, 24, 12, colors().accentContainer());
                 Skia.drawImage("logo.png", x, getY() + 6, 20, 20);
                 x += 24;
             }
@@ -39,4 +39,6 @@ public class WatermarkMod extends HUDMod {
         } finally { finish(); }
         position.setSize(width, 32);
     };
+
+    @Override public float getRadius() { return 16; }
 }

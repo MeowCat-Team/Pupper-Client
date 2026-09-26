@@ -19,7 +19,7 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.language.I18n;
 
-/** Artwork is contained; text always sits on an opaque semantic surface. */
+/** Artwork stays contained while the selected HUD surface remains visible. */
 public class MusicInfoMod extends SimpleHUDMod {
     private final ComboSetting typeSetting = new ComboSetting("setting.type", "setting.type.description",
         Icon.FORMAT_LIST_BULLETED, this, Arrays.asList("setting.simple", "setting.normal", "setting.cover"), "setting.simple");
@@ -79,11 +79,21 @@ public class MusicInfoMod extends SimpleHUDMod {
                 textX, getY() + 26, colors().secondaryText(), HUDTokens.label());
             float end = manager.getEndTime();
             float progress = end > 0 ? Math.max(0, Math.min(1, manager.getCurrentTime() / end)) : 0;
-            Skia.drawRoundedRect(textX, getY() + baseHeight - 12, textWidth, 3, 1.5f, colors().track());
-            if (progress > 0) Skia.drawRoundedRect(textX, getY() + baseHeight - 12, textWidth * progress, 3, 1.5f, colors().accent());
-            if (lyrics) Skia.drawHeightCenteredText(Skia.getLimitText(lyric.isBlank() ? "♪" : lyric,
-                HUDTokens.label(), width - 16), getX() + 8, getY() + baseHeight + 6,
-                colors().secondaryText(), HUDTokens.label());
+            float progressY = getY() + baseHeight - 12;
+            Skia.drawRoundedRect(textX, progressY, textWidth, 4, 2, colors().track());
+            if (progress > 0) {
+                Skia.drawRoundedRect(textX, progressY, textWidth * progress, 4, 2, colors().accent());
+                Skia.drawCircle(textX + textWidth * progress, progressY + 2, 2.5f, colors().accent());
+            }
+            if (lyrics) {
+                Skia.drawRoundedRect(getX() + 8, getY() + baseHeight, width - 16,
+                    0.75f, 0.375f, colors().outline());
+                Skia.drawFullCenteredText(Icon.MUSIC_NOTE, getX() + 14, getY() + baseHeight + 9,
+                    colors().accent(), HUDTokens.icon());
+                Skia.drawHeightCenteredText(Skia.getLimitText(lyric.isBlank() ? "♪" : lyric,
+                    HUDTokens.label(), width - 34), getX() + 24, getY() + baseHeight + 9,
+                    colors().secondaryText(), HUDTokens.label());
+            }
         } finally { finish(); }
         position.setSize(width, height);
     };

@@ -36,6 +36,8 @@ public class BossBarMod extends HUDMod {
             if (bosses.isEmpty()) drawBoss(getName(), 0.65f, BossEvent.BossBarOverlay.PROGRESS, getY() + 8);
             for (int i = 0; i < bosses.size(); i++) {
                 var boss = bosses.get(i);
+                if (i > 0) Skia.drawRoundedRect(getX() + 8, getY() + 4 + i * 36,
+                    width - 16, 0.75f, 0.375f, colors().outline());
                 drawBoss(boss.getName().getString(), boss.getProgress(), boss.getOverlay(), getY() + 8 + i * 36);
             }
         } finally { finish(); }
@@ -44,11 +46,13 @@ public class BossBarMod extends HUDMod {
 
     private void drawBoss(String name, float progress, BossEvent.BossBarOverlay overlay, float y) {
         float value = Math.max(0, Math.min(1, progress));
-        Skia.drawText(Skia.getLimitText(name, HUDTokens.title(), 146), getX() + 8, y, colors().text(), HUDTokens.title());
-        Skia.drawFullCenteredText(Math.round(value * 100) + "%", getX() + 177, y + 6,
+        Skia.drawCircle(getX() + 13, y + 7, 3, colors().accent());
+        Skia.drawHeightCenteredText(Skia.getLimitText(name, HUDTokens.title(), 132),
+            getX() + 22, y + 7, colors().text(), HUDTokens.title());
+        Skia.drawFullCenteredText(Math.round(value * 100) + "%", getX() + 176, y + 7,
             colors().secondaryText(), HUDTokens.label());
-        Skia.drawRoundedRect(getX() + 8, y + 19, 184, 5, 2.5f, colors().track());
-        if (value > 0) Skia.drawRoundedRect(getX() + 8, y + 19, 184 * value, 5, 2.5f, colors().accent());
+        Skia.drawRoundedRect(getX() + 8, y + 20, 184, 6, 3, colors().track());
+        if (value > 0) Skia.drawRoundedRect(getX() + 8, y + 20, 184 * value, 6, 3, colors().accent());
         int segments = switch (overlay) {
             case NOTCHED_6 -> 6;
             case NOTCHED_10 -> 10;
@@ -57,6 +61,6 @@ public class BossBarMod extends HUDMod {
             default -> 0;
         };
         for (int i = 1; i < segments; i++)
-            Skia.drawRect(getX() + 8 + 184f * i / segments, y + 19, 1, 5, colors().surface());
+            Skia.drawRect(getX() + 8 + 184f * i / segments, y + 20, 1, 6, colors().surface());
     }
 }

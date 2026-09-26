@@ -34,6 +34,8 @@ public class MouseStrokesMod extends HUDMod {
 		this.drawBackground(getX(), getY(), 58, 58);
 		Skia.drawRoundedRect(getX() + 12, getY() + 28.5f, 34, 1, 0.5f, colors().outline());
 		Skia.drawRoundedRect(getX() + 28.5f, getY() + 12, 1, 34, 0.5f, colors().outline());
+		Skia.drawCircle(getX() + 29, getY() + 29, 9, colors().raised());
+		Skia.drawCircle(getX() + 29, getY() + 29, 9, 0.75f, colors().outline());
 		Skia.drawCircle(getX() + x + 29, getY() + y + 29, 4.5F, colors().accent());
 		this.finish();
 		position.setSize(58, 58);

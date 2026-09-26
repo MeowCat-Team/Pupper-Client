@@ -39,24 +39,34 @@ public class BedwarsStatsOverlayMod extends HUDMod {
         begin();
         try {
             drawBackground(getX(), getY(), width, height);
-            Skia.drawText(getName(), getX() + 8, getY() + 8, colors().text(), HUDTokens.title());
-            Skia.drawRoundedRect(getX() + 4, getY() + 28, width - 8, 20, 6, colors().raised());
+            Skia.drawRoundedRect(getX() + 8, getY() + 6, 18, 18, 6, colors().accentContainer());
+            Skia.drawFullCenteredText(Icon.SINGLE_BED, getX() + 17, getY() + 15,
+                colors().onAccentContainer(), HUDTokens.icon());
+            Skia.drawHeightCenteredText(Skia.getLimitText(getName(), HUDTokens.title(), width - 48),
+                getX() + 32, getY() + 15, colors().text(), HUDTokens.title());
+            Skia.drawRoundedRect(getX() + 8, getY() + 30, width - 16, 18, 6, colors().raised());
             String[] headers = {I18n.get("hud.player"), I18n.get("hud.level"), "WLR", "FKDR", "BBLR"};
             float[] columns = {48, 126, 176, 226, 276};
             for (int i = 0; i < headers.length; i++)
-                Skia.drawFullCenteredText(headers[i], getX() + columns[i], getY() + 38,
+                Skia.drawFullCenteredText(headers[i], getX() + columns[i], getY() + 39,
                     colors().secondaryText(), HUDTokens.label());
             float y = getY() + 52;
             for (Entry entry : entries) {
                 File skin = SkinUtils.getSkin(entry.player.getSkin().body().texturePath());
+                Skia.drawRoundedRect(getX() + 8, y + 3, 14, 14, 4, colors().accentContainer());
                 if (skin != null && skin.exists()) Skia.drawPlayerHead(skin, getX() + 8, y + 3, 14, 14, 4);
+                else Skia.drawFullCenteredText(Icon.PERSON, getX() + 15, y + 10,
+                    colors().onAccentContainer(), HUDTokens.icon());
                 Skia.drawHeightCenteredText(Skia.getLimitText(entry.player.getProfile().name(), HUDTokens.body(), 72),
                     getX() + 28, y + 10, colors().text(), HUDTokens.body());
                 String[] values = {entry.stats.getBedwarsLevel(), entry.stats.getWinLoseRatio(),
                     entry.stats.getFinalKillDeathRatio(), entry.stats.getBedsBrokeLostRatio()};
+                Skia.drawRoundedRect(getX() + columns[1] - 19, y + 3, 38, 14, 7,
+                    colors().accentContainer());
                 for (int i = 0; i < values.length; i++)
-                    Skia.drawFullCenteredText(Skia.getLimitText(values[i], HUDTokens.label(), 42),
-                        getX() + columns[i + 1], y + 10, colors().text(), HUDTokens.label());
+                    Skia.drawFullCenteredText(Skia.getLimitText(values[i], HUDTokens.label(), i == 0 ? 34 : 42),
+                        getX() + columns[i + 1], y + 10,
+                        i == 0 ? colors().onAccentContainer() : colors().text(), HUDTokens.label());
                 y += HUDTokens.ROW_HEIGHT;
             }
             if (entries.isEmpty())

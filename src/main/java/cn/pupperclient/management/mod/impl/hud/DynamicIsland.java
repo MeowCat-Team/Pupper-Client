@@ -55,8 +55,8 @@ public class DynamicIsland extends HUDMod {
         String server = client.getCurrentServer() == null ? I18n.get("hud.singleplayer") : client.getCurrentServer().ip;
         String detail = player + " · " + server + " · " + client.getFps() + " FPS";
         String title = now < nextGameUntil ? I18n.get("hud.nextgame") : name.getValue();
-        float desiredWidth = Math.max(200, Math.max(Skia.getTextBounds(title, HUDTokens.title()).getWidth() + 40,
-            Skia.getTextBounds(detail, HUDTokens.label()).getWidth() + 16));
+        float desiredWidth = Math.max(200, Math.max(Skia.getTextBounds(title, HUDTokens.title()).getWidth() + 48,
+            Skia.getTextBounds(detail, HUDTokens.label()).getWidth() + 44));
         for (Notice notice : notices)
             desiredWidth = Math.max(desiredWidth, Skia.getTextBounds(notice.title, HUDTokens.body()).getWidth() + 96);
         float maximum = Math.max(100, Math.min(320, client.getWindow().getGuiScaledWidth() / position.getScale() - 24));
@@ -67,13 +67,15 @@ public class DynamicIsland extends HUDMod {
         try {
             drawBackground(getX(), getY(), width, height);
             Skia.clip(getX(), getY(), width, height, getRadius());
-            Skia.drawRoundedRect(getX() + 8, getY() + 8, 20, 20, 7, colors().accentContainer());
+            Skia.drawRoundedRect(getX() + 8, getY() + 8, 20, 20, 10, colors().accentContainer());
             Skia.drawFullCenteredText(now < nextGameUntil ? Icon.CHECK : Icon.BROWSE_ACTIVITY,
                 getX() + 18, getY() + 18, colors().onAccentContainer(), HUDTokens.icon());
             Skia.drawHeightCenteredText(Skia.getLimitText(title, HUDTokens.title(), width - 44),
-                getX() + 34, getY() + 18, colors().text(), HUDTokens.title());
-            Skia.drawText(Skia.getLimitText(detail, HUDTokens.label(), width - 16),
-                getX() + 8, getY() + 31, colors().secondaryText(), HUDTokens.label());
+                getX() + 34, getY() + 15, colors().text(), HUDTokens.title());
+            Skia.drawHeightCenteredText(Skia.getLimitText(detail, HUDTokens.label(), width - 44),
+                getX() + 34, getY() + 30, colors().secondaryText(), HUDTokens.label());
+            if (!notices.isEmpty()) Skia.drawRoundedRect(getX() + 8, getY() + 40,
+                width - 16, 0.75f, 0.375f, colors().outline());
             float y = getY() + 44;
             for (Notice notice : notices) {
                 float rowHeight = 28 * notice.visibility;
@@ -95,6 +97,8 @@ public class DynamicIsland extends HUDMod {
         } finally { finish(); }
         position.setSize(width, height);
     };
+
+    @Override public float getRadius() { return 18; }
 
     private static final class Notice {
         final String id, title;
