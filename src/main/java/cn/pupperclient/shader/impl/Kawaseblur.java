@@ -7,6 +7,7 @@ import cn.pupperclient.gui.modmenu.GuiModMenu;
 import cn.pupperclient.management.mod.impl.settings.ModMenuSettings;
 import cn.pupperclient.shader.*;
 import cn.pupperclient.shader.patch.FixedUniformStorage;
+import com.mojang.blaze3d.GpuFormat;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.buffers.Std140SizeCalculator;
@@ -14,7 +15,7 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTextureView;
-import com.mojang.blaze3d.textures.TextureFormat;
+import com.mojang.blaze3d.textures.GpuTexture;
 import it.unimi.dsi.fastutil.ints.IntFloatImmutablePair;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.DynamicUniformStorage;
@@ -109,7 +110,7 @@ public class Kawaseblur {
             previousOffset = offset;
         }
 
-        renderToFbo(fbos[0], mc.getMainRenderTarget().getColorTextureView(), PupperRenderPipelines.BLUR_DOWN, ubos[0]);
+        renderToFbo(fbos[0], mc.gameRenderer.mainRenderTarget().getColorTextureView(), PupperRenderPipelines.BLUR_DOWN, ubos[0]);
 
         for (int i = 0; i < iterations; i++) {
             renderToFbo(fbos[i + 1], fbos[i], PupperRenderPipelines.BLUR_DOWN, ubos[i + 1]);
@@ -120,7 +121,7 @@ public class Kawaseblur {
         }
 
         PupperMeshRenderer.begin()
-            .attachments(mc.getMainRenderTarget())
+            .attachments(mc.gameRenderer.mainRenderTarget())
             .pipeline(PupperRenderPipelines.BLUR_PASSTHROUGH)
             .fullscreen()
             .sampler("u_Texture", fbos[0], RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR)) // todo ???
@@ -148,13 +149,18 @@ public class Kawaseblur {
         int width = (int) (mc.getWindow().getWidth() * scale);
         int height = (int) (mc.getWindow().getHeight() * scale);
 
-        return RenderSystem.getDevice().createTextureView(RenderSystem.getDevice().createTexture("Blur - " + i, 15, TextureFormat.RGBA8, width, height, 1, 1));
+        int usage = GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_COPY_SRC
+            | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT;
+        return RenderSystem.getDevice().createTextureView(RenderSystem.getDevice().createTexture(
+            "Blur - " + i, usage, GpuFormat.RGBA8_UNORM, width, height, 1, 1));
     }
 
     private void rebuildFbos() {
         for (int i = 0; i < fbos.length; i++) {
             if (fbos[i] != null) {
+                GpuTexture texture = fbos[i].texture();
                 fbos[i].close();
+                texture.close();
             }
             fbos[i] = createFbo(i);
         }
@@ -206,6 +212,6 @@ public class Kawaseblur {
     }
 
     private boolean shouldRender() {
-        return mc.screen instanceof GuiModMenu;
+        return mc.gui.screen() instanceof GuiModMenu;
     }
 }

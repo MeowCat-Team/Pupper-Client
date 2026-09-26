@@ -2,7 +2,9 @@ package cn.pupperclient.shader;
 
 import cn.pupperclient.utils.color.Color;
 import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.fabricmc.loader.api.FabricLoader;
 import org.lwjgl.BufferUtils;
@@ -31,16 +33,16 @@ public class PupperMeshBuilder {
     private boolean building;
 
     public PupperMeshBuilder(RenderPipeline pipeline) {
-        this(pipeline.getVertexFormat(), pipeline.getVertexFormatMode());
+        this(pipeline.getVertexFormatBinding(0), pipeline.getPrimitiveTopology());
     }
 
-    public PupperMeshBuilder(VertexFormat format, VertexFormat.Mode mode) {
+    public PupperMeshBuilder(VertexFormat format, PrimitiveTopology mode) {
         this.format = format;
         primitiveVerticesSize = format.getVertexSize();
         primitiveIndicesCount = mode.connectedPrimitives ? mode.primitiveStride : mode.primitiveLength;
     }
 
-    public PupperMeshBuilder(VertexFormat format, VertexFormat.Mode drawMode, int vertexCount, int indexCount) {
+    public PupperMeshBuilder(VertexFormat format, PrimitiveTopology drawMode, int vertexCount, int indexCount) {
         this(format, drawMode);
         allocateBuffers(vertexCount, indexCount);
     }
@@ -157,12 +159,12 @@ public class PupperMeshBuilder {
 
     public GpuBuffer getVertexBuffer() {
         vertices.limit(getVerticesOffset());
-        return format.uploadImmediateVertexBuffer(vertices);
+        return RenderSystem.getDevice().createBuffer(() -> "Pupper mesh vertices", GpuBuffer.USAGE_VERTEX, vertices);
     }
 
     public GpuBuffer getIndexBuffer() {
         indices.limit(indicesCount * 4);
-        return format.uploadImmediateIndexBuffer(indices);
+        return RenderSystem.getDevice().createBuffer(() -> "Pupper mesh indices", GpuBuffer.USAGE_INDEX, indices);
     }
 
     public PupperMeshBuilder tex2(float u, float v) {

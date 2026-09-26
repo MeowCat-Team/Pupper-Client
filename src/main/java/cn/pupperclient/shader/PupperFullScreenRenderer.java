@@ -1,7 +1,7 @@
 package cn.pupperclient.shader;
 
 import com.mojang.blaze3d.buffers.GpuBuffer;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.PrimitiveTopology;
 
 public class PupperFullScreenRenderer {
     public static GpuBuffer vbo;
@@ -17,7 +17,7 @@ public class PupperFullScreenRenderer {
     private PupperFullScreenRenderer() {}
 
     static {
-        mesh = new PupperMeshBuilder(PupperVertexFormats.POS2, VertexFormat.Mode.TRIANGLES);
+        mesh = new PupperMeshBuilder(PupperVertexFormats.POS2, PrimitiveTopology.TRIANGLES);
 
         mesh.begin();
 

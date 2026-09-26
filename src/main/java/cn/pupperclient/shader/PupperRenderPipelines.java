@@ -1,6 +1,8 @@
 package cn.pupperclient.shader;
 
 import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.BindGroupLayout;
+import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
@@ -8,7 +10,6 @@ import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.shaders.UniformType;
 import com.mojang.blaze3d.systems.GpuDevice;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -23,18 +24,18 @@ public abstract class PupperRenderPipelines {
     private static final List<RenderPipeline> PIPELINES = new ArrayList<>();
 
     private static final RenderPipeline.Snippet MESH_UNIFORMS = RenderPipeline.builder()
-        .withUniform("MeshData", UniformType.UNIFORM_BUFFER)
+        .withBindGroupLayout(BindGroupLayout.builder().withUniform("MeshData", UniformType.UNIFORM_BUFFER).build())
         .buildSnippet();
 
 
     // Blur
     public static final RenderPipeline BLUR_DOWN = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
         .withLocation(getLocation("pipeline/blur_down"))
-        .withVertexFormat(PupperVertexFormats.POS2, VertexFormat.Mode.TRIANGLES)
+        .withVertexBinding(0, PupperVertexFormats.POS2)
+        .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
         .withVertexShader(getLocation("blur"))
         .withFragmentShader(getLocation("blur_down"))
-        .withSampler("u_Texture")
-        .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
+        .withBindGroupLayout(BindGroupLayout.builder().withSampler("u_Texture").withUniform("BlurData", UniformType.UNIFORM_BUFFER).build())
         .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
         .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
         .withCull(false)
@@ -43,11 +44,11 @@ public abstract class PupperRenderPipelines {
 
     public static final RenderPipeline BLUR_UP = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
         .withLocation(getLocation("pipeline/blur_up"))
-        .withVertexFormat(PupperVertexFormats.POS2, VertexFormat.Mode.TRIANGLES)
+        .withVertexBinding(0, PupperVertexFormats.POS2)
+        .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
         .withVertexShader(getLocation("blur"))
         .withFragmentShader(getLocation("blur_up"))
-        .withSampler("u_Texture")
-        .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
+        .withBindGroupLayout(BindGroupLayout.builder().withSampler("u_Texture").withUniform("BlurData", UniformType.UNIFORM_BUFFER).build())
         .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
         .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
         .withCull(false)
@@ -56,10 +57,11 @@ public abstract class PupperRenderPipelines {
 
     public static final RenderPipeline BLUR_PASSTHROUGH = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
         .withLocation(getLocation("pipeline/passthrough"))
-        .withVertexFormat(PupperVertexFormats.POS2, VertexFormat.Mode.TRIANGLES)
+        .withVertexBinding(0, PupperVertexFormats.POS2)
+        .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
         .withVertexShader(getLocation("passthrough"))
         .withFragmentShader(getLocation("passthrough"))
-        .withSampler("u_Texture")
+        .withBindGroupLayout(BindGroupLayout.builder().withSampler("u_Texture").build())
         .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
         .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
         .withCull(false)

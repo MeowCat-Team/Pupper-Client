@@ -2,6 +2,7 @@ package cn.pupperclient.shader;
 
 import cn.pupperclient.utils.color.Color;
 import cn.pupperclient.utils.render.RenderUtils;
+import com.mojang.blaze3d.IndexType;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
@@ -11,15 +12,14 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.GpuSampler;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.util.ARGB;
-import net.minecraft.util.Tuple;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
+import org.joml.Vector4fc;
+import org.joml.Vector4f;
 
 import java.util.HashMap;
 import java.util.OptionalDouble;
-import java.util.OptionalInt;
+import java.util.Optional;
 
 public class PupperMeshRenderer {
     private static final PupperMeshRenderer INSTANCE = new PupperMeshRenderer();
@@ -35,7 +35,9 @@ public class PupperMeshRenderer {
     private @Nullable GpuBuffer indexBuffer;
     private Matrix4f matrix;
     private final HashMap<String, GpuBufferSlice> uniforms = new HashMap<>();
-    private final HashMap<String, Tuple<GpuTextureView, GpuSampler>> samplers = new HashMap<>();
+    private final HashMap<String, SamplerBinding> samplers = new HashMap<>();
+
+    private record SamplerBinding(GpuTextureView view, GpuSampler sampler) {}
 
     PupperMeshRenderer() {}
 
@@ -105,7 +107,7 @@ public class PupperMeshRenderer {
 
     public PupperMeshRenderer sampler(String name, GpuTextureView view, GpuSampler sampler) {
         if (name != null && view != null && sampler != null) {
-            samplers.put(name, new Tuple<>(view, sampler));
+            samplers.put(name, new SamplerBinding(view, sampler));
         }
 
         return this;
@@ -122,9 +124,9 @@ public class PupperMeshRenderer {
             if (vertexBuffer != null && indexBuffer != null) {
                 GpuBufferSlice meshData = MeshUniforms.write(RenderUtils.projection, RenderSystem.getModelViewStack());
 
-                OptionalInt clearColor = this.clearColor != null ?
-                    OptionalInt.of(ARGB.color(this.clearColor.a, this.clearColor.r, this.clearColor.g, this.clearColor.b)) :
-                    OptionalInt.empty();
+                Optional<Vector4fc> clearColor = this.clearColor != null ?
+                    Optional.of(new Vector4f(this.clearColor.r / 255f, this.clearColor.g / 255f,
+                        this.clearColor.b / 255f, this.clearColor.a / 255f)) : Optional.empty();
 
                 RenderPass pass = (depthAttachment != null && pipeline.wantsDepthTexture()) ?
                     RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Pupper MeshRenderer", colorAttachment, clearColor, depthAttachment, OptionalDouble.empty()) :
@@ -138,14 +140,18 @@ public class PupperMeshRenderer {
                 }
 
                 for (var entry : samplers.entrySet()) {
-                    pass.bindTexture(entry.getKey(), entry.getValue().getA(), entry.getValue().getB());
+                    pass.bindTexture(entry.getKey(), entry.getValue().view(), entry.getValue().sampler());
                 }
 
-                pass.setVertexBuffer(0, vertexBuffer);
-                pass.setIndexBuffer(indexBuffer, VertexFormat.IndexType.INT);
-                pass.drawIndexed(0, 0, indexCount, 1);
+                pass.setVertexBuffer(0, vertexBuffer.slice());
+                pass.setIndexBuffer(indexBuffer, IndexType.INT);
+                pass.drawIndexed(indexCount, 1, 0, 0, 0);
 
                 pass.close();
+                if (mesh != null) {
+                    vertexBuffer.close();
+                    indexBuffer.close();
+                }
             }
         }
 
