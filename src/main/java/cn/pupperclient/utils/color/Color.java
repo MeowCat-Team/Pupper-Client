@@ -88,11 +88,12 @@ public class Color implements ICopyable<Color>, ISerializable<Color> {
     }
 
     public Color(@NotNull ChatFormatting formatting) {
-        if (formatting.isColor()) {
-            this.r = toRGBAR(formatting.getColor());
-            this.g = toRGBAG(formatting.getColor());
-            this.b = toRGBAB(formatting.getColor());
-            this.a = toRGBAA(formatting.getColor());
+        TextColor textColor = TextColor.fromLegacyFormat(formatting);
+        if (textColor != null) {
+            this.r = toRGBAR(textColor.getValue());
+            this.g = toRGBAG(textColor.getValue());
+            this.b = toRGBAB(textColor.getValue());
+            this.a = 255;
         } else {
             this.r = 255;
             this.g = 255;

@@ -12,7 +12,7 @@ public class ServerUtils {
 	}
 
 	public static boolean isSingleplayer() {
-		return client.isSingleplayer();
+		return client.hasSingleplayerServer();
 	}
 
 	public static boolean isMultiplayer() {

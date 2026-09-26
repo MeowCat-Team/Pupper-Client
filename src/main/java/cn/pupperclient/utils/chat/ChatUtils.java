@@ -20,7 +20,7 @@ public class ChatUtils {
         if (client.level == null) return;
 
         client.execute(() -> {
-            ChatComponent chat = client.gui.getChat();
+            ChatComponent chat = client.gui.hud.getChat();
             chat.addClientSystemMessage(component);
         });
     }
