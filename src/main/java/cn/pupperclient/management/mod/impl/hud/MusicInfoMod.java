@@ -1,5 +1,6 @@
 package cn.pupperclient.management.mod.impl.hud;
 
+import java.awt.Color;
 import java.util.Arrays;
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.event.EventBus;
@@ -35,6 +36,11 @@ public class MusicInfoMod extends SimpleHUDMod {
     private final HUDMotion motion = new HUDMotion();
     private final HUDMotion.Spring reveal = new HUDMotion.Spring(0);
     private final HUDMotion.Spring widthMotion = new HUDMotion.Spring(200);
+    private final HUDMotion.Spring progressMotion = new HUDMotion.Spring(0);
+    private final HUDMotion.Spring lyricHeightMotion = new HUDMotion.Spring(0);
+    private String displayedTitle, displayedArtist, previousTitle, previousArtist;
+    private String displayedLyric, previousLyric;
+    private float trackReveal = 1, lyricReveal = 1;
     private String lyric = "";
 
     public MusicInfoMod() { super("mod.musicinfo.name", "mod.musicinfo.description", Icon.MUSIC_NOTE); }
@@ -58,6 +64,27 @@ public class MusicInfoMod extends SimpleHUDMod {
         boolean lyrics = lyricsDisplaySetting.isEnabled();
         String title = music == null ? I18n.get("hud.music.preview") : safe(music.getTitle());
         String artist = music == null ? I18n.get("hud.music.artist") : safe(music.getArtist());
+        if (displayedTitle == null) {
+            displayedTitle = title;
+            displayedArtist = artist;
+        } else if (!displayedTitle.equals(title) || !displayedArtist.equals(artist)) {
+            previousTitle = displayedTitle;
+            previousArtist = displayedArtist;
+            displayedTitle = title;
+            displayedArtist = artist;
+            trackReveal = reducedMotion() ? 1 : 0;
+        }
+        trackReveal = HUDMotion.approach(trackReveal, 1, dt, reducedMotion());
+        if (trackReveal >= 0.99f) { previousTitle = null; previousArtist = null; }
+        String lyricText = lyric.isBlank() ? "♪" : lyric;
+        if (displayedLyric == null) displayedLyric = lyricText;
+        else if (!displayedLyric.equals(lyricText)) {
+            previousLyric = displayedLyric;
+            displayedLyric = lyricText;
+            lyricReveal = reducedMotion() ? 1 : 0;
+        }
+        lyricReveal = HUDMotion.approach(lyricReveal, 1, dt, reducedMotion());
+        if (lyricReveal >= 0.99f) previousLyric = null;
         float artSize = cover ? 48 : 36;
         float textOffset = artSize + 20;
         float maxText = Math.max(Skia.getTextBounds(title, HUDTokens.title()).getWidth(),
@@ -65,38 +92,56 @@ public class MusicInfoMod extends SimpleHUDMod {
         float maximum = Math.max(140, Math.min(320, client.getWindow().getGuiScaledWidth() / position.getScale() - 24));
         float width = widthMotion.update(Math.min(maximum, Math.max(200, textOffset + maxText + 12)), dt, reducedMotion());
         float baseHeight = cover ? 64 : 56;
-        float height = (baseHeight + (lyrics ? 18 : 0)) * amount;
+        float lyricHeight = lyricHeightMotion.update(lyrics ? 18 : 0, dt, reducedMotion());
+        float height = (baseHeight + lyricHeight) * amount;
+        position.setSize(width, height);
         begin();
         try {
             drawBackground(getX(), getY(), width, height);
-            Skia.clip(getX(), getY(), width, height, getRadius());
+            Skia.clip(getX(), getY(), width, height, Math.min(getRadius(), height / 2));
             drawArtwork(music, manager, getX() + 8, getY() + (baseHeight - artSize) / 2, artSize);
             float textX = getX() + textOffset;
             float textWidth = Math.max(8, width - textOffset - 10);
-            Skia.drawText(Skia.getLimitText(title, HUDTokens.title(), textWidth),
-                textX, getY() + 10, colors().text(), HUDTokens.title());
-            Skia.drawText(Skia.getLimitText(artist, HUDTokens.label(), textWidth),
-                textX, getY() + 26, colors().secondaryText(), HUDTokens.label());
+            if (previousTitle != null) {
+                Skia.drawText(Skia.getLimitText(previousTitle, HUDTokens.title(), textWidth),
+                    textX, getY() + 10 - 3 * trackReveal, faded(colors().text(), 1 - trackReveal), HUDTokens.title());
+                Skia.drawText(Skia.getLimitText(previousArtist, HUDTokens.label(), textWidth),
+                    textX, getY() + 26 - 3 * trackReveal, faded(colors().secondaryText(), 1 - trackReveal), HUDTokens.label());
+            }
+            Skia.drawText(Skia.getLimitText(displayedTitle, HUDTokens.title(), textWidth),
+                textX, getY() + 10 + 3 * (1 - trackReveal), faded(colors().text(), trackReveal), HUDTokens.title());
+            Skia.drawText(Skia.getLimitText(displayedArtist, HUDTokens.label(), textWidth),
+                textX, getY() + 26 + 3 * (1 - trackReveal), faded(colors().secondaryText(), trackReveal), HUDTokens.label());
             float end = manager.getEndTime();
-            float progress = end > 0 ? Math.max(0, Math.min(1, manager.getCurrentTime() / end)) : 0;
+            float targetProgress = end > 0 ? Math.max(0, Math.min(1, manager.getCurrentTime() / end)) : 0;
+            float progress = progressMotion.update(targetProgress, dt, reducedMotion());
             float progressY = getY() + baseHeight - 12;
             Skia.drawRoundedRect(textX, progressY, textWidth, 4, 2, colors().track());
             if (progress > 0) {
                 Skia.drawRoundedRect(textX, progressY, textWidth * progress, 4, 2, colors().accent());
                 Skia.drawCircle(textX + textWidth * progress, progressY + 2, 2.5f, colors().accent());
             }
-            if (lyrics) {
+            if (lyricHeight > 0.5f) {
                 Skia.drawRoundedRect(getX() + 8, getY() + baseHeight, width - 16,
                     0.75f, 0.375f, colors().outline());
                 Skia.drawFullCenteredText(Icon.MUSIC_NOTE, getX() + 14, getY() + baseHeight + 9,
                     colors().accent(), HUDTokens.icon());
-                Skia.drawHeightCenteredText(Skia.getLimitText(lyric.isBlank() ? "♪" : lyric,
-                    HUDTokens.label(), width - 34), getX() + 24, getY() + baseHeight + 9,
-                    colors().secondaryText(), HUDTokens.label());
+                if (previousLyric != null)
+                    Skia.drawHeightCenteredText(Skia.getLimitText(previousLyric, HUDTokens.label(), width - 34),
+                        getX() + 24, getY() + baseHeight + 9 - 3 * lyricReveal,
+                        faded(colors().secondaryText(), 1 - lyricReveal), HUDTokens.label());
+                Skia.drawHeightCenteredText(Skia.getLimitText(displayedLyric, HUDTokens.label(), width - 34),
+                    getX() + 24, getY() + baseHeight + 9 + 3 * (1 - lyricReveal),
+                    faded(colors().secondaryText(), lyricReveal), HUDTokens.label());
             }
         } finally { finish(); }
-        position.setSize(width, height);
     };
+
+    private static Color faded(Color color, float fraction) {
+        if (fraction >= 0.99f) return color;
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(),
+            Math.round(color.getAlpha() * Math.max(0, Math.min(1, fraction))));
+    }
 
     private void drawArtwork(Music music, MusicManager manager, float x, float y, float size) {
         Skia.drawRoundedRect(x, y, size, size, HUDTokens.COMPACT_RADIUS, colors().accentContainer());
