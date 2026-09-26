@@ -1,7 +1,4 @@
 [versions]
-# base
-jdk = "25"
-
 # fabric
 loom = "1.16-SNAPSHOT"
 
@@ -17,14 +14,12 @@ ias = "2ea1OpDg"
 
 # lib
 lwjgl = "3.4.1"
-smartboot-aio = "1.7.1"
 caffeine = "3.1.8"
 humbleui-types = "0.2.0"
 skija-windows = "0.143.12"
 junixsocket = "2.10.1"
 java-websocket = "1.6.0"
 mp3agic = "0.9.1"
-jlayer = "1.0.1"
 mp3spi = "1.9.5.4"
 jaudiotagger = "2.0.3"
 jlayer-google = "1.0.1.4"
@@ -46,14 +41,12 @@ entityculling = { module = "maven.modrinth:entityculling", version.ref = "entity
 ias = { module = "maven.modrinth:in-game-account-switcher", version.ref = "ias" }
 
 # lib
-smartboot-aio = { module = "io.github.smartboot.socket:aio-core", version.ref = "smartboot-aio" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 humbleui-types = { module = "io.github.humbleui:types", version.ref = "humbleui-types" }
 skija-windows = { module = "io.github.humbleui:skija-windows-x64", version.ref = "skija-windows" }
 junixsocket-common = { module = "com.kohlschutter.junixsocket:junixsocket-common", version.ref = "junixsocket" }
 java-websocket = { module = "org.java-websocket:Java-WebSocket", version.ref = "java-websocket" }
 mp3agic = { module = "com.mpatric:mp3agic", version.ref = "mp3agic" }
-jlayer = { module = "javazoom:jlayer", version.ref = "jlayer" }
 mp3spi = { module = "com.googlecode.soundlibs:mp3spi", version.ref = "mp3spi" }
 jaudiotagger = { module = "org:jaudiotagger", version.ref = "jaudiotagger" }
 jlayer-google = { module = "com.googlecode.soundlibs:jlayer", version.ref = "jlayer-google" }
