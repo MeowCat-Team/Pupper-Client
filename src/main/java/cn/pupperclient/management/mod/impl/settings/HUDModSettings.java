@@ -17,7 +17,9 @@ public class HUDModSettings extends Mod {
 
 	private static HUDModSettings instance;
 	private final NumberSetting backgroundOpacitySetting = new NumberSetting("setting.hud.backgroundopacity",
-			"setting.hud.backgroundopacity.description", Icon.PALETTE, this, HUDColors.DEFAULT_OPACITY * 100, HUDColors.MIN_OPACITY * 100, 100, 5);
+			"setting.hud.backgroundopacity.description", Icon.PALETTE, this, HUDColors.DEFAULT_OPACITY * 100, HUDColors.MIN_OPACITY * 100, 100, 1);
+	private final BooleanSetting backgroundBlurSetting = new BooleanSetting("setting.hud.backgroundblur",
+			"setting.hud.backgroundblur.description", Icon.BLUR_ON, this, false);
 
 	private final BooleanSetting reducedMotionSetting = new BooleanSetting("setting.hud.reducedmotion",
 			"setting.hud.reducedmotion.description", Icon.MOVIE, this, false);
@@ -49,5 +51,6 @@ public class HUDModSettings extends Mod {
 	}
 
 	public BooleanSetting getReducedMotionSetting() { return reducedMotionSetting; }
+	public BooleanSetting getBackgroundBlurSetting() { return backgroundBlurSetting; }
 	public float getBackgroundOpacity() { return backgroundOpacitySetting.getValue() / 100f; }
 }

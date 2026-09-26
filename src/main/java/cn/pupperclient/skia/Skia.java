@@ -16,6 +16,7 @@ import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.PaintMode;
 import io.github.humbleui.skija.Path;
 import io.github.humbleui.skija.Shader;
+import io.github.humbleui.skija.SaveLayerRec;
 import io.github.humbleui.skija.SurfaceOrigin;
 import io.github.humbleui.types.Point;
 import io.github.humbleui.types.RRect;
@@ -126,6 +127,22 @@ public class Skia {
             clip(x, y, width, height, radius, ClipMode.DIFFERENCE);
             getCanvas().drawRRect(RRect.makeXYWH(x, y, width, height, radius), paint);
             restore();
+        }
+    }
+
+    /** Blurs the already rendered scene inside a rounded HUD panel. */
+    public static void drawBackdropBlur(float x, float y, float width, float height, float radius) {
+        if (width <= 0 || height <= 0) return;
+
+        try (ImageFilter blur = ImageFilter.makeBlur(8, 8, FilterTileMode.CLAMP)) {
+            save();
+            try {
+                clip(x, y, width, height, radius);
+                getCanvas().saveLayer(new SaveLayerRec(Rect.makeXYWH(x, y, width, height), null, blur));
+                getCanvas().restore();
+            } finally {
+                restore();
+            }
         }
     }
 

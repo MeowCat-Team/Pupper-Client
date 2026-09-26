@@ -59,7 +59,6 @@ public abstract class PupperRenderPipelines {
         .withVertexFormat(PupperVertexFormats.POS2, VertexFormat.Mode.TRIANGLES)
         .withVertexShader(getLocation("passthrough"))
         .withFragmentShader(getLocation("passthrough"))
-        .withSampler("Sampler0")
         .withSampler("u_Texture")
         .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
         .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))

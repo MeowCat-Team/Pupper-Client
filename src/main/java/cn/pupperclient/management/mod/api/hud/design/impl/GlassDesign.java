@@ -29,7 +29,8 @@ public final class GlassDesign extends HUDDesign {
         HUDColors colors = colors();
         boolean dark = PupperClient.getInstance().getColorManager().getPalette().isDarkMode();
 
-        // A small offset grounds the transparent panel without a blur pass per widget.
+        drawBackdropBlur(x, y, width, height, radius);
+        // A small offset grounds the transparent panel.
         Skia.drawRoundedRect(x, y + 1.5f, width, height, radius,
             dark ? DARK_SHADOW : LIGHT_SHADOW);
         Skia.drawRoundedRect(x, y, width, height, radius, colors.surface());

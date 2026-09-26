@@ -579,4 +579,6 @@ hud.player=玩家
 hud.level=等级
 
 setting.hud.backgroundopacity=HUD 背景不透明度
-setting.hud.backgroundopacity.description=调整背景不透明度（70–100%），文字保持清晰
+setting.hud.backgroundopacity.description=调整背景不透明度（0–100%）
+setting.hud.backgroundblur=HUD 背景模糊
+setting.hud.backgroundblur.description=模糊 HUD 面板后方的画面

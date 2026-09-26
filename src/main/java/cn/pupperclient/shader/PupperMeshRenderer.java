@@ -115,8 +115,8 @@ public class PupperMeshRenderer {
         int indexCount = mesh != null ? mesh.getIndicesCount()
             : (int) (indexBuffer != null ? indexBuffer.size() / Integer.BYTES : -1);
 
-        if (pipeline != null && mesh != null && indexCount > 0) {
-            GpuBuffer vertexBuffer = mesh.getVertexBuffer();
+        if (pipeline != null && indexCount > 0) {
+            GpuBuffer vertexBuffer = mesh != null ? mesh.getVertexBuffer() : this.vertexBuffer;
             GpuBuffer indexBuffer = mesh != null ? mesh.getIndexBuffer() : this.indexBuffer;
 
             if (vertexBuffer != null && indexBuffer != null) {
@@ -154,6 +154,8 @@ public class PupperMeshRenderer {
         clearColor = null;
         pipeline = null;
         mesh = null;
+        vertexBuffer = null;
+        indexBuffer = null;
         matrix = null;
 
         taken = false;

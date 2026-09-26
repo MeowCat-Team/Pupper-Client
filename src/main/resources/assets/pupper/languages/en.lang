@@ -577,4 +577,6 @@ hud.player=Player
 hud.level=Level
 
 setting.hud.backgroundopacity=HUD background opacity
-setting.hud.backgroundopacity.description=Adjust background opacity (70–100%) while keeping text legible
+setting.hud.backgroundopacity.description=Adjust background opacity (0–100%)
+setting.hud.backgroundblur=HUD background blur
+setting.hud.backgroundblur.description=Blur the scene behind HUD panels

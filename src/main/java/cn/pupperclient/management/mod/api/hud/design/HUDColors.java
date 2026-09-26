@@ -7,7 +7,7 @@ import cn.pupperclient.management.color.api.ColorPalette;
 public record HUDColors(Color surface, Color raised, Color text, Color secondaryText,
                         Color accent, Color accentContainer, Color onAccentContainer,
                         Color outline, Color track, Color danger) {
-    public static final float MIN_OPACITY = 0.70f;
+    public static final float MIN_OPACITY = 0f;
     public static final float DEFAULT_OPACITY = 0.80f;
 
     public static HUDColors from(ColorPalette palette, Color surface) {

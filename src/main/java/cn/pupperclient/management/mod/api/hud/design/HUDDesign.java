@@ -34,9 +34,16 @@ public abstract class HUDDesign {
         if (width <= 0 || height <= 0) return;
         float r = Math.min(radius(corner), Math.min(width, height) / 2);
         HUDColors colors = colors();
+        drawBackdropBlur(x, y, width, height, r);
         Skia.drawRoundedRect(x, y, width, height, r, colors.surface());
         if (outlined() && width > 1 && height > 1)
             Skia.drawOutline(x, y, width, height, r, 0.75f, outlineColor(colors));
+    }
+
+    protected final void drawBackdropBlur(float x, float y, float width, float height, float radius) {
+        HUDModSettings settings = HUDModSettings.getInstance();
+        if (settings.getBackgroundBlurSetting().isEnabled() && settings.getBackgroundOpacity() < 1)
+            Skia.drawBackdropBlur(x, y, width, height, radius);
     }
 
     public void drawText(String text, float x, float y, Font font) {
