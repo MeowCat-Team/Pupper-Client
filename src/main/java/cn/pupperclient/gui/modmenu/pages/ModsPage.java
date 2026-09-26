@@ -29,6 +29,9 @@ public class ModsPage extends Page {
     private final List<Item> items = new ArrayList<>();
     private Category selectedCategory = Category.ALL;
     private List<Item> filteredItems = new ArrayList<>();
+    private String filteredQuery;
+    private Category filteredCategory;
+    private int filteredSourceSize = -1;
 
     public enum Category {
         ALL("text.all"),
@@ -57,6 +60,9 @@ public class ModsPage extends Page {
     public void init() {
         super.init();
         items.clear();
+        filteredQuery = null;
+        filteredCategory = null;
+        filteredSourceSize = -1;
         for (Mod m : PupperClient.getInstance().getModManager().getMods()) {
             Item i = new Item(m);
             if (m.isEnabled()) {
@@ -72,11 +78,17 @@ public class ModsPage extends Page {
     }
 
     private void updateFilteredItems() {
+        String query = searchBar.getText();
+        if (Objects.equals(filteredQuery, query) && filteredCategory == selectedCategory
+            && filteredSourceSize == items.size()) return;
+        filteredQuery = query;
+        filteredCategory = selectedCategory;
+        filteredSourceSize = items.size();
         filteredItems = items.stream()
             .filter(i -> {
                 Mod m = i.mod;
                 if (m.isHidden()) return false;
-                boolean searchMatch = searchBar.getText().isEmpty() || SearchUtils.isSimilar(m.getName(), searchBar.getText());
+                boolean searchMatch = query.isEmpty() || SearchUtils.isSimilar(m.getName(), query);
                 boolean categoryMatch = selectedCategory == Category.ALL ||
                     (m.getCategory() != null && m.getCategory().name().equalsIgnoreCase(selectedCategory.name()));
                 return searchMatch && categoryMatch;
@@ -124,9 +136,10 @@ public class ModsPage extends Page {
             boolean isSelected = category == selectedCategory;
             boolean isHovered = MouseUtils.isInside(mouseX, relativeMouseY, categoryX, categoryBarY, buttonWidth, categoryBarHeight);
             Skia.drawRoundedRect(categoryX, categoryBarY, buttonWidth, categoryBarHeight, 12,
-                isHovered ? palette.getSurfaceContainerLow() : palette.getSurface());
+                isSelected ? palette.getSurfaceContainerHighest() :
+                    isHovered ? palette.getSurfaceContainerHigh() : palette.getSurfaceContainerLow());
             Skia.drawFullCenteredText(categoryName, categoryX + buttonWidth / 2, categoryBarY + categoryBarHeight / 2,
-                isSelected ? palette.getPrimary() : palette.getOnSurfaceVariant(), Fonts.getRegular(16));
+                isSelected ? palette.getOnSurface() : palette.getOnSurfaceVariant(), Fonts.getRegular(16));
             categoryX += buttonWidth + 10;
         }
 
@@ -145,13 +158,26 @@ public class ModsPage extends Page {
             itemX = i.xAnimation.getValue();
             itemY = i.yAnimation.getValue();
 
-            Skia.drawRoundedRectVarying(itemX, itemY, 244, 116, 26, 26, 0, 0, palette.getSurface());
+            float visibleY = itemY + scrollHelper.getValue();
+            if (visibleY + 151 < y + 80 || visibleY > y + height) {
+                index++;
+                offsetX += 32 + 244;
+                if (index % 3 == 0) {
+                    offsetX = 26;
+                    offsetY += 22 + 151;
+                }
+                continue;
+            }
+
+            Skia.drawRoundedRectVarying(itemX, itemY, 244, 116, 26, 26, 0, 0, palette.getSurfaceContainerLow());
             Skia.drawRoundedRectVarying(itemX, itemY + 116, 244, 35, 0, 0, 26, 26, palette.getSurfaceContainerLow());
             Skia.drawRoundedRectVarying(itemX, itemY + 116, 244, 35, 0, 0, 26, 26, ColorUtils.applyAlpha(palette.getSurfaceContainerLowest(), i.focusAnimation.getValue()));
+            Skia.drawOutline(itemX, itemY, 244, 151, 26, 1,
+                ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.45F));
 
             Skia.save();
             Skia.clip(itemX, itemY + 116, 244, 35, 0, 0, 26, 26);
-            i.pressAnimation.draw(itemX, itemY + 116, 224, 35, palette.getPrimaryContainer(), 1);
+            i.pressAnimation.draw(itemX, itemY + 116, 224, 35, palette.getSurfaceContainerHighest(), 1);
             Skia.restore();
 
             String modname;

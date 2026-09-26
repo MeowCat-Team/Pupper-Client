@@ -34,6 +34,7 @@ import cn.pupperclient.ui.component.impl.Keybind;
 import cn.pupperclient.ui.component.impl.Slider;
 import cn.pupperclient.ui.component.impl.Switch;
 import cn.pupperclient.ui.component.impl.text.TextField;
+import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.language.I18n;
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -174,7 +175,9 @@ public class SettingBar extends Component {
 			component.setY(itemY + (height - component.getHeight()) / 2);
 		}
 
-		Skia.drawRoundedRect(x, itemY, width, height, 18, palette.getSurface());
+		Skia.drawRoundedRect(x, itemY, width, height, 18, palette.getSurfaceContainerLow());
+		Skia.drawOutline(x, itemY, width, height, 18, 1,
+			ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.45F));
 		Skia.drawFullCenteredText(icon, x + 30, itemY + (height / 2), palette.getOnSurface(), Fonts.getIcon(32));
 		Skia.drawText(I18n.get(title), x + 52, itemY + 20, palette.getOnSurface(), Fonts.getRegular(17));
 		Skia.drawText(I18n.get(description), x + 52, itemY + 37, palette.getOnSurfaceVariant(), Fonts.getRegular(14));

@@ -62,7 +62,7 @@ public class SettingsPage extends Page {
 
 			itemY = yAnimation.getValue();
 
-			Skia.drawRoundedRect(x + 32, itemY, width - 64, 68, 18, palette.getSurface());
+			Skia.drawRoundedRect(x + 32, itemY, width - 64, 68, 18, palette.getSurfaceContainerLow());
 			Skia.drawFullCenteredText(m.getIcon(), x + 32 + 30, itemY + ((float) 68 / 2), palette.getOnSurface(),
 					Fonts.getIcon(32));
 			Skia.drawText(m.getName(), x + 32 + 52, itemY + 20, palette.getOnSurface(), Fonts.getRegular(17));

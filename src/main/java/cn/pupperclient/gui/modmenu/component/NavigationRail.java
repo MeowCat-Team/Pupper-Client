@@ -76,7 +76,7 @@ public class NavigationRail extends Component {
 
         float borderRadius = 28;
         Skia.drawRoundedRectVarying(x, y, width, height, borderRadius, 0, 0, borderRadius,
-            palette.getSurfaceContainerLowest());
+            palette.getSurfaceContainerLow());
         Skia.drawLine(x + width - 1, y + 20, x + width - 1, y + height - 20, 1,
             ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.5F));
 
@@ -111,7 +111,7 @@ public class NavigationRail extends Component {
         float iconWidth = bounds.getWidth();
         float iconHeight = bounds.getHeight();
 
-        Color c0 = isSelected ? palette.getOnSecondaryContainer() : palette.getOnSurfaceVariant();
+        Color c0 = isSelected ? palette.getOnSurface() : palette.getOnSurfaceVariant();
         Color c1 = isSelected ? palette.getOnSurface() : palette.getOnSurfaceVariant();
 
         Animation animation = n.animation;
@@ -124,7 +124,7 @@ public class NavigationRail extends Component {
         Skia.drawRoundedRect(x + (width / 2) - (selWidth / 2), y + offsetY, selWidth, selHeight, 16, ColorUtils.applyAlpha(palette.getOnSurfaceVariant(), n.focusAnimation.getValue()));
 
         if (animation.getEnd() != 0 || !animation.isFinished()) {
-            Skia.drawRoundedRect(x + (width / 2) - (selWidth / 2) + (selWidth - selWidth * animation.getValue()) / 2, y + offsetY, selWidth * animation.getValue(), selHeight, 16, ColorUtils.applyAlpha(palette.getSecondaryContainer(), animation.getValue()));
+            Skia.drawRoundedRect(x + (width / 2) - (selWidth / 2) + (selWidth - selWidth * animation.getValue()) / 2, y + offsetY, selWidth * animation.getValue(), selHeight, 16, ColorUtils.applyAlpha(palette.getSurfaceContainerHighest(), animation.getValue()));
         }
 
         Skia.drawText(icon, x + (width / 2) - (iconWidth / 2), y + (offsetY + (selHeight / 2)) - (iconHeight / 2), c0, font);
