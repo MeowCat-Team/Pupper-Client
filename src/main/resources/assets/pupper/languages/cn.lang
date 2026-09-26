@@ -583,3 +583,12 @@ setting.hud.backgroundopacity=HUD 背景不透明度
 setting.hud.backgroundopacity.description=调整背景不透明度（0–100%）
 setting.hud.backgroundblur=HUD 背景模糊
 setting.hud.backgroundblur.description=模糊 HUD 面板后方的画面
+
+mod.entityoptimizer.name=实体渲染优化
+mod.entityoptimizer.description=减少物品和箱子的重复渲染计算，不隐藏实体
+setting.entityoptimizer.items=优化掉落物堆
+setting.entityoptimizer.items.description=可见掉落物较多时减少每堆重复的模型副本
+setting.entityoptimizer.chests=优化关闭的箱子
+setting.entityoptimizer.chests.description=复用关闭的单箱子的静态渲染状态
+setting.entityoptimizer.threshold=物品负载阈值
+setting.entityoptimizer.threshold.description=达到此可见掉落物数量时减少每堆模型副本

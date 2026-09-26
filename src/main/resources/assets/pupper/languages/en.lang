@@ -581,3 +581,12 @@ setting.hud.backgroundopacity=HUD background opacity
 setting.hud.backgroundopacity.description=Adjust background opacity (0–100%)
 setting.hud.backgroundblur=HUD background blur
 setting.hud.backgroundblur.description=Blur the scene behind HUD panels
+
+mod.entityoptimizer.name=Entity Render Optimizer
+mod.entityoptimizer.description=Reduce repeated item and chest rendering work without hiding entities
+setting.entityoptimizer.items=Optimize item piles
+setting.entityoptimizer.items.description=Limit duplicate models per dropped stack when many items are visible
+setting.entityoptimizer.chests=Optimize closed chests
+setting.entityoptimizer.chests.description=Reuse the static render state of closed single chests
+setting.entityoptimizer.threshold=Item load threshold
+setting.entityoptimizer.threshold.description=Visible dropped items before reducing models per stack

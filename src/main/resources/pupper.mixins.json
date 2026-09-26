@@ -23,6 +23,8 @@
     "minecraft.client.render.LightmapMixin",
     "minecraft.client.render.MixinCamera",
     "minecraft.client.render.MixinEntityRenderer",
+    "minecraft.client.render.MixinChestRendererOptimization",
+    "minecraft.client.render.MixinLevelRendererOptimization",
     "minecraft.client.render.MixinGameRenderer",
     "minecraft.client.render.MixinHeldItemRenderer",
     "minecraft.client.render.MixinInGameHud",
