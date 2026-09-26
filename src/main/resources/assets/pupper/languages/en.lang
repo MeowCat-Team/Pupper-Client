@@ -28,6 +28,9 @@ design.materialyou=Material
 
 hud.shulker.hint=Hold Ctrl to inspect items
 hud.shulker.locked=Ctrl held: inspect items
+hud.enderchest.openfirst=Open an ender chest once to load its contents
+hud.enderchest.cached=Last view · Hold Ctrl to inspect
+hud.enderchest.locked=Last view · Move to inspect
 
 menu.modmenu=Mod Menu
 

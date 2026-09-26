@@ -26,7 +26,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.HitResult.Type;
 import cn.pupperclient.event.skia.RenderSkiaEvent;
-import cn.pupperclient.gui.tooltip.ShulkerPreview;
+import cn.pupperclient.gui.tooltip.ContainerPreview;
 import com.mojang.blaze3d.platform.Window;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
@@ -181,7 +181,7 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
         Screen screen = minecraft.gui.screen();
         boolean skiaScreen = screen instanceof SimpleSoarGui;
         boolean preview = screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>
-            && ShulkerPreview.hasActive();
+            && ContainerPreview.hasActive();
         boolean tabVisible = level != null
             && ((PlayerTabOverlayAccessor) minecraft.gui.hud.getTabList()).pupper$isVisible();
         boolean drawHud = level != null
@@ -214,7 +214,7 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
                 Skia.save();
                 try {
                     Skia.scale((float) currentWindow.getGuiScale());
-                    ShulkerPreview.renderActive(screen);
+                    ContainerPreview.renderActive(screen);
                 } finally {
                     Skia.restore();
                 }

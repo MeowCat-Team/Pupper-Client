@@ -28,6 +28,9 @@ design.materialyou=Material
 
 hud.shulker.hint=按住 Ctrl 查看物品
 hud.shulker.locked=已按住 Ctrl：移动鼠标查看物品
+hud.enderchest.openfirst=先打开一次末影箱以读取内容
+hud.enderchest.cached=上次内容 · 按住 Ctrl 锁定
+hud.enderchest.locked=上次内容 · 移动鼠标查看
 
 mod.hudsettings.name=界面
 mod.hudsettings.description=自定义界面
