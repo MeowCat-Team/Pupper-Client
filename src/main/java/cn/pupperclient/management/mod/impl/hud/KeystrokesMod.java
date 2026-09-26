@@ -53,7 +53,7 @@ public class KeystrokesMod extends HUDMod {
             this.key = key; this.x = x; this.y = y; this.width = width; this.height = height; this.jump = jump;
         }
         void draw(float dt) {
-            boolean pressed = client.screen == null && (snapTapSetting.isEnabled()
+            boolean pressed = client.gui.screen() == null && (snapTapSetting.isEnabled()
                 ? key.isDown() : ((IMixinKeyBinding) key).getRealIsPressed());
             float state = shape.update(pressed ? 1 : 0, dt, reducedMotion());
             float inset = state;

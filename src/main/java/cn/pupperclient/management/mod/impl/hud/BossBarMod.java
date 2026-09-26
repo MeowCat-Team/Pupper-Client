@@ -38,7 +38,7 @@ public class BossBarMod extends HUDMod {
         boolean reduced = reducedMotion();
         rows.values().forEach(row -> row.active = false);
         int count = 0;
-        for (LerpingBossEvent boss : ((IMixinBossHealthOverlay) client.gui.getBossOverlay()).pupper$getBossEvents()) {
+        for (LerpingBossEvent boss : ((IMixinBossHealthOverlay) client.gui.hud.getBossOverlay()).pupper$getBossEvents()) {
             if (count++ >= 5) break;
             BossRow row = rows.computeIfAbsent(boss.getId(), id -> new BossRow(boss));
             row.name = boss.getName().getString();

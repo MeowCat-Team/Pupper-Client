@@ -86,8 +86,8 @@ public class ClickEffectMod extends Mod {
     }
 
     public final EventBus.EventListener<MouseClickEvent> onMouseClick = event -> {
-        if ((client.screen instanceof TitleScreen
-            || client.screen instanceof JoinMultiplayerScreen)
+        if ((client.gui.screen() instanceof TitleScreen
+            || client.gui.screen() instanceof JoinMultiplayerScreen)
             && (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT
             || event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT)
         ) {

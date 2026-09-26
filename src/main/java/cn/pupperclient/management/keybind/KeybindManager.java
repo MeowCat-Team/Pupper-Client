@@ -114,7 +114,7 @@ public class KeybindManager implements IMinecraft {
     private void handleGlobalKeyEvent(KeyEvent event) {
         if (!event.isState()) return;
 
-        if (client.screen != null) return;
+        if (client.gui.screen() != null) return;
 
         int keyCode = event.getKeybind();
         List<Mod> mods = getModsByKey(keyCode);
