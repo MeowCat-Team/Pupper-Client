@@ -125,11 +125,9 @@ public class ModManager {
     }
 
 	private void initDesigns() {
-		designs.add(new ClassicDesign());
-		designs.add(new ClearDesign());
-		designs.add(new MaterialYouDesign());
-		designs.add(new GlassDesign());
 		designs.add(new SimpleDesign());
+		designs.add(new ClassicDesign());
+		designs.add(new MaterialYouDesign());
 		setCurrentDesign("design.materialyou");
 	}
 
