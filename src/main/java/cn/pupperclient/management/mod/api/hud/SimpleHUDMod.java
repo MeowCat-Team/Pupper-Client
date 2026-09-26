@@ -17,16 +17,27 @@ public abstract class SimpleHUDMod extends HUDMod {
         Font font = getTextFont(HUDTokens.BODY_SIZE);
         String text = getText();
         if (text == null) text = "";
-        float maxWidth = Math.max(40, Math.min(260, client.getWindow().getGuiScaledWidth() / position.getScale() - 40));
         String unit = getUnit();
         if (!unit.isBlank() && text.endsWith(" " + unit)) text = text.substring(0, text.length() - unit.length() - 1);
-        float unitWidth = unit.isBlank() ? 0 : Skia.getTextBounds(unit, HUDTokens.label()).getWidth() + HUDTokens.GAP;
-        text = Skia.getLimitText(text, font, Math.max(8, maxWidth - unitWidth));
         String icon = getIcon();
         boolean hasIcon = icon != null && !icon.isBlank() && iconSetting.isEnabled();
         float badge = 18;
-        float valueWidth = Skia.getTextBounds(text, font).getWidth();
-        float contentWidth = valueWidth + unitWidth;
+        float maxWidth = Math.max(64, Math.min(280,
+            client.getWindow().getGuiScaledWidth() / Math.max(0.5f, position.getScale()) - 40));
+        float unitWidth = unit.isBlank() ? 0 : Skia.getTextBounds(unit, HUDTokens.label()).getWidth() + HUDTokens.GAP;
+        float textLimit = Math.max(8, maxWidth - HUDTokens.PADDING * 2
+            - (hasIcon ? badge + HUDTokens.GAP : 0) - unitWidth);
+
+        // A single "Label: value" pair gets separate M3 label/value emphasis.
+        // Multiple colons (coordinates, addresses) remain one intact value.
+        int separator = text.indexOf(": ");
+        boolean hasLabel = separator > 0 && separator < 24 && text.indexOf(": ", separator + 2) < 0;
+        String label = hasLabel ? Skia.getLimitText(text.substring(0, separator), HUDTokens.label(), textLimit * 0.44f) : "";
+        String value = hasLabel ? text.substring(separator + 2) : text;
+        float labelWidth = label.isBlank() ? 0 : Skia.getTextBounds(label, HUDTokens.label()).getWidth() + HUDTokens.GAP;
+        value = Skia.getLimitText(value, font, Math.max(8, textLimit - labelWidth));
+        float valueWidth = Skia.getTextBounds(value, font).getWidth();
+        float contentWidth = labelWidth + valueWidth + unitWidth;
         float width = HUDTokens.PADDING * 2 + contentWidth + (hasIcon ? badge + HUDTokens.GAP : 0);
         float height = HUDTokens.CHIP_HEIGHT;
         begin();
@@ -39,7 +50,12 @@ public abstract class SimpleHUDMod extends HUDMod {
                     colors().onAccentContainer(), getIconFont(HUDTokens.ICON_SIZE));
                 x += badge + HUDTokens.GAP;
             }
-            Skia.drawHeightCenteredText(text, x, getY() + height / 2, isUrgent() ? colors().danger() : colors().text(), font);
+            if (!label.isBlank()) {
+                Skia.drawHeightCenteredText(label, x, getY() + height / 2, colors().secondaryText(), HUDTokens.label());
+                x += labelWidth;
+            }
+            Skia.drawHeightCenteredText(value, x, getY() + height / 2,
+                isUrgent() ? colors().danger() : colors().text(), font);
             if (!unit.isBlank()) Skia.drawHeightCenteredText(unit, x + valueWidth + HUDTokens.GAP,
                 getY() + height / 2, colors().secondaryText(), HUDTokens.label());
         } finally { finish(); }

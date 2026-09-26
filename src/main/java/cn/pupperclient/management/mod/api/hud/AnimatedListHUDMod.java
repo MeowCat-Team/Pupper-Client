@@ -54,10 +54,14 @@ public abstract class AnimatedListHUDMod extends HUDMod {
         try {
             if (backgroundSetting.isEnabled() || entries.isEmpty()) drawBackground(getX(), getY(), width, height);
             else drawBackground(getX(), getY(), width, HUDTokens.PADDING * 2 + HUDTokens.ROW_HEIGHT);
-            Skia.drawHeightCenteredText(Skia.getLimitText(getName(), HUDTokens.title(), width - 44),
+            Skia.drawHeightCenteredText(Skia.getLimitText(getName(), HUDTokens.title(), width - 48),
                 getX() + HUDTokens.PADDING, getY() + 16, colors().text(), HUDTokens.title());
-            Skia.drawFullCenteredText(getIcon(), getX() + width - 16, getY() + 16,
-                colors().accent(), HUDTokens.icon());
+            Skia.drawRoundedRect(getX() + width - 28, getY() + 7, 20, 20, 7, colors().accentContainer());
+            Skia.drawFullCenteredText(getIcon(), getX() + width - 18, getY() + 17,
+                colors().onAccentContainer(), HUDTokens.icon());
+            if (backgroundSetting.isEnabled() && !entries.isEmpty())
+                Skia.drawRoundedRect(getX() + HUDTokens.PADDING, getY() + HUDTokens.PADDING + HUDTokens.ROW_HEIGHT - 1,
+                    width - HUDTokens.PADDING * 2, 1, 0.5f, colors().outline());
             float y = getY() + HUDTokens.PADDING + HUDTokens.ROW_HEIGHT;
             boolean right = modeSetting.getOption().equals("setting.right");
             for (Entry entry : entries.values()) {

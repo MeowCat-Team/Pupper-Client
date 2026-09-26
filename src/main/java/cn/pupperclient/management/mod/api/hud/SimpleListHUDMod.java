@@ -14,7 +14,7 @@ public abstract class SimpleListHUDMod extends HUDMod {
         if (lines.isEmpty()) { position.setSize(0, 0); return; }
         float available = Math.max(40, Math.min(300, client.getWindow().getGuiScaledWidth() / position.getScale() - 32));
         List<String> text = lines.stream().map(line -> line.replaceAll("§[0-9a-fk-orA-FK-OR]", "")).toList();
-        float width = 0;
+        float width = Math.min(available, Skia.getTextBounds(text.getFirst(), HUDTokens.title()).getWidth() + 24);
         for (int i = 0; i < text.size(); i++)
             width = Math.max(width, Math.min(available, Skia.getTextBounds(text.get(i), i == 0 ? HUDTokens.title() : HUDTokens.body()).getWidth()));
         width += HUDTokens.PADDING * 2;
@@ -22,10 +22,17 @@ public abstract class SimpleListHUDMod extends HUDMod {
         begin();
         try {
             drawBackground(getX(), getY(), width, height);
+            Skia.drawRoundedRect(getX() + HUDTokens.PADDING, getY() + HUDTokens.PADDING + HUDTokens.ROW_HEIGHT - 2,
+                width - HUDTokens.PADDING * 2, 1, 0.5f, colors().outline());
+            String icon = getIcon();
+            if (icon != null && !icon.isBlank())
+                Skia.drawFullCenteredText(icon, getX() + width - HUDTokens.PADDING - 6,
+                    getY() + HUDTokens.PADDING + 7, colors().accent(), HUDTokens.icon());
             for (int i = 0; i < text.size(); i++) {
                 Font font = i == 0 ? HUDTokens.title() : HUDTokens.body();
                 float centerY = getY() + HUDTokens.PADDING + (i == 0 ? 7 : HUDTokens.ROW_HEIGHT + (i - 1) * HUDTokens.LINE_HEIGHT + 7);
-                Skia.drawHeightCenteredText(Skia.getLimitText(text.get(i), font, available),
+                Skia.drawHeightCenteredText(Skia.getLimitText(text.get(i), font,
+                    i == 0 ? Math.max(8, width - HUDTokens.PADDING * 2 - 24) : available),
                     getX() + HUDTokens.PADDING, centerY, i == 0 ? colors().text() : colors().secondaryText(), font);
             }
         } finally { finish(); }
