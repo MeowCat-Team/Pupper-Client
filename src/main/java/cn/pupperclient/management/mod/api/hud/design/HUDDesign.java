@@ -17,6 +17,7 @@ public abstract class HUDDesign {
     protected Color surface(ColorPalette palette) { return palette.getSurfaceContainer(); }
     protected float radius(float requested) { return requested; }
     protected boolean outlined() { return false; }
+    protected Color outlineColor(HUDColors colors) { return colors.outline(); }
 
     public final HUDColors colors() {
         ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
@@ -32,8 +33,10 @@ public abstract class HUDDesign {
     public void drawBackground(float x, float y, float width, float height, float corner) {
         if (width <= 0 || height <= 0) return;
         float r = Math.min(radius(corner), Math.min(width, height) / 2);
-        Skia.drawRoundedRect(x, y, width, height, r, colors().surface());
-        if (outlined()) Skia.drawOutline(x, y, width, height, r, 0.75f, colors().outline());
+        HUDColors colors = colors();
+        Skia.drawRoundedRect(x, y, width, height, r, colors.surface());
+        if (outlined() && width > 1 && height > 1)
+            Skia.drawOutline(x, y, width, height, r, 0.75f, outlineColor(colors));
     }
 
     public void drawText(String text, float x, float y, Font font) {

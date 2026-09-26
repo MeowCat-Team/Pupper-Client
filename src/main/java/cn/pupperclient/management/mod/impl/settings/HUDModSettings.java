@@ -22,7 +22,7 @@ public class HUDModSettings extends Mod {
 	private final BooleanSetting reducedMotionSetting = new BooleanSetting("setting.hud.reducedmotion",
 			"setting.hud.reducedmotion.description", Icon.MOVIE, this, false);
 	private ComboSetting designSetting = new ComboSetting("setting.design", "setting.design.description", Icon.PALETTE,
-			this, Arrays.asList("design.simple", "design.classic", "design.clear", "design.materialyou"),
+			this, Arrays.asList("design.simple", "design.classic", "design.clear", "design.materialyou", "design.glass"),
 			"design.materialyou");
 
 	public HUDModSettings() {
