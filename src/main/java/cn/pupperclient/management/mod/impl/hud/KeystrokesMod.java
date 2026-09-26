@@ -1,5 +1,6 @@
 package cn.pupperclient.management.mod.impl.hud;
 
+import java.awt.Color;
 import java.util.List;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.skia.RenderSkiaEvent;
@@ -35,12 +36,12 @@ public class KeystrokesMod extends HUDMod {
 
     private void drawPanels() {
         float dt = motion.deltaSeconds();
+        position.setSize(92, spaceKeySetting.isEnabled() ? 86 : 60);
         begin();
         try {
             for (Panel panel : panels)
                 if (!panel.jump || spaceKeySetting.isEnabled()) panel.draw(dt);
         } finally { finish(); }
-        position.setSize(92, spaceKeySetting.isEnabled() ? 86 : 60);
     }
 
     private final class Panel {
@@ -61,13 +62,26 @@ public class KeystrokesMod extends HUDMod {
             float radius = 8 + state * 4;
             // Keep every key on the selected HUD surface, including Glass.
             getDesign().drawBackground(px, py, w, h, radius);
-            if (pressed) Skia.drawRoundedRect(px, py, w, h, radius, colors().accentContainer());
-            var foreground = pressed ? colors().onAccentContainer() : colors().text();
+            if (state > 0.01f) Skia.drawRoundedRect(px, py, w, h, radius,
+                withOpacity(colors().accentContainer(), state));
+            Color foreground = blend(colors().text(), colors().onAccentContainer(), state);
             if (!unmarkSetting.isEnabled()) {
                 if (jump) Skia.drawRoundedRect(px + 18, py + h / 2 - 1, w - 36, 2, 1, foreground);
                 else Skia.drawFullCenteredText(Skia.getLimitText(key.getTranslatedKeyMessage().getString(),
                     HUDTokens.title(), w - 6), px + w / 2, py + h / 2, foreground, HUDTokens.title());
             }
         }
+    }
+
+    private static Color withOpacity(Color color, float amount) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(),
+            Math.round(color.getAlpha() * Math.max(0, Math.min(1, amount))));
+    }
+
+    private static Color blend(Color from, Color to, float amount) {
+        float t = Math.max(0, Math.min(1, amount));
+        return new Color(Math.round(from.getRed() + (to.getRed() - from.getRed()) * t),
+            Math.round(from.getGreen() + (to.getGreen() - from.getGreen()) * t),
+            Math.round(from.getBlue() + (to.getBlue() - from.getBlue()) * t));
     }
 }
