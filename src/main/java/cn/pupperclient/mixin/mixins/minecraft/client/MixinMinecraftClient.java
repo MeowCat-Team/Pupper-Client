@@ -26,6 +26,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.HitResult.Type;
 import cn.pupperclient.event.skia.RenderSkiaEvent;
+import cn.pupperclient.gui.tooltip.ShulkerPreview;
 import com.mojang.blaze3d.platform.Window;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
@@ -176,19 +177,20 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
         )
     )
     private void onBeforeFlipFrame(CallbackInfo ci) {
-        Screen screen = Minecraft.getInstance().gui.screen();
-        if (level == null && !(screen instanceof SimpleSoarGui)) {
-            return;
-        }
+        Minecraft minecraft = Minecraft.getInstance();
+        Screen screen = minecraft.gui.screen();
+        boolean skiaScreen = screen instanceof SimpleSoarGui;
+        boolean preview = screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>
+            && ShulkerPreview.hasActive();
+        boolean tabVisible = level != null
+            && ((PlayerTabOverlayAccessor) minecraft.gui.hud.getTabList()).pupper$isVisible();
+        boolean drawHud = level != null
+            && (screen instanceof GuiEditHUD || (!minecraft.gui.hud.isHidden() && !tabVisible))
+            && EventBus.getInstance().hasListeners(RenderSkiaEvent.class);
+        if (!drawHud && !skiaScreen && !preview) return;
         SkiaContext.draw((canvas) -> {
-            Minecraft minecraft = Minecraft.getInstance();
             Window currentWindow = minecraft.getWindow();
-
-            // Skia composites after vanilla GUI. Yield to the actual player-list overlay,
-            // rather than guessing from a key press (e.g. Tab in singleplayer).
-            boolean tabVisible = ((PlayerTabOverlayAccessor) minecraft.gui.hud.getTabList()).pupper$isVisible();
-            boolean drawHud = screen instanceof GuiEditHUD || (!minecraft.gui.hud.isHidden() && !tabVisible);
-            if (level != null && drawHud) {
+            if (drawHud) {
                 Skia.save();
                 try {
                     Skia.scale((float) currentWindow.getGuiScale());
@@ -198,15 +200,24 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
                 }
             }
 
-            if (screen instanceof SimpleSoarGui skiaScreen) {
+            if (screen instanceof SimpleSoarGui skiaGui) {
                 double mouseX = minecraft.mouseHandler.getScaledXPos(currentWindow);
                 double mouseY = minecraft.mouseHandler.getScaledYPos(currentWindow);
                 Skia.save();
-                if (skiaScreen.usesMinecraftGuiScale()) {
+                if (skiaGui.usesMinecraftGuiScale()) {
                     Skia.scale((float) currentWindow.getGuiScale());
                 }
-                skiaScreen.renderSkia(mouseX, mouseY);
+                skiaGui.renderSkia(mouseX, mouseY);
                 Skia.restore();
+            }
+            if (preview) {
+                Skia.save();
+                try {
+                    Skia.scale((float) currentWindow.getGuiScale());
+                    ShulkerPreview.renderActive(screen);
+                } finally {
+                    Skia.restore();
+                }
             }
         });
     }

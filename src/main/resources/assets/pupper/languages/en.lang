@@ -26,6 +26,9 @@ design.simple=Simple
 design.classic=Classic
 design.materialyou=Material
 
+hud.shulker.hint=Hold Ctrl to inspect items
+hud.shulker.locked=Ctrl held: inspect items
+
 menu.modmenu=Mod Menu
 
 mod.cooldown.name=Cooldown Indicator

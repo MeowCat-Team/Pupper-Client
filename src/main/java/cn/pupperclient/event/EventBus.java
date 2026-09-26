@@ -123,6 +123,11 @@ public class EventBus {
         }
     }
 
+    public boolean hasListeners(Class<? extends Event> eventType) {
+        CopyOnWriteArrayList<EventListener<?>> listeners = listenerMap.get(eventType);
+        return listeners != null && !listeners.isEmpty();
+    }
+
     public void unregister(final Object object) {
         List<EventListener<?>> handlers = registeredHandlers.remove(object);
         if (handlers != null) {

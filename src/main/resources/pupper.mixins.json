@@ -15,6 +15,7 @@
     "minecraft.client.gui.MixinLanguageScreen",
     "minecraft.client.gui.MixinMultiplayerScreen",
     "minecraft.client.gui.MixinPackScreen",
+    "minecraft.client.gui.MixinShulkerPreview",
     "minecraft.client.gui.MixinSplashScreen",
     "minecraft.client.gui.MixinTitleScreen",
     "minecraft.client.option.MixinKeyBinding",
