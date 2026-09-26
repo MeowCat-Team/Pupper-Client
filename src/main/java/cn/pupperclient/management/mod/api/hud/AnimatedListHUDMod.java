@@ -50,6 +50,7 @@ public abstract class AnimatedListHUDMod extends HUDMod {
         for (Entry entry : entries.values()) height += HUDTokens.ROW_HEIGHT * entry.visibility;
         if (entries.isEmpty()) height += HUDTokens.ROW_HEIGHT;
 
+        position.setSize(width, height);
         begin();
         try {
             if (backgroundSetting.isEnabled() || entries.isEmpty()) drawBackground(getX(), getY(), width, height);
@@ -89,7 +90,6 @@ public abstract class AnimatedListHUDMod extends HUDMod {
                 Skia.drawHeightCenteredText(I18n.get("hud.empty"), getX() + HUDTokens.PADDING,
                     y + 10, colors().secondaryText(), HUDTokens.label());
         } finally { finish(); }
-        position.setSize(width, height);
     }
 
     @Override public void onDisable() { super.onDisable(); entries.clear(); }
