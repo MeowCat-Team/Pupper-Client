@@ -11,9 +11,12 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Icon;
 import io.github.humbleui.skija.Font;
 
-/** Compact metric with a quiet surface, paired icon badge, and consistent baseline. */
+/** Compact metric with a quiet surface, neutral leading icon, and consistent baseline. */
 public abstract class SimpleHUDMod extends HUDMod {
     private static final Pattern NUMERIC_PART = Pattern.compile("\\d+(?:[.,]\\d+)*");
+    private static final float CHIP_PADDING = 10;
+    private static final float ICON_WIDTH = 14;
+    private static final float ICON_GAP = 6;
     protected BooleanSetting iconSetting = new BooleanSetting("setting.icon", "setting.icon.description",
         Icon.NEW_RELEASES, this, true);
 
@@ -97,10 +100,9 @@ public abstract class SimpleHUDMod extends HUDMod {
             text = text.substring(0, text.length() - unit.length() - 1);
         String icon = Objects.toString(getIcon(), "");
         boolean hasIcon = !icon.isBlank() && iconSetting.isEnabled();
-        float badge = 18;
         float unitWidth = unit.isBlank() ? 0 : Skia.getTextBounds(unit, HUDTokens.label()).getWidth() + HUDTokens.GAP;
-        float textLimit = Math.max(8, maxWidth - HUDTokens.PADDING * 2
-            - (hasIcon ? badge + HUDTokens.GAP : 0) - unitWidth);
+        float textLimit = Math.max(8, maxWidth - CHIP_PADDING * 2
+            - (hasIcon ? ICON_WIDTH + ICON_GAP : 0) - unitWidth);
 
         // A single "Label: value" pair gets separate M3 label/value emphasis.
         // Multiple colons (coordinates, addresses) remain one intact value.
@@ -111,20 +113,19 @@ public abstract class SimpleHUDMod extends HUDMod {
         float labelWidth = label.isBlank() ? 0 : Skia.getTextBounds(label, HUDTokens.label()).getWidth() + HUDTokens.GAP;
         value = Skia.getLimitText(value, font, Math.max(8, textLimit - labelWidth));
         float valueWidth = Skia.getTextBounds(value, font).getWidth();
-        float width = HUDTokens.PADDING * 2 + labelWidth + valueWidth + unitWidth
-            + (hasIcon ? badge + HUDTokens.GAP : 0);
+        float width = CHIP_PADDING * 2 + labelWidth + valueWidth + unitWidth
+            + (hasIcon ? ICON_WIDTH + ICON_GAP : 0);
         return new Content(label, value, unit, icon, hasIcon, isUrgent(), labelWidth, valueWidth, width);
     }
 
     private void drawContent(Content content, Font font, HUDColors palette, float opacity) {
         if (opacity <= 0) return;
-        float x = getX() + HUDTokens.PADDING;
+        float x = getX() + CHIP_PADDING;
         float centerY = getY() + HUDTokens.CHIP_HEIGHT / 2;
         if (content.hasIcon) {
-            Skia.drawRoundedRect(x - 3, getY() + 3, 18, 18, 6, fade(palette.accentContainer(), opacity));
-            Skia.drawFullCenteredText(content.icon, x + 6, centerY,
-                fade(palette.onAccentContainer(), opacity), getIconFont(HUDTokens.ICON_SIZE));
-            x += 18 + HUDTokens.GAP;
+            Skia.drawFullCenteredText(content.icon, x + ICON_WIDTH / 2, centerY,
+                fade(palette.secondaryText(), opacity), getIconFont(HUDTokens.ICON_SIZE));
+            x += ICON_WIDTH + ICON_GAP;
         }
         if (!content.label.isBlank()) {
             Skia.drawHeightCenteredText(content.label, x, centerY,
