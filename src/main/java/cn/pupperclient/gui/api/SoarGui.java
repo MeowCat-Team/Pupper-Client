@@ -132,8 +132,8 @@ public abstract class SoarGui extends SimpleSoarGui {
 			Screen target = nextScreen;
 			closing = false;
 			nextScreen = null;
-			if (client.screen == this) {
-				client.setScreen(target);
+			if (client.gui.screen() == this) {
+				client.gui.setScreen(target);
 			}
 		}
 	}

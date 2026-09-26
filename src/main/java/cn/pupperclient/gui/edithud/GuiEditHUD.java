@@ -268,7 +268,7 @@ public class GuiEditHUD extends SimpleSoarGui {
 
 	private void closeEditor() {
 		HUDCore.isEditing = false;
-		client.setScreen(prevScreen);
+		client.gui.setScreen(prevScreen);
 	}
 
 	private Optional<HUDMod> getHoveredMod(double mouseX, double mouseY) {

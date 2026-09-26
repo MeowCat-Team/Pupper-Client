@@ -57,7 +57,7 @@ public class MusicPlayGui extends SimpleSoarGui {
         if (MouseUtils.isInside(localMouseX, localMouseY, 1320, 20, icon_CLOSE_rect.getWidth(), icon_CLOSE_rect.getHeight()) ||
             MouseUtils.isInside(localMouseX, localMouseY, 1251, 25, icon_MINIMIZE_rect.getWidth(), icon_MINIMIZE_rect.getHeight())
         ) {
-            client.setScreen(null);
+            client.gui.setScreen(null);
             return true;
         }
         if (MouseUtils.isInside(localMouseX, localMouseY, 1285, 19, icon_FULLSCREEN_rect.getWidth() + 1, icon_FULLSCREEN_rect.getHeight() + 1)) {

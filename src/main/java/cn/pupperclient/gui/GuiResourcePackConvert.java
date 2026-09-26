@@ -26,12 +26,13 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.CommonColors;
+import org.jspecify.annotations.NonNull;
 
 public class GuiResourcePackConvert extends Screen implements IMinecraft {
 
 	private String progress = "Converting...";
 	private Screen prevScreen;
-	
+
 	public GuiResourcePackConvert(Screen prevScreen) {
 		super(Component.literal("PackConvert"));
 		this.prevScreen = prevScreen;
@@ -46,51 +47,51 @@ public class GuiResourcePackConvert extends Screen implements IMinecraft {
             } catch (Exception e) {
                 PupperClient.LOGGER.error("converter error: {}", e.getMessage());
             }
-            client.setScreen(prevScreen);
+            client.gui.setScreen(prevScreen);
         });
 		super.init();
 	}
-	
+
 	@Override
-	public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+	public void extractRenderState(@NonNull GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
 		super.extractRenderState(context, mouseX, mouseY, delta);
 		context.text(this.font, Component.literal(progress), this.width / 2, this.height / 2 - 50, CommonColors.WHITE);
 	}
-	
+
 	private ResourcePackConverter createConverter() {
-		
+
 		List<ObjectObjectImmutablePair<File, File>> packs = new ArrayList<>();
 		File cacheDir = new File(FileLocation.CACHE_DIR, "resourcepack");
-		
+
 		try {
 			Files.createDirectories(cacheDir.toPath());
 		} catch (IOException e) {
 			PupperClient.LOGGER.error("Failed to create cache directory", e);
 		}
-		
+
 		for(File f : detectPacks()) {
-			
+
 			try {
-				
+
 				File targetFile = new File(cacheDir, f.getName());
 				File packDir = new File(client.gameDirectory, "resourcepacks");
 				File outputFile = new File(packDir, f.getName());
-				
+
 				Files.move(f.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-				
+
 				packs.add(ObjectObjectImmutablePair.of(targetFile, outputFile));
 			} catch (Exception e) {
 				PupperClient.LOGGER.error("Failed to move resource pack", e);
 			}
 		}
-		
+
 		return new ResourcePackConverter(packs, cacheDir, progress -> {
 			this.progress = progress.toString();
 		});
 	}
-	
+
 	private List<File> detectPacks() {
-		
+
 		List<File> packs = getOldResourcePacks();
 		List<File> convertPacks = new ArrayList<>();
 
@@ -124,7 +125,7 @@ public class GuiResourcePackConvert extends Screen implements IMinecraft {
 				PupperClient.LOGGER.error("Failed to detect resource packs", e);
 			}
 		}
-		
+
 		return convertPacks;
 	}
 
