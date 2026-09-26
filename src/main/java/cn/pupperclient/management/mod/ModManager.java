@@ -195,4 +195,21 @@ public class ModManager {
             .findFirst()
             .orElse(null);
     }
+
+    public Mod getModByCommandName(String modName) {
+        for (Mod mod : mods) {
+            String rawName = mod.getRawName();
+            String shortName = rawName.startsWith("mod.") && rawName.endsWith(".name")
+                ? rawName.substring(4, rawName.length() - 5)
+                : rawName;
+
+            if (rawName.equalsIgnoreCase(modName)
+                || shortName.equalsIgnoreCase(modName)
+                || mod.getName().equalsIgnoreCase(modName)
+                || mod.getClass().getSimpleName().equalsIgnoreCase(modName)) {
+                return mod;
+            }
+        }
+        return null;
+    }
 }

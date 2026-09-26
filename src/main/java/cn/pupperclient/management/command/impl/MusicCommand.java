@@ -34,6 +34,10 @@ public class MusicCommand {
         "jyeffect", "sky", "dolby", "jymaster"
     };
 
+    public static List<String> getQualityLevels() {
+        return List.of(QUALITY_LEVELS);
+    }
+
     // 音质显示名称
     private static final String[] QUALITY_NAMES = {
         "标准", "较高", "极高", "无损", "Hi-Res",

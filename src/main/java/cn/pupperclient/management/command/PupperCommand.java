@@ -1,7 +1,6 @@
 package cn.pupperclient.management.command;
 
 import cn.pupperclient.PupperClient;
-import cn.pupperclient.PupperLogger;
 import cn.pupperclient.management.command.impl.*;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModManager;
@@ -14,8 +13,6 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
-import java.io.IOException;
-import java.util.Objects;
 
 public class PupperCommand implements IMinecraft {
     private static final String PREFIX = ".";
@@ -25,31 +22,28 @@ public class PupperCommand implements IMinecraft {
         ClientSendMessageEvents.ALLOW_CHAT.register((message) -> {
             if (message.startsWith(PREFIX)) {
                 String command = message.substring(PREFIX.length()).trim();
-                try {
-                    runCommand(command);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                runCommand(command);
                 return false;
             }
             return true;
         });
     }
 
-    public static void runCommand(String command) throws IOException {
-        String[] args = command.split(" ");
-
-        if (args.length == 0) {
+    public static void runCommand(String command) {
+        command = command.trim();
+        if (command.isEmpty()) {
             showHelp();
+            return;
         }
 
-        String mainCommand = args[0].toLowerCase();
+        String[] args = command.split("\\s+");
+        String mainCommand = args[0].toLowerCase(java.util.Locale.ROOT);
 
         switch (mainCommand) {
             case "t":
             case "toggle":
                 if (args.length >= 2) {
-                    String modName = args[1];
+                    String modName = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
                     toggleMod(modName);
                 } else {
                     ChatUtils.addChatMessage(I18n.get("command.help.toggle.usage"));
@@ -93,7 +87,7 @@ public class PupperCommand implements IMinecraft {
     }
 
     private static void toggleMod(String modName) {
-        Mod targetMod = modManager.getModByName("mod." + modName + ".name");
+        Mod targetMod = modManager.getModByCommandName(modName);
         if (targetMod == null) {
             ChatUtils.addChatMessage("§c" + I18n.get("mod.notFound") + ": " + modName);
             ChatUtils.addChatMessage("§6" + ".list " + " §7- " + I18n.get("command.help.modlist.description"));
@@ -101,10 +95,10 @@ public class PupperCommand implements IMinecraft {
         }
 
         boolean newState = !targetMod.isEnabled();
-        modManager.setModEnabledByName(newState, targetMod.getName());
+        targetMod.setEnabled(newState);
 
         String status = newState ? "§a" + I18n.get("mod.enabled") : "§c" + I18n.get("mod.disabled");
-        ChatUtils.addChatMessage("Mod " + I18n.get(targetMod.getName()) + " " + status);
+        ChatUtils.addChatMessage("Mod " + targetMod.getName() + " " + status);
     }
 
     private static void showHelp() {
@@ -141,9 +135,9 @@ public class PupperCommand implements IMinecraft {
                 enabledCount++;
             }
 
-            String modDisplayName = I18n.get(mod.getName());
+            String modDisplayName = mod.getName();
             boolean isEnabled = mod.isEnabled();
-            String shortModName = getShortModName(mod.getName());
+            String shortModName = getShortModName(mod.getRawName());
 
             MutableComponent modNameText = Component.literal("• " + modDisplayName)
                 .withStyle(ChatFormatting.AQUA);
@@ -152,11 +146,11 @@ public class PupperCommand implements IMinecraft {
             if (isEnabled) {
                 statusText = createClickableText(I18n.get("mod.enabled"),
                     ".toggle " + shortModName,
-                    I18n.get("modNameText.c") + " " + modDisplayName, ChatFormatting.GREEN);
+                    I18n.get("modNameText.d") + " " + modDisplayName, ChatFormatting.GREEN);
             } else {
                 statusText = createClickableText(I18n.get("mod.disabled"),
                     ".toggle " + shortModName,
-                    I18n.get("modNameText.d") + " " + modDisplayName, ChatFormatting.RED);
+                    I18n.get("modNameText.c") + " " + modDisplayName, ChatFormatting.RED);
             }
 
             MutableComponent modLine = Component.empty()
@@ -177,7 +171,7 @@ public class PupperCommand implements IMinecraft {
     }
 
     private static MutableComponent createClickableText(String displayText, String command, String hoverText, ChatFormatting color) {
-        ClickEvent clickEvent = new ClickEvent.SuggestCommand("." + command);
+        ClickEvent clickEvent = new ClickEvent.SuggestCommand(command);
         HoverEvent hoverEvent = new HoverEvent.ShowText(Component.literal(hoverText));
 
         return Component.literal(displayText)

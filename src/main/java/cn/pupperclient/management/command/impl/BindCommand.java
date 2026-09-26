@@ -8,12 +8,14 @@ import cn.pupperclient.management.keybind.KeybindManager;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModManager;
 import cn.pupperclient.utils.chat.ChatUtils;
-import cn.pupperclient.utils.language.I18n;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -23,6 +25,7 @@ import net.minecraft.network.chat.MutableComponent;
 public class BindCommand {
     private static final ModManager modManager = PupperClient.getInstance().getModManager();
     private static final Map<String, Object> keyListeners = new HashMap<>();
+    private static final Map<String, Integer> KEY_CODES = createKeyCodes();
 
     public static void handleCommand(String[] args) {
         if (args.length == 1) {
@@ -41,7 +44,7 @@ public class BindCommand {
             case "clear":
             case "reset":
                 if (args.length >= 3) {
-                    String modName = args[2];
+                    String modName = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
                     clearKeybind(modName);
                 } else {
                     // 清除所有按键绑定
@@ -51,12 +54,13 @@ public class BindCommand {
 
             default:
                 // 绑定特定模组
-                String modName = args[1];
-                if (args.length == 2) {
+                String fullName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+                if (args.length == 2 || modManager.getModByCommandName(fullName) != null) {
                     // 进入按键监听模式
-                    startKeyListening(modName);
+                    startKeyListening(fullName);
                 } else {
-                    String keyName = args[2];
+                    String modName = String.join(" ", Arrays.copyOfRange(args, 1, args.length - 1));
+                    String keyName = args[args.length - 1];
                     setKeybind(modName, keyName);
                 }
                 break;
@@ -64,11 +68,7 @@ public class BindCommand {
     }
 
     private static void startKeyListening(String modName) {
-        Mod mod = modManager.getModByName(modName);
-        if (mod == null) {
-            // 尝试通过显示名称查找
-            mod = findModByDisplayName(modName);
-        }
+        Mod mod = modManager.getModByCommandName(modName);
 
         if (mod == null) {
             ChatUtils.addChatMessage("§cMod not found: " + modName);
@@ -77,24 +77,21 @@ public class BindCommand {
         }
 
         // 取消之前的监听器（如果有）
-        if (keyListeners.containsKey(mod.getName())) {
-            EventBus.getInstance().unregister(keyListeners.get(mod.getName()));
-            keyListeners.remove(mod.getName());
+        if (keyListeners.containsKey(mod.getRawName())) {
+            EventBus.getInstance().unregister(keyListeners.get(mod.getRawName()));
+            keyListeners.remove(mod.getRawName());
         }
 
         ChatUtils.addChatMessage("§ePress a key to bind §6" + mod.getName() + "§e to (Press ESC to cancel)");
 
         Object listener = getListener(mod);
 
-        keyListeners.put(mod.getName(), listener);
+        keyListeners.put(mod.getRawName(), listener);
         EventBus.getInstance().register(listener);
     }
 
     private static void setKeybind(String modName, String keyName) {
-        Mod mod = modManager.getModByName(modName);
-        if (mod == null) {
-            mod = findModByDisplayName(modName);
-        }
+        Mod mod = modManager.getModByCommandName(modName);
 
         if (mod == null) {
             ChatUtils.addChatMessage("§cMod not found: " + modName);
@@ -140,7 +137,7 @@ public class BindCommand {
             for (Mod mod : mods) {
                 MutableComponent message = Component.literal("§b• " + mod.getName() + " §7→ §a" + keyName + " §7(keycode: " + keyCode + ")")
                     .withStyle(style -> style
-                        .withClickEvent(new ClickEvent.SuggestCommand(".bind " + mod.getName() + " none"))
+                        .withClickEvent(new ClickEvent.SuggestCommand(".bind " + mod.getRawName() + " none"))
                         .withHoverEvent(new HoverEvent.ShowText(
                             Component.literal("Click to clear this keybind").withStyle(ChatFormatting.GRAY)
                         ))
@@ -162,10 +159,7 @@ public class BindCommand {
     }
 
     private static void clearKeybind(String modName) {
-        Mod mod = modManager.getModByName(modName);
-        if (mod == null) {
-            mod = findModByDisplayName(modName);
-        }
+        Mod mod = modManager.getModByCommandName(modName);
 
         if (mod == null) {
             ChatUtils.addChatMessage("§cMod not found: " + modName);
@@ -189,7 +183,7 @@ public class BindCommand {
                 if (e.isState()) {
                     if (e.getKeybind() == 256) {
                         ChatUtils.addChatMessage("§cKey binding cancelled");
-                        cleanupListener(mod.getName());
+                        cleanupListener(mod.getRawName());
                         return;
                     }
 
@@ -203,22 +197,12 @@ public class BindCommand {
                     PupperClient.getInstance().getConfigManager().save(ConfigType.KEY);
 
                     // 清理监听器
-                    cleanupListener(mod.getName());
+                    cleanupListener(mod.getRawName());
                 }
             };
         };
     }
 
-
-    private static Mod findModByDisplayName(String displayName) {
-        for (Mod mod : modManager.getMods()) {
-            if (mod.getName().equalsIgnoreCase(displayName) ||
-                I18n.get(mod.getName()).equalsIgnoreCase(displayName)) {
-                return mod;
-            }
-        }
-        return null;
-    }
 
     private static void clearAllKeybinds() {
         int clearedCount = 0;
@@ -247,7 +231,15 @@ public class BindCommand {
         ChatUtils.addChatMessage("§7  .bind FPSDisplayMod none §8- Clear binding");
     }
 
+    public static Set<String> getSupportedKeys() {
+        return KEY_CODES.keySet();
+    }
+
     private static int parseKeyCode(String keyName) {
+        return KEY_CODES.getOrDefault(keyName.toLowerCase(Locale.ROOT), -1);
+    }
+
+    private static Map<String, Integer> createKeyCodes() {
         // 常见按键映射
         Map<String, Integer> keyMap = new HashMap<>();
         keyMap.put("esc", 256); keyMap.put("escape", 256);
@@ -278,7 +270,7 @@ public class BindCommand {
             keyMap.put(String.valueOf(i), 48 + i);
         }
 
-        return keyMap.getOrDefault(keyName.toLowerCase(), -1);
+        return Map.copyOf(keyMap);
     }
 
     private static String getKeyName(int keyCode) {

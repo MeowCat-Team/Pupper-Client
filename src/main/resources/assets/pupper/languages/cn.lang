@@ -456,6 +456,9 @@ command.help.list=显示所有mod列表
 command.help.help=显示此帮助
 
 command.help.modlist.title=Soar Client Mod列表
+command.help.modlist.description=显示所有Mod列表
+mod.notFound=未找到Mod
+modManager.notInitialized=Mod管理器尚未初始化
 command.help.unknown=未知命令，输入 .help 查看帮助
 command.help.toggle.usage=用法: .t <mod名称>
 mod.eagle.autoplace.name=自动放置
@@ -471,8 +474,8 @@ command.help.modlist.stats=统计
 
 modNameText.a= 状态:
 modNameText.b=Click to toggle stats mod
-modNameText.c=Click to enable mod
-modNameText.d=Click to disable mod
+modNameText.c=点击启用Mod
+modNameText.d=点击禁用Mod
 mod.smtc.name=SMTC
 mod.smtc.description=SMTC
 setting.health.display=健康显示
