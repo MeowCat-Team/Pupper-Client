@@ -22,7 +22,7 @@ public class MixinPackScreen extends Screen {
 	private void onInit(CallbackInfo ci) {
 
 		Button.Builder builder = Button
-				.builder(Component.nullToEmpty("Convert"), _ -> minecraft.setScreen(new GuiResourcePackConvert(this))).size(98, 20);
+				.builder(Component.nullToEmpty("Convert"), _ -> minecraft.gui.setScreen(new GuiResourcePackConvert(this))).size(98, 20);
 
 		builder.pos(width - 98 - 5, 5);
 		this.addRenderableWidget(builder.build());

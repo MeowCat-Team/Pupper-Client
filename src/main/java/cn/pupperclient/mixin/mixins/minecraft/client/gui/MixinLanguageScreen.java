@@ -17,6 +17,6 @@ public class MixinLanguageScreen extends Screen {
 
     @Inject(method = "onDone", at = @At("TAIL"))
     public void onDone(CallbackInfo ci) {
-        minecraft.gui.getChat().rescaleChat();
+        minecraft.gui.hud.getChat().rescaleChat();
     }
 }

@@ -79,15 +79,8 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
 	@Shadow
 	public LocalPlayer player;
 
-    @Shadow
-    @Nullable
-    public Screen screen;
-
 	@Shadow
     protected abstract String createTitle();
-
-    @Shadow
-    public abstract void setScreen(@Nullable Screen screen);
 
     @Unique
 	private File assetDir;
@@ -97,7 +90,7 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
 		assetDir = args.location.assetDirectory;
 	}
 
-	@Inject(method = "destroy", at = @At("HEAD"))
+	@Inject(method = "close", at = @At("HEAD"))
 	public void onStop(CallbackInfo ci) {
 		PupperClient.getInstance().getConfigManager().save(ConfigType.MOD);
 	}
@@ -165,7 +158,7 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
         SkiaContext.createSurface(width[0] > 0 ? width[0] : 1, height[0] > 0 ? height[0] : 1, null);
     }
 
-    @Inject(method = "destroy", at = @At("HEAD"))
+    @Inject(method = "close", at = @At("HEAD"))
     public void onShutdown(CallbackInfo ci) {
         PupperClient.getInstance().onShutdown();
     }
@@ -179,10 +172,11 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
         method = {"renderFrame"},
         at = @At(
             value = "INVOKE",
-            target = "Lcom/mojang/blaze3d/systems/RenderSystem;flipFrame(Lcom/mojang/blaze3d/TracyFrameCapture;)V"
+            target = "Lcom/mojang/blaze3d/systems/GpuSurface;present()V"
         )
     )
     private void onBeforeFlipFrame(CallbackInfo ci) {
+        Screen screen = Minecraft.getInstance().gui.screen();
         if (level == null && !(screen instanceof SimpleSoarGui)) {
             return;
         }
@@ -192,8 +186,8 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
 
             // Skia composites after vanilla GUI. Yield to the actual player-list overlay,
             // rather than guessing from a key press (e.g. Tab in singleplayer).
-            boolean tabVisible = ((PlayerTabOverlayAccessor) minecraft.gui.getTabList()).pupper$isVisible();
-            boolean drawHud = screen instanceof GuiEditHUD || (!minecraft.options.hideGui && !tabVisible);
+            boolean tabVisible = ((PlayerTabOverlayAccessor) minecraft.gui.hud.getTabList()).pupper$isVisible();
+            boolean drawHud = screen instanceof GuiEditHUD || (!minecraft.gui.hud.isHidden() && !tabVisible);
             if (level != null && drawHud) {
                 Skia.save();
                 try {
