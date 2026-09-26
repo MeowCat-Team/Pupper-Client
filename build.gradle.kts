@@ -68,6 +68,7 @@ dependencies {
     runtimeOnly(libs.entityculling)
     runtimeOnly(libs.ias)
     runtimeOnly(libs.modmenu)
+    runtimeOnly(libs.placeholder.api)
     runtimeOnly(libs.viafabricplus)
 
     // lib
@@ -105,12 +106,16 @@ dependencies {
 tasks.processResources {
     inputs.property("version", project.version)
     inputs.property("minecraft_version", minecraftVersion)
+    inputs.property("loader_version", loaderVersion)
+    inputs.property("fabric_api_version", fabricApiVersion)
 
     filesMatching("fabric.mod.json") {
         expand(
             mapOf(
                 "version" to project.version,
-                "minecraft_version" to minecraftVersion
+                "minecraft_version" to minecraftVersion,
+                "loader_version" to loaderVersion,
+                "fabric_api_version" to fabricApiVersion
             )
         )
     }
