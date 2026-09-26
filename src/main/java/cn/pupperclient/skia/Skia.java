@@ -33,6 +33,9 @@ public class Skia {
     private static final ImageHelper imageHelper = new ImageHelper();
     // Shared Paint object to avoid repeated creation and improve performance
     private static final Paint SHARED_PAINT = new Paint();
+    private static ImageFilter shadowBlur;
+    private static Paint shadowPaint;
+    private static ImageFilter backdropBlur;
 
     /**
      * Draws a filled rectangle with the specified color.
@@ -116,16 +119,17 @@ public class Skia {
      * @param radius The corner radius
      */
     public static void drawShadow(float x, float y, float width, float height, float radius) {
-
-        try (Paint paint = new Paint();
-             ImageFilter blur = ImageFilter.makeBlur(2.5F, 2.5F, FilterTileMode.DECAL)) {
-            
-            paint.setARGB(120, 0, 0, 0);
-            paint.setImageFilter(blur);
-
-            save();
+        if (shadowPaint == null) {
+            shadowBlur = ImageFilter.makeBlur(2.5F, 2.5F, FilterTileMode.DECAL);
+            shadowPaint = new Paint();
+            shadowPaint.setARGB(120, 0, 0, 0);
+            shadowPaint.setImageFilter(shadowBlur);
+        }
+        save();
+        try {
             clip(x, y, width, height, radius, ClipMode.DIFFERENCE);
-            getCanvas().drawRRect(RRect.makeXYWH(x, y, width, height, radius), paint);
+            getCanvas().drawRRect(RRect.makeXYWH(x, y, width, height, radius), shadowPaint);
+        } finally {
             restore();
         }
     }
@@ -133,16 +137,14 @@ public class Skia {
     /** Blurs the already rendered scene inside a rounded HUD panel. */
     public static void drawBackdropBlur(float x, float y, float width, float height, float radius) {
         if (width <= 0 || height <= 0) return;
-
-        try (ImageFilter blur = ImageFilter.makeBlur(8, 8, FilterTileMode.CLAMP)) {
-            save();
-            try {
-                clip(x, y, width, height, radius);
-                getCanvas().saveLayer(new SaveLayerRec(Rect.makeXYWH(x, y, width, height), null, blur));
-                getCanvas().restore();
-            } finally {
-                restore();
-            }
+        if (backdropBlur == null) backdropBlur = ImageFilter.makeBlur(5, 5, FilterTileMode.CLAMP);
+        save();
+        try {
+            clip(x, y, width, height, radius);
+            getCanvas().saveLayer(new SaveLayerRec(Rect.makeXYWH(x, y, width, height), null, backdropBlur));
+            getCanvas().restore();
+        } finally {
+            restore();
         }
     }
 
@@ -161,15 +163,15 @@ public class Skia {
 
         float halfStroke = strokeWidth / 2;
 
-        try (Path path = Path.makeRRect(RRect.makeXYWH(x + halfStroke, y + halfStroke, width - strokeWidth, height - strokeWidth,
-            radius - halfStroke));
-             Paint paint = new Paint()) {
-
-            paint.setARGB(color.getAlpha(), color.getRed(), color.getGreen(), color.getBlue());
+        Paint paint = setupPaint(color);
+        try {
             paint.setStrokeWidth(strokeWidth);
             paint.setMode(PaintMode.STROKE);
-
-            getCanvas().drawPath(path, paint);
+            getCanvas().drawRRect(RRect.makeXYWH(x + halfStroke, y + halfStroke,
+                width - strokeWidth, height - strokeWidth, radius - halfStroke), paint);
+        } finally {
+            paint.setMode(PaintMode.FILL);
+            paint.setStrokeWidth(1);
         }
     }
 
@@ -816,10 +818,31 @@ public class Skia {
      * @param alpha The alpha value (0-255)
      */
     public static void setAlpha(int alpha) {
+        if (alpha >= 255) {
+            getCanvas().save();
+            return;
+        }
         try (Paint paint = new Paint()) {
             paint.setAlpha(alpha);
             getCanvas().saveLayer(null, paint);
         }
+    }
+
+    public static void releaseResources() {
+        imageHelper.clear();
+        if (shadowPaint != null) {
+            shadowPaint.close();
+            shadowPaint = null;
+        }
+        if (shadowBlur != null) {
+            shadowBlur.close();
+            shadowBlur = null;
+        }
+        if (backdropBlur != null) {
+            backdropBlur.close();
+            backdropBlur = null;
+        }
+        SHARED_PAINT.close();
     }
 
     /**

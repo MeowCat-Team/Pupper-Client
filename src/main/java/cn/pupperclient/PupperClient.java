@@ -64,7 +64,7 @@ public class PupperClient implements IMinecraft {
         if (keybindManager != null) {
             keybindManager.cleanup();
         }
-        cn.pupperclient.skia.Skia.getImageHelper().clear();
+        cn.pupperclient.skia.Skia.releaseResources();
         cn.pupperclient.skia.font.FontHelper.clearCache();
         Multithreading.shutdown();
     }

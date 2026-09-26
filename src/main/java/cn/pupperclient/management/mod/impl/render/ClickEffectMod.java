@@ -142,17 +142,12 @@ public class ClickEffectMod extends Mod {
         );
 
         Point center = new Point(ripple.getX(), flippedY);
-        Shader shader = Shader.makeRadialGradient(
-            center,
-            radius,
-            new int[] { innerSkColor, outerSkColor },
-            new float[] { 0.0f, 1.0f }
-        );
-
-        Paint paint = new Paint();
-        paint.setShader(shader);
-        paint.setAntiAlias(true);
-
-        canvas.drawCircle(ripple.getX(), flippedY, radius, paint);
+        try (Shader shader = Shader.makeRadialGradient(
+                 center, radius, new int[] { innerSkColor, outerSkColor }, new float[] { 0.0f, 1.0f });
+             Paint paint = new Paint()) {
+            paint.setShader(shader);
+            paint.setAntiAlias(true);
+            canvas.drawCircle(ripple.getX(), flippedY, radius, paint);
+        }
     }
 }

@@ -19,7 +19,8 @@
 package cn.pupperclient.skia.gl;
 
 import org.lwjgl.opengl.GL30.*;
-import java.util.Stack;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 import static org.lwjgl.opengl.GL11.glGetIntegerv;
 import static org.lwjgl.opengl.GL30C.GL_MAJOR_VERSION;
@@ -38,7 +39,8 @@ public final class States {
     /**
      * The stack of OpenGL states.
      */
-    private static final Stack<State> STATES = new Stack<>();
+    private static final Deque<State> STATES = new ArrayDeque<>();
+    private static final Deque<State> AVAILABLE = new ArrayDeque<>();
 
     private States() {
         // private constructor to prevent instantiation
@@ -48,7 +50,8 @@ public final class States {
      * Pushes the current OpenGL state onto the stack.
      */
     public static void push() {
-        STATES.push(new State(GL_VERSION).push());
+        State state = AVAILABLE.pollFirst();
+        STATES.push((state == null ? new State(GL_VERSION) : state).push());
     }
 
     /**
@@ -58,7 +61,12 @@ public final class States {
         if (STATES.isEmpty()) {
             throw new IllegalStateException("No state to restore.");
         }
-        STATES.pop().pop();
+        State state = STATES.pop();
+        try {
+            state.pop();
+        } finally {
+            AVAILABLE.push(state);
+        }
     }
 
     static {

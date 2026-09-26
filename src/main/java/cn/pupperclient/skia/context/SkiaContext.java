@@ -91,16 +91,15 @@ public class SkiaContext {
         }
 
         States.push();
-        GL11.glDisable(GL11.GL_CULL_FACE);
-        GL11.glClearColor(0f, 0f, 0f, 0f);
-        context.resetGLAll();
-
-        Canvas canvas = getCanvas();
-        drawingLogic.accept(canvas);
-
-        context.flushAndSubmit(surface);
-
-        States.pop();
+        try {
+            GL11.glDisable(GL11.GL_CULL_FACE);
+            context.resetGLAll();
+            Canvas canvas = getCanvas();
+            drawingLogic.accept(canvas);
+            context.flushAndSubmit(surface);
+        } finally {
+            States.pop();
+        }
     }
 
     /**

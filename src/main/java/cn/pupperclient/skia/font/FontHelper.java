@@ -14,6 +14,11 @@ import io.github.humbleui.skija.Typeface;
 public class FontHelper {
 
     private static final Map<String, Typeface> typefaceCache = new HashMap<>();
+    private static final int MAX_INTEGER_SIZE = 128;
+    private static final Map<String, Font[]> integerFontCache = new HashMap<>();
+    private static final Map<FontKey, Font> fontCache = new HashMap<>();
+
+    private record FontKey(String name, int sizeBits) {}
 
     private static Typeface getTypeface(String font, FontType type) {
         return typefaceCache.computeIfAbsent(font, k -> loadTypeface(k, type));
@@ -26,8 +31,14 @@ public class FontHelper {
     }
 
     public static Font load(String font, float size, FontType fontType) {
-        Typeface typeface = getTypeface(font, fontType);
-        return new Font(typeface, size);
+        if (size >= 0 && size <= MAX_INTEGER_SIZE && size == (int) size) {
+            Font[] sizes = integerFontCache.computeIfAbsent(font, key -> new Font[MAX_INTEGER_SIZE + 1]);
+            int index = (int) size;
+            if (sizes[index] == null) sizes[index] = new Font(getTypeface(font, fontType), size);
+            return sizes[index];
+        }
+        return fontCache.computeIfAbsent(new FontKey(font, Float.floatToIntBits(size)),
+            key -> new Font(getTypeface(key.name(), fontType), size));
     }
 
     public static Font load(String font, float size) {
@@ -40,6 +51,11 @@ public class FontHelper {
     }
 
     public static void clearCache() {
+        for (Font[] sizes : integerFontCache.values())
+            for (Font cached : sizes) if (cached != null) cached.close();
+        integerFontCache.clear();
+        fontCache.values().forEach(Font::close);
+        fontCache.clear();
         typefaceCache.values().forEach(Typeface::close);
         typefaceCache.clear();
     }
