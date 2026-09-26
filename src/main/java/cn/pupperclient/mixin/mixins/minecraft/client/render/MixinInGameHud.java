@@ -14,9 +14,9 @@ import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.RenderGameOverlayEvent;
 import cn.pupperclient.management.mod.impl.player.OldAnimationsMod;
 import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.Hud;
 
-@Mixin(Gui.class)
+@Mixin(Hud.class)
 public class MixinInGameHud {
 //    /**
 //	 * @author EldoDebug
