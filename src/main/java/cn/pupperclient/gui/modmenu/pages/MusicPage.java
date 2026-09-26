@@ -25,13 +25,10 @@ import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.misc.SearchUtils;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
-import io.github.humbleui.skija.ClipMode;
 import io.github.humbleui.skija.FilterTileMode;
 import io.github.humbleui.skija.Image;
 import io.github.humbleui.skija.ImageFilter;
 import io.github.humbleui.skija.Paint;
-import io.github.humbleui.skija.Path;
-import io.github.humbleui.types.RRect;
 import io.github.humbleui.types.Rect;
 
 public class MusicPage extends Page {
@@ -117,6 +114,17 @@ public class MusicPage extends Page {
 
             itemX = xAnimation.getValue();
             itemY = yAnimation.getValue();
+
+            float visibleY = itemY + scrollHelper.getValue();
+            if (visibleY + 206 < y + 90 || visibleY > y + height - 64) {
+                offsetX += 174 + 32;
+                index++;
+                if (index % 4 == 0) {
+                    offsetX = 28;
+                    offsetY += 206 + 23;
+                }
+                continue;
+            }
 
             if (m.getAlbum() != null) {
                 drawRoundedImage(m.getAlbum(), itemX, itemY, 174, 174, 26,
@@ -301,28 +309,26 @@ public class MusicPage extends Page {
 
     private void drawRoundedImage(File file, float x, float y, float width, float height, float cornerRadius,
                                   float blurRadius) {
-
-        Path path = new Path();
-        Path.makeRRect(RRect.makeXYWH(x, y, width, height, cornerRadius));
-
-        Paint blurPaint = new Paint();
-        blurPaint.setImageFilter(ImageFilter.makeBlur(blurRadius, blurRadius, FilterTileMode.CLAMP));
-
+        if (!Skia.getImageHelper().load(file)) return;
+        Image image = Skia.getImageHelper().get(file.getName());
+        if (image == null) return;
         Skia.save();
-
-        Skia.getCanvas().clipPath(path, ClipMode.INTERSECT, true);
-
-        Skia.drawImage(file, x, y, width, height);
-
-        if (Skia.getImageHelper().load(file)) {
-            Image image = Skia.getImageHelper().get(file.getName());
-            if (image != null) {
+        try {
+            Skia.clip(x, y, width, height, cornerRadius);
+            if (blurRadius < 0.5f) {
+                Skia.getCanvas().drawImageRect(image, Rect.makeWH(image.getWidth(), image.getHeight()),
+                    Rect.makeXYWH(x, y, width, height), null, true);
+            } else {
+                try (ImageFilter blur = ImageFilter.makeBlur(blurRadius, blurRadius, FilterTileMode.CLAMP);
+                     Paint blurPaint = new Paint()) {
+                    blurPaint.setImageFilter(blur);
                 Skia.getCanvas().drawImageRect(image, Rect.makeWH(image.getWidth(), image.getHeight()),
                     Rect.makeXYWH(x, y, width, height), blurPaint, true);
+                }
             }
+        } finally {
+            Skia.restore();
         }
-
-        Skia.restore();
     }
 
     private class Item {
