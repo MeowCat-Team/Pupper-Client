@@ -8,7 +8,7 @@
 - **Integration**: ViaFabricPlus for version switching, WebSocket for real-time features
 
 ## Key Workflows
-- **Build**: `./gradlew build` (Loom plugin, Java 25, Minecraft 26.1.2)
+- **Build**: `./gradlew build` (Loom plugin, Java 25, Minecraft 26.2)
 - **Run Client**: `./gradlew runClient` (outputs to `run/` directory)
 - **First Launch**: Creates `pupper.ok` config file and shows terms screen
 - **Mod Initialization**: `ModManager.init()` registers all mods and settings

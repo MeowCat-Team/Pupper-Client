@@ -11,14 +11,14 @@ A Better, Faster Minecraft Client
 
 ## Installation
 
-1. Ensure you have Fabric Loader version 0.18.6 or higher installed.
+1. Ensure you have Minecraft 26.2 and Fabric Loader version 0.19.5 or higher installed.
 2. Download the latest version of Pupper Client from the [Modrinth](https://modrinth.com/mod/pupper-client) page.
 3. Place the downloaded JAR file into your Minecraft `mods` folder.
 4. Launch Minecraft with the Fabric Loader profile to enjoy the client.
 
 ## Requirements
-- **Minecraft**
-- **Fabric Loader**: Version 0.18.6 or higher
+- **Minecraft**: Version 26.2
+- **Fabric Loader**: Version 0.19.5 or higher
 - **Required Mods**:
     - ViaFabricPlus
     - ModMenu
