@@ -2,6 +2,7 @@ package cn.pupperclient.gui.edithud.api;
 
 import java.awt.Color;
 import net.minecraft.client.Minecraft;
+import cn.pupperclient.PupperClient;
 import cn.pupperclient.skia.Skia;
 
 public class SnappingLine {
@@ -34,14 +35,19 @@ public class SnappingLine {
 	public void drawLine(float lineWidth, boolean isX) {
 
 		Minecraft client = Minecraft.getInstance();
-		Color color = Color.WHITE;
+		Color accent = PupperClient.getInstance().getModManager().getCurrentDesign().colors().accent();
+		Color guide = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 210);
 
 		float pos = (float) (line - lineWidth / 2f);
 
 		if (isX) {
-			Skia.drawLine(pos, 0, pos, client.getWindow().getGuiScaledHeight(), lineWidth, color);
+			Skia.drawLine(pos, 0, pos, client.getWindow().getGuiScaledHeight(), 3, new Color(0, 0, 0, 95));
+			Skia.drawLine(pos, 0, pos, client.getWindow().getGuiScaledHeight(), 1.5f, new Color(255, 255, 255, 150));
+			Skia.drawLine(pos, 0, pos, client.getWindow().getGuiScaledHeight(), Math.max(lineWidth, 0.75f), guide);
 		} else {
-			Skia.drawLine(0, pos, client.getWindow().getGuiScaledWidth(), pos, lineWidth, color);
+			Skia.drawLine(0, pos, client.getWindow().getGuiScaledWidth(), pos, 3, new Color(0, 0, 0, 95));
+			Skia.drawLine(0, pos, client.getWindow().getGuiScaledWidth(), pos, 1.5f, new Color(255, 255, 255, 150));
+			Skia.drawLine(0, pos, client.getWindow().getGuiScaledWidth(), pos, Math.max(lineWidth, 0.75f), guide);
 		}
 	}
 

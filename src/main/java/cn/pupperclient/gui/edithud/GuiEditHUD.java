@@ -1,5 +1,6 @@
 package cn.pupperclient.gui.edithud;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,20 +15,34 @@ import cn.pupperclient.gui.edithud.api.HUDCore;
 import cn.pupperclient.gui.edithud.api.SnappingLine;
 import cn.pupperclient.management.mod.api.Position;
 import cn.pupperclient.management.mod.api.hud.HUDMod;
+import cn.pupperclient.management.mod.api.hud.design.HUDColors;
+import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
+import cn.pupperclient.skia.Skia;
+import cn.pupperclient.skia.font.Icon;
+import cn.pupperclient.utils.language.I18n;
+import cn.pupperclient.utils.language.Language;
 
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
+import io.github.humbleui.skija.Font;
 
 public class GuiEditHUD extends SimpleSoarGui {
 
 	private static final float SCALE_CHANGE_AMOUNT = 0.1F;
 	private static final float DEFAULT_LINE_WIDTH = 0.5F;
+	private static final float EDGE_GAP = 8;
+	private static final float HEADER_WIDTH = 224;
+	private static final float HEADER_HEIGHT = 42;
+	private static final float CLOSE_SIZE = 32;
+	private static final float FOOTER_WIDTH = 320;
+	private static final float FOOTER_HEIGHT = 26;
 
 	private final Screen prevScreen;
 	private final List<HUDMod> mods;
 	private final int snappingDistance;
 
 	private Optional<ObjectObjectImmutablePair<HUDMod, GrabOffset>> selectedMod;
+	private HUDMod focusedMod;
 	private boolean snapping;
 
 	public GuiEditHUD(Screen prevScreen) {
@@ -40,7 +55,7 @@ public class GuiEditHUD extends SimpleSoarGui {
 	}
 
 	private List<HUDMod> initializeMods() {
-		List<HUDMod> modsList = PupperClient.getInstance().getModManager().getHUDMods();
+		List<HUDMod> modsList = new ArrayList<>(PupperClient.getInstance().getModManager().getHUDMods());
 		Collections.reverse(modsList);
 		return modsList;
 	}
@@ -48,11 +63,142 @@ public class GuiEditHUD extends SimpleSoarGui {
 	@Override
 	public void draw(double mouseX, double mouseY) {
 		selectedMod.ifPresent(mod -> updateModPosition(mod, mouseX, mouseY));
+		HUDColors colors = PupperClient.getInstance().getModManager().getCurrentDesign().colors();
+		HUDMod hoveredMod = isOverCloseButton(mouseX, mouseY) ? null : getHoveredMod(mouseX, mouseY).orElse(null);
+		drawEditorChrome(mouseX, mouseY, colors);
+
+		if (hoveredMod != null && hoveredMod != focusedMod) {
+			drawFocusOutline(hoveredMod, false, colors);
+		}
+		if (focusedMod != null && isModInteractable(focusedMod)) {
+			drawFocusOutline(focusedMod, true, colors);
+			drawModLabel(focusedMod, colors);
+		}
+
+	}
+
+	private void drawEditorChrome(double mouseX, double mouseY, HUDColors colors) {
+		float screenWidth = client.getWindow().getGuiScaledWidth();
+		float screenHeight = client.getWindow().getGuiScaledHeight();
+		float headerWidth = Math.min(HEADER_WIDTH, Math.max(0, screenWidth - CLOSE_SIZE - EDGE_GAP * 3));
+		if (headerWidth >= 120) {
+			drawGlass(EDGE_GAP, EDGE_GAP, headerWidth, HEADER_HEIGHT, HUDTokens.RADIUS, colors);
+			Skia.drawRoundedRect(EDGE_GAP + 7, EDGE_GAP + 8, 26, 26, 9, colors.accentContainer());
+			Skia.drawFullCenteredText(Icon.SPACE_DASHBOARD, EDGE_GAP + 20, EDGE_GAP + 21,
+					colors.onAccentContainer(), HUDTokens.icon());
+			Skia.drawText(localized("HUD layout", "HUD 布局"), EDGE_GAP + 40, EDGE_GAP + 8,
+					colors.text(), HUDTokens.title());
+			String subtitle = localized("Drag to place · Esc to exit", "拖动组件调整位置 · Esc 退出");
+			if (HUDTokens.label().measureText(subtitle).getWidth() > headerWidth - 47) {
+				subtitle = localized("Esc to exit", "Esc 退出");
+			}
+			Skia.drawText(subtitle,
+					EDGE_GAP + 40, EDGE_GAP + 24, colors.secondaryText(), HUDTokens.label());
+		}
+
+		float closeX = screenWidth - EDGE_GAP - CLOSE_SIZE;
+		boolean closeHovered = isInside(mouseX, mouseY, closeX, EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE);
+		Skia.drawRoundedRect(closeX, EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE, HUDTokens.COMPACT_RADIUS,
+				closeHovered ? colors.raised() : colors.surface());
+		Skia.drawOutline(closeX, EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE, HUDTokens.COMPACT_RADIUS, 0.8f,
+				withAlpha(colors.outline(), 120));
+		Skia.drawFullCenteredText(Icon.CLOSE, closeX + CLOSE_SIZE / 2, EDGE_GAP + CLOSE_SIZE / 2,
+				colors.text(), HUDTokens.icon());
+
+		if (screenHeight > HEADER_HEIGHT + FOOTER_HEIGHT + EDGE_GAP * 3) {
+			float footerWidth = Math.min(FOOTER_WIDTH, screenWidth - EDGE_GAP * 2);
+			float footerX = (screenWidth - footerWidth) / 2;
+			float footerY = screenHeight - FOOTER_HEIGHT - EDGE_GAP;
+			drawGlass(footerX, footerY, footerWidth, FOOTER_HEIGHT, FOOTER_HEIGHT / 2, colors);
+			String instruction = localized("Left: snap   ·   Right: free   ·   Wheel: scale   ·   Middle: reset",
+					"左键吸附  ·  右键自由  ·  滚轮缩放  ·  中键重置");
+			if (HUDTokens.label().measureText(instruction).getWidth() > footerWidth - 16) {
+				instruction = localized("Drag to move   ·   Wheel to scale", "拖动移动  ·  滚轮缩放");
+			}
+			if (HUDTokens.label().measureText(instruction).getWidth() > footerWidth - 16) {
+				instruction = localized("Drag · Wheel", "拖动 · 滚轮");
+			}
+			Skia.drawFullCenteredText(instruction, screenWidth / 2, footerY + FOOTER_HEIGHT / 2,
+					colors.text(), HUDTokens.label());
+		}
+	}
+
+	private void drawGlass(float x, float y, float width, float height, float radius, HUDColors colors) {
+		Skia.drawRoundedRect(x, y + 2, width, height, radius, new Color(0, 0, 0, 42));
+		Skia.drawRoundedRect(x, y, width, height, radius, colors.surface());
+		Skia.drawOutline(x, y, width, height, radius, 0.8f, withAlpha(colors.outline(), 130));
+		Skia.drawLine(x + radius, y + 1, x + width - radius, y + 1, 0.7f,
+				new Color(255, 255, 255, 64));
+	}
+
+	private void drawFocusOutline(HUDMod mod, boolean focused, HUDColors colors) {
+		Position pos = mod.getPosition();
+		if (pos.getWidth() < 3 || pos.getHeight() < 3) return;
+		float x = pos.getX() - 3;
+		float y = pos.getY() - 3;
+		float width = pos.getWidth() + 6;
+		float height = pos.getHeight() + 6;
+		float radius = Math.min(HUDTokens.RADIUS + 3, Math.min(width, height) / 2);
+		Color accent = focused ? colors.accent() : colors.outline();
+		Skia.drawRoundedRect(x, y, width, height, radius, withAlpha(accent, focused ? 24 : 12));
+		Skia.drawOutline(x, y, width, height, radius, focused ? 2.8f : 2.2f,
+				new Color(0, 0, 0, focused ? 140 : 90));
+		Skia.drawOutline(x, y, width, height, radius, focused ? 1.5f : 1,
+				withAlpha(accent, focused ? 255 : 210));
+		if (focused) {
+			float gripX = pos.getCenterX() - 10;
+			Skia.drawRoundedRect(gripX, y - 3, 20, 8, 4, colors.accentContainer());
+			for (int i = -1; i <= 1; i++) {
+				Skia.drawCircle(pos.getCenterX() + i * 4, y + 1, 1.1f, colors.onAccentContainer());
+			}
+		}
+	}
+
+	private void drawModLabel(HUDMod mod, HUDColors colors) {
+		Position pos = mod.getPosition();
+		if (pos.getWidth() < 3 || pos.getHeight() < 3) return;
+		float screenWidth = client.getWindow().getGuiScaledWidth();
+		float screenHeight = client.getWindow().getGuiScaledHeight();
+		Font font = HUDTokens.label();
+		String suffix = "  ·  " + Math.round(pos.getScale() * 100) + "%";
+		String fullName = mod.getName();
+		String name = fullName;
+		float maxTextWidth = Math.max(40, screenWidth - EDGE_GAP * 2 - 16);
+		while (name.length() > 2 && font.measureText(name + "…" + suffix).getWidth() > maxTextWidth) {
+			name = name.substring(0, name.length() - 1);
+		}
+		String label = name.equals(fullName) ? name + suffix : name + "…" + suffix;
+		float width = Math.min(screenWidth - EDGE_GAP * 2, font.measureText(label).getWidth() + 16);
+		float x = Math.max(EDGE_GAP, Math.min(pos.getX(), screenWidth - EDGE_GAP - width));
+		float preferredY = pos.getY() >= 29 ? pos.getY() - 25 : pos.getBottomY() + 7;
+		float y = Math.max(EDGE_GAP, Math.min(screenHeight - 22, preferredY));
+		Skia.drawRoundedRect(x, y, width, 19, 9.5f, colors.raised());
+		Skia.drawOutline(x, y, width, 19, 9.5f, 0.8f, withAlpha(colors.outline(), 120));
+		Skia.drawCircle(x + 9, y + 9.5f, 2.5f, colors.accent());
+		Skia.drawText(label, x + 15, y + 5, colors.text(), font);
+	}
+
+	private static Color withAlpha(Color color, int alpha) {
+		return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
+	}
+
+	private static String localized(String english, String chinese) {
+		return I18n.getCurrentLanguage() == Language.CHINESE ? chinese : english;
+	}
+
+	private static boolean isInside(double mouseX, double mouseY, float x, float y, float width, float height) {
+		return mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
+	}
+
+	private boolean isOverCloseButton(double mouseX, double mouseY) {
+		float screenWidth = client.getWindow().getGuiScaledWidth();
+		return isInside(mouseX, mouseY, screenWidth - EDGE_GAP - CLOSE_SIZE,
+				EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE);
 	}
 
 	@Override
 	public boolean onMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-		if (selectedMod.isEmpty()) {
+		if (selectedMod.isEmpty() && !isOverCloseButton(mouseX, mouseY) && verticalAmount != 0) {
 			handleMouseWheel(mouseX, mouseY, verticalAmount);
 		}
         return true;
@@ -67,6 +213,7 @@ public class GuiEditHUD extends SimpleSoarGui {
 		double dWheel = amount;
 
 		getHoveredMod(mouseX, mouseY).ifPresent(mod -> {
+			focusedMod = mod;
 			Position position = mod.getPosition();
 			float newScale = calculateNewScale(position.getScale(), dWheel);
 			position.setScale(newScale);
@@ -81,7 +228,15 @@ public class GuiEditHUD extends SimpleSoarGui {
 
 	@Override
 	public boolean onMousePressed(double mouseX, double mouseY, int button, boolean doubled) {
-		getHoveredMod(mouseX, mouseY).ifPresent(mod -> {
+		float closeX = client.getWindow().getGuiScaledWidth() - EDGE_GAP - CLOSE_SIZE;
+		if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && isInside(mouseX, mouseY, closeX, EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE)) {
+			closeEditor();
+			return true;
+		}
+		if (isOverCloseButton(mouseX, mouseY)) return true;
+		Optional<HUDMod> hovered = getHoveredMod(mouseX, mouseY);
+		focusedMod = hovered.orElse(null);
+		hovered.ifPresent(mod -> {
 			if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
 				mod.getPosition().setScale(1.0F);
 				return;
@@ -105,11 +260,15 @@ public class GuiEditHUD extends SimpleSoarGui {
 	@Override
 	public boolean onKeyPressed(int keyCode, int scanCode, int modifiers) {
 		if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-			HUDCore.isEditing = false;
-			client.setScreen(prevScreen);
+			closeEditor();
             return true;
 		}
         return super.onKeyPressed(keyCode, scanCode, modifiers);
+	}
+
+	private void closeEditor() {
+		HUDCore.isEditing = false;
+		client.setScreen(prevScreen);
 	}
 
 	private Optional<HUDMod> getHoveredMod(double mouseX, double mouseY) {
