@@ -574,3 +574,6 @@ hud.music.artist=Artist
 hud.music.idle=Nothing is playing
 hud.player=Player
 hud.level=Level
+
+setting.hud.backgroundopacity=HUD background opacity
+setting.hud.backgroundopacity.description=Adjust background opacity (70–100%) while keeping text legible

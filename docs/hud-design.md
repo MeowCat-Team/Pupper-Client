@@ -5,7 +5,7 @@ The HUD uses Material 3 Expressive principles adapted to Minecraft GUI units. It
 ## Rendering contract
 
 - `HUDTokens`: shared spacing, shapes, text sizes and cached native fonts. Use these instead of allocating a font for each label each frame. Fonts have the same lifetime as the renderer.
-- `HUDColors`: opaque semantic roles, paired foregrounds and a contrast fallback. Text and secondary text are checked against both the base and raised surfaces. Never use the raw HCT seed as a component background.
+- `HUDColors`: translucent surface roles, opaque paired foregrounds and contrast correction. Text and secondary text are checked against both the base and raised surfaces composited over black/white backdrops. Never use the raw HCT seed as a component background.
 - `HUDDesign`: the single surface renderer and palette cache. A theme change invalidates the cache through the new `ColorPalette` snapshot.
 - `HUDMotion`: elapsed-time effects and a critically damped spatial spring. Changing a target preserves velocity. `reducedMotion()` snaps to the final state and disables music artwork movement.
 - `SimpleHUDMod`: compact metric, accent-container icon badge, optional subordinate unit, and bounded text.
@@ -14,7 +14,11 @@ The HUD uses Material 3 Expressive principles adapted to Minecraft GUI units. It
 
 Use `colors().surface()` with `text()` / `secondaryText()`, or `accentContainer()` with `onAccentContainer()`. `accent()` indicates active state/progress. `danger()` indicates low health or an expiring effect; retain a number, icon or label so color is not the only cue. Progress tracks use `track()`.
 
-The UI intentionally uses opaque surfaces. World textures and brightness cannot change the foreground/background pairing. Backdrop blur and large shadows are no longer required for legibility. Text is not faded through an unreadable contrast range during list transitions; the row is revealed by clipping and movement instead.
+Background opacity defaults to 80% and can be adjusted from 70% to 100% in HUD settings. Only the base and raised surfaces become translucent; text, badges and progress remain opaque. Foreground roles are corrected against the darkest and brightest possible sRGB composites, preserving their hue where possible. The minimum opacity bounds the contrast range. Backdrop blur is not required. Text is not faded through an unreadable contrast range during list transitions; the row is revealed by clipping and movement instead.
+
+## Overlay priority
+
+Skia HUD rendering currently happens at the end of the frame. While the vanilla player list is visible, HUD event dispatch is suppressed so Skia cannot cover the Tab list. The decision reads `PlayerTabOverlay.visible` through a registered accessor, not the physical Tab key. HUD rendering also respects F1; the HUD editor explicitly keeps its preview visible. Custom Skia screens still render independently. This is visibility arbitration, not a change to Minecraft's GPU render order.
 
 ## Components and compatibility
 
@@ -37,7 +41,7 @@ Run with Java 25:
 .\gradlew.bat previewHudTheme --offline --console=plain
 ```
 
-`check` includes `verifyHudDesign`, a standalone verification source set that needs no JUnit dependency. It covers 648 seed/theme/surface combinations, text contrast >= 4.5:1, icon and progress contrast >= 3:1, opaque surfaces, 30/60/144/240 FPS motion equivalence, interruption and reduced motion.
+`check` includes `verifyHudDesign`, a standalone verification source set that needs no JUnit dependency. It covers 4,536 seed/theme/surface/opacity combinations, with black, white, grass and sky backdrops (including nested surfaces), composited text contrast >= 4.5:1, icon and progress contrast >= 3:1, surface alpha and opaque text, 30/60/144/240 FPS motion equivalence, interruption and reduced motion.
 
 `previewHudTheme` uses the bundled native Skia renderer and real Chinese/icon fonts. It also checks narrow-width, exact-fit and surrogate-pair truncation, and writes `build/reports/hud/theme-preview.png`. This is a theme/layout specimen, **not** a live Minecraft screenshot or an integration test of every component.
 

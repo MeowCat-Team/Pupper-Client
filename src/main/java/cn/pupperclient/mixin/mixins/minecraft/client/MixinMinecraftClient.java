@@ -5,6 +5,8 @@ import java.io.IOException;
 
 import cn.pupperclient.event.client.ResolutionChangedEvent;
 import cn.pupperclient.gui.api.SimpleSoarGui;
+import cn.pupperclient.gui.edithud.GuiEditHUD;
+import cn.pupperclient.mixin.mixins.accessors.PlayerTabOverlayAccessor;
 import cn.pupperclient.skia.Skia;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
@@ -188,11 +190,18 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
             Minecraft minecraft = Minecraft.getInstance();
             Window currentWindow = minecraft.getWindow();
 
-            if (level != null) {
+            // Skia composites after vanilla GUI. Yield to the actual player-list overlay,
+            // rather than guessing from a key press (e.g. Tab in singleplayer).
+            boolean tabVisible = ((PlayerTabOverlayAccessor) minecraft.gui.getTabList()).pupper$isVisible();
+            boolean drawHud = screen instanceof GuiEditHUD || (!minecraft.options.hideGui && !tabVisible);
+            if (level != null && drawHud) {
                 Skia.save();
-                Skia.scale((float) currentWindow.getGuiScale());
-                EventBus.getInstance().post(new RenderSkiaEvent(canvas));
-                Skia.restore();
+                try {
+                    Skia.scale((float) currentWindow.getGuiScale());
+                    EventBus.getInstance().post(new RenderSkiaEvent(canvas));
+                } finally {
+                    Skia.restore();
+                }
             }
 
             if (screen instanceof SimpleSoarGui skiaScreen) {

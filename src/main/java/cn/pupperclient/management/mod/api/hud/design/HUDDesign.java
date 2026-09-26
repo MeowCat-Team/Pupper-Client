@@ -3,6 +3,7 @@ package cn.pupperclient.management.mod.api.hud.design;
 import java.awt.Color;
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.color.api.ColorPalette;
+import cn.pupperclient.management.mod.impl.settings.HUDModSettings;
 import cn.pupperclient.skia.Skia;
 import io.github.humbleui.skija.Font;
 
@@ -11,6 +12,7 @@ public abstract class HUDDesign {
     private final String name;
     private ColorPalette cachedPalette;
     private HUDColors cachedColors;
+    private float cachedOpacity = -1;
     protected HUDDesign(String name) { this.name = name; }
     protected Color surface(ColorPalette palette) { return palette.getSurfaceContainer(); }
     protected float radius(float requested) { return requested; }
@@ -18,9 +20,11 @@ public abstract class HUDDesign {
 
     public final HUDColors colors() {
         ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
-        if (cachedPalette != palette) {
-            cachedColors = HUDColors.from(palette, surface(palette));
+        float opacity = HUDModSettings.getInstance().getBackgroundOpacity();
+        if (cachedPalette != palette || cachedOpacity != opacity) {
+            cachedColors = HUDColors.from(palette, surface(palette), opacity);
             cachedPalette = palette;
+            cachedOpacity = opacity;
         }
         return cachedColors;
     }

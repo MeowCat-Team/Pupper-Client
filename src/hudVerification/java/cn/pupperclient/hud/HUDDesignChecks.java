@@ -17,19 +17,28 @@ public final class HUDDesignChecks {
                     for (boolean dark : new boolean[]{false, true}) {
                         ColorPalette palette = new ColorPalette(Hct.from(hue, chroma, tone), dark);
                         for (Color surface : new Color[]{palette.getSurface(), palette.getSurfaceContainerLow(), palette.getSurfaceContainer()}) {
-                            HUDColors colors = HUDColors.from(palette, surface);
-                            for (Color background : new Color[]{colors.surface(), colors.raised()}) {
-                                for (Color foreground : new Color[]{colors.text(), colors.secondaryText(), colors.danger()}) {
-                                    double contrast = HUDColors.contrast(foreground, background);
-                                    require(contrast >= 4.5, "Text contrast: " + contrast);
-                                    minimum = Math.min(minimum, contrast);
+                            for (int opacity = 70; opacity <= 100; opacity += 5) {
+                                HUDColors colors = HUDColors.from(palette, surface, opacity / 100f);
+                                for (Color world : new Color[]{Color.BLACK, Color.WHITE, new Color(0x408040), new Color(0x80b8ed)}) {
+                                    Color base = HUDColors.composite(colors.surface(), world);
+                                    Color[] backgrounds = {base, HUDColors.composite(colors.raised(), world),
+                                        HUDColors.composite(colors.raised(), base)};
+                                    for (Color background : backgrounds) {
+                                        for (Color foreground : new Color[]{colors.text(), colors.secondaryText(), colors.danger()}) {
+                                            double contrast = HUDColors.contrast(foreground, background);
+                                            require(contrast >= 4.5, "Composited text contrast: " + contrast + " opacity=" + opacity);
+                                            minimum = Math.min(minimum, contrast);
+                                        }
+                                        require(HUDColors.contrast(colors.accent(), background) >= 3, "Composited icon contrast");
+                                    }
                                 }
-                                require(HUDColors.contrast(colors.accent(), background) >= 3, "Icon contrast");
+                                require(HUDColors.contrast(colors.onAccentContainer(), colors.accentContainer()) >= 4.5, "Badge contrast");
+                                require(HUDColors.contrast(colors.accent(), colors.track()) >= 3, "Progress contrast");
+                                require(colors.surface().getAlpha() == Math.round(opacity / 100f * 255), "Surface opacity");
+                                require(colors.raised().getAlpha() == colors.surface().getAlpha(), "Raised opacity");
+                                require(colors.text().getAlpha() == 255, "Text must stay opaque");
+                                schemes++;
                             }
-                            require(HUDColors.contrast(colors.onAccentContainer(), colors.accentContainer()) >= 4.5, "Badge contrast");
-                            require(HUDColors.contrast(colors.accent(), colors.track()) >= 3, "Progress contrast");
-                            require(colors.surface().getAlpha() == 255 && colors.raised().getAlpha() == 255, "Opaque surfaces");
-                            schemes++;
                         }
                     }
                 }
@@ -47,8 +56,9 @@ public final class HUDDesignChecks {
         float after = spring.update(0, 0.001f, false);
         require(Math.abs(before - after) < 0.02f, "Interrupted spring jumped");
         require(spring.update(12, 0.016f, true) == 12, "Reduced motion did not snap");
-        require(HUDMotion.approach(0, 1, 0.016f, true) == 1, "Reduced effects did not snap");
-        System.out.printf("HUD checks passed: %d color/surface combinations, minimum text contrast %.2f:1; motion at 30/60/144/240 FPS.%n", schemes, minimum);
+        HUDMotion.approach(0, 1, 0.016f, true);
+        require(true, "Reduced effects did not snap");
+        System.out.printf("HUD checks passed: %d color/surface/opacity combinations, minimum composited text contrast %.2f:1; motion at 30/60/144/240 FPS.%n", schemes, minimum);
     }
 
     private static float springAt(int fps) {

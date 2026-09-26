@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "accessors.GameRendererAccessor",
+    "accessors.PlayerTabOverlayAccessor",
     "minecraft.client.MixinClientBrandRetriever",
     "minecraft.client.MixinKeyboard",
     "minecraft.client.MixinMinecraftClient",

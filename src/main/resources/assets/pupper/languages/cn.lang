@@ -573,3 +573,6 @@ hud.music.artist=音乐人
 hud.music.idle=暂无播放内容
 hud.player=玩家
 hud.level=等级
+
+setting.hud.backgroundopacity=HUD 背景不透明度
+setting.hud.backgroundopacity.description=调整背景不透明度（70–100%），文字保持清晰

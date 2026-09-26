@@ -56,7 +56,7 @@ public final class HUDThemePreview {
         ColorPalette palette = new ColorPalette(Hct.from(220, 26, 6), dark);
         HUDColors c = HUDColors.from(palette, palette.getSurfaceContainer());
         rect(canvas, x, 16, 292, 388, 14, dark ? new Color(0x25303a) : new Color(0xeef1ef));
-        text(canvas, dark ? "深色主题 / Dark" : "浅色主题 / Light", x + 14, 30, c.text(), HUDTokens.title());
+        text(canvas, dark ? "深色主题 / 80%" : "浅色主题 / 80%", x + 14, 30, c.text(), HUDTokens.title());
         float left = x + 14;
         rect(canvas, left, 52, 102, 24, 12, c.surface());
         rect(canvas, left + 5, 55, 18, 18, 6, c.accentContainer());
