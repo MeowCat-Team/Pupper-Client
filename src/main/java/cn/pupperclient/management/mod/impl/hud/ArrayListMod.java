@@ -29,11 +29,14 @@ public class ArrayListMod extends AnimatedListHUDMod {
     public static ArrayListMod getInstance() { return instance; }
     public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> drawList();
 
+    @Override protected float minimumListWidth() { return 100; }
+    @Override protected float listRowHeight() { return 20; }
+
     @Override protected List<Row> rows() {
         return PupperClient.getInstance().getModManager().getMods().stream()
             .filter(mod -> mod != this && mod.isEnabled() && !mod.isHidden() && included(mod.getCategory()))
             .sorted(Comparator.comparing(Mod::getRawName))
-            .map(mod -> new Row(mod.getRawName(), displayName(mod), "", Icon.CHECK, false)).toList();
+            .map(mod -> new Row(mod.getRawName(), displayName(mod), "", "", false)).toList();
     }
 
     private String displayName(Mod mod) {

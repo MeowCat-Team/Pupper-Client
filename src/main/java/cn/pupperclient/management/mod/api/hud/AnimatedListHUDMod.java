@@ -32,6 +32,9 @@ public abstract class AnimatedListHUDMod extends HUDMod {
     public record Row(String id, String label, String detail, String icon, boolean urgent) {}
     protected abstract List<Row> rows();
 
+    protected float minimumListWidth() { return 120; }
+    protected float listRowHeight() { return ROW_HEIGHT; }
+
     protected final void drawList() {
         float dt = motion.deltaSeconds();
         boolean reduced = reducedMotion();
@@ -47,18 +50,19 @@ public abstract class AnimatedListHUDMod extends HUDMod {
         if (entries.isEmpty() && !HUDCore.isEditing) { position.setSize(0, 0); return; }
 
         float maxWidth = Math.max(80, Math.min(260, client.getWindow().getGuiScaledWidth() / position.getScale() - 32));
-        float desiredWidth = Math.max(120, Skia.getTextBounds(getName(), HUDTokens.title()).getWidth()
+        float desiredWidth = Math.max(minimumListWidth(), Skia.getTextBounds(getName(), HUDTokens.title()).getWidth()
             + HORIZONTAL_PADDING * 2 + HEADER_ICON_SIZE + 8);
         for (Entry entry : entries.values()) {
             Row row = entry.row;
             desiredWidth = Math.max(desiredWidth, Skia.getTextBounds(row.label(), HUDTokens.body()).getWidth()
                 + Skia.getTextBounds(row.detail(), HUDTokens.label()).getWidth()
-                + HORIZONTAL_PADDING * 2 + 28);
+                + HORIZONTAL_PADDING * 2 + (hasIcon(row) ? 28 : 8));
         }
         float width = widthMotion.update(Math.min(maxWidth, desiredWidth), dt, reduced);
+        float itemHeight = listRowHeight();
         float height = VERTICAL_PADDING * 2 + HEADER_HEIGHT + SECTION_GAP;
-        for (Entry entry : entries.values()) height += ROW_HEIGHT * entry.visibility;
-        if (entries.isEmpty()) height += ROW_HEIGHT;
+        for (Entry entry : entries.values()) height += itemHeight * entry.visibility;
+        if (entries.isEmpty()) height += itemHeight;
 
         position.setSize(width, height);
         begin();
@@ -84,22 +88,23 @@ public abstract class AnimatedListHUDMod extends HUDMod {
             float y = getY() + VERTICAL_PADDING + HEADER_HEIGHT + SECTION_GAP;
             boolean right = modeSetting.getOption().equals("setting.right");
             for (Entry entry : entries.values()) {
-                float rowHeight = ROW_HEIGHT * entry.visibility;
+                float rowHeight = itemHeight * entry.visibility;
                 Skia.save();
                 try {
                     Skia.clip(getX(), y, width, rowHeight, 0);
                     float offset = (right ? 1 : -1) * 8 * (1 - entry.visibility);
-                    if (!backgroundSetting.isEnabled()) drawBackground(getX(), y + 2, width, ROW_HEIGHT - 4);
+                    if (!backgroundSetting.isEnabled()) drawBackground(getX(), y + 2, width, itemHeight - 4);
                     Row row = entry.row;
                     float x = getX() + HORIZONTAL_PADDING + offset;
-                    float centerY = y + ROW_HEIGHT / 2;
-                    Skia.drawFullCenteredText(row.icon(), x + 5, centerY,
+                    float centerY = y + itemHeight / 2;
+                    boolean hasIcon = hasIcon(row);
+                    if (hasIcon) Skia.drawFullCenteredText(row.icon(), x + 5, centerY,
                         row.urgent() ? colors().danger() : colors().secondaryText(), HUDTokens.icon());
                     String detail = Skia.getLimitText(row.detail(), HUDTokens.label(), width / 3);
                     float detailWidth = Skia.getTextBounds(detail, HUDTokens.label()).getWidth();
                     Skia.drawHeightCenteredText(Skia.getLimitText(row.label(), HUDTokens.body(),
-                        Math.max(8, width - HORIZONTAL_PADDING * 2 - 28 - detailWidth)),
-                        x + 20, centerY, colors().text(), HUDTokens.body());
+                        Math.max(8, width - HORIZONTAL_PADDING * 2 - (hasIcon ? 28 : 8) - detailWidth)),
+                        x + (hasIcon ? 20 : 0), centerY, colors().text(), HUDTokens.body());
                     Skia.drawHeightCenteredText(detail, getX() + width - HORIZONTAL_PADDING - detailWidth + offset,
                         centerY, row.urgent() ? colors().danger() : colors().secondaryText(), HUDTokens.label());
                 } finally { Skia.restore(); }
@@ -107,9 +112,11 @@ public abstract class AnimatedListHUDMod extends HUDMod {
             }
             if (entries.isEmpty())
                 Skia.drawHeightCenteredText(I18n.get("hud.empty"), getX() + HORIZONTAL_PADDING,
-                    y + ROW_HEIGHT / 2, colors().secondaryText(), HUDTokens.label());
+                    y + itemHeight / 2, colors().secondaryText(), HUDTokens.label());
         } finally { finish(); }
     }
+
+    private static boolean hasIcon(Row row) { return row.icon() != null && !row.icon().isBlank(); }
 
     @Override public void onDisable() { super.onDisable(); entries.clear(); }
     private static final class Entry {
