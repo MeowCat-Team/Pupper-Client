@@ -24,15 +24,17 @@ public class DynamicIsland extends HUDMod {
         "mod.DynamicIsland.customname.description", Icon.FLIGHT_LAND, this, "Pupper Client");
     private final List<Notice> notices = new ArrayList<>();
     private final HUDMotion motion = new HUDMotion();
-    private final HUDMotion.Spring widthMotion = new HUDMotion.Spring(220);
+    private HUDMotion.Spring widthMotion = new HUDMotion.Spring(120);
+    private HUDMotion.Spring heightMotion = new HUDMotion.Spring(20);
     private String displayedTitle;
     private String outgoingTitle;
     private boolean displayedNextGame;
     private boolean outgoingNextGame;
     private float titleReveal = 1;
+    private float entrance;
 
     public DynamicIsland() {
-        super("mod.DynamicIsland.name", "mod.DynamicIsland.description", Icon.BROWSE_ACTIVITY);
+        super("mod.DynamicIsland.name", "mod.DynamicIsland.description", Icon.PETS);
     }
     public static void setConfigLoading(boolean loading) { configLoading = loading; }
     @EventListener public void onHeypixelAgain(AutoAgainEvent event) {
@@ -55,10 +57,14 @@ public class DynamicIsland extends HUDMod {
         displayedTitle = null;
         outgoingTitle = null;
         titleReveal = 1;
+        entrance = 0;
+        widthMotion = new HUDMotion.Spring(120);
+        heightMotion = new HUDMotion.Spring(20);
     }
     public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
         long now = System.currentTimeMillis();
         float dt = motion.deltaSeconds();
+        entrance = HUDMotion.approach(entrance, 1, dt, reducedMotion());
         for (Notice notice : notices)
             notice.visibility = HUDMotion.approach(notice.visibility, now < notice.until ? 1 : 0, dt, reducedMotion());
         notices.removeIf(notice -> now >= notice.until && notice.visibility < 0.01f);
@@ -89,27 +95,29 @@ public class DynamicIsland extends HUDMod {
             desiredWidth = Math.max(desiredWidth, Skia.getTextBounds(notice.title, HUDTokens.body()).getWidth() + 96);
         float maximum = Math.max(100, Math.min(320, client.getWindow().getGuiScaledWidth() / position.getScale() - 24));
         float width = widthMotion.update(Math.min(maximum, desiredWidth), dt, reducedMotion());
-        float height = 44;
-        for (Notice notice : notices) height += 28 * notice.visibility;
+        float desiredHeight = 44;
+        for (Notice notice : notices) desiredHeight += 28 * notice.visibility;
+        float height = heightMotion.update(desiredHeight, dt, reducedMotion());
         position.setSize(width, height);
         begin();
         try {
+            Skia.setAlpha(Math.round(entrance * 255));
+            try {
             drawBackground(getX(), getY(), width, height);
             Skia.clip(getX(), getY(), width, height, getRadius());
-            Skia.drawRoundedRect(getX() + 8, getY() + 8, 20, 20, 10, colors().accentContainer());
             if (outgoingTitle != null) {
                 float leaving = 1 - titleReveal;
-                Skia.drawFullCenteredText(outgoingNextGame ? Icon.CHECK : Icon.BROWSE_ACTIVITY,
+                Skia.drawFullCenteredText(outgoingNextGame ? Icon.CHECK : Icon.PETS,
                     getX() + 18, getY() + 18 - 4 * titleReveal,
-                    ColorUtils.applyAlpha(colors().onAccentContainer(), leaving), HUDTokens.icon());
+                    ColorUtils.applyAlpha(outgoingNextGame ? colors().accent() : colors().secondaryText(), leaving), HUDTokens.icon());
                 Skia.drawHeightCenteredText(Skia.getLimitText(outgoingTitle, HUDTokens.title(), width - 44),
                     getX() + 34, getY() + 15 - 4 * titleReveal,
                     ColorUtils.applyAlpha(colors().text(), leaving), HUDTokens.title());
             }
             float entering = outgoingTitle == null ? 1 : titleReveal;
-            Skia.drawFullCenteredText(nextGame ? Icon.CHECK : Icon.BROWSE_ACTIVITY,
+            Skia.drawFullCenteredText(nextGame ? Icon.CHECK : Icon.PETS,
                 getX() + 18, getY() + 18 + 4 * (1 - entering),
-                ColorUtils.applyAlpha(colors().onAccentContainer(), entering), HUDTokens.icon());
+                ColorUtils.applyAlpha(nextGame ? colors().accent() : colors().secondaryText(), entering), HUDTokens.icon());
             Skia.drawHeightCenteredText(Skia.getLimitText(title, HUDTokens.title(), width - 44),
                 getX() + 34, getY() + 15 + 4 * (1 - entering),
                 ColorUtils.applyAlpha(colors().text(), entering), HUDTokens.title());
@@ -135,6 +143,7 @@ public class DynamicIsland extends HUDMod {
                 } finally { Skia.restore(); }
                 y += rowHeight;
             }
+            } finally { Skia.restore(); }
         } finally { finish(); }
     };
 
