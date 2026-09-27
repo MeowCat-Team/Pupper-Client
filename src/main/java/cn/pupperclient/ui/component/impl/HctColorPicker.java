@@ -8,10 +8,10 @@ import cn.pupperclient.PupperClient;
 import cn.pupperclient.animation.SimpleAnimation;
 import cn.pupperclient.libraries.material3.hct.Hct;
 import cn.pupperclient.management.color.api.ColorPalette;
-import cn.pupperclient.skia.Skia;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.HctColorPickerHandler;
 import cn.pupperclient.ui.theme.MaterialTheme;
+import cn.pupperclient.ui.theme.MaterialControls;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
 public class HctColorPicker extends Component {
@@ -28,8 +28,8 @@ public class HctColorPicker extends Component {
 		minValue = 0;
 		maxValue = 360;
 		value = (float) (hct.getHue() - minValue) / (maxValue - minValue);
-		width = 126;
-		height = 32;
+		width = MaterialControls.COMPACT_WIDTH;
+		height = MaterialControls.COMPACT_HEIGHT;
 	}
 
 	@Override
@@ -39,14 +39,9 @@ public class HctColorPicker extends Component {
 
 		float inset = 12;
 		float travelWidth = width - inset * 2;
-		slideAnimation.onTick(travelWidth * value, 20);
-		float thumbX = x + inset + slideAnimation.getValue();
-
-		drawControlSurface(mouseX, mouseY, MaterialTheme.CONTROL_RADIUS, palette);
-		Skia.drawRoundedImage("hue-h.png", x + inset, y + 8, travelWidth, height - 16, 8);
-		Skia.drawCircle(thumbX, y + (height / 2), 11, palette.getOnSurface());
-		Skia.drawCircle(thumbX, y + (height / 2), 9, palette.getSurface());
-		Skia.drawCircle(thumbX, y + (height / 2), 7, new Color(hct.toInt(), true));
+		slideAnimation.onTick(value, 20);
+		MaterialControls.hue(x, y, width, height, slideAnimation.getValue(), new Color(hct.toInt(), true),
+				palette, MaterialTheme.opacity(), hoverState(mouseX, mouseY));
 
 		if (dragging) {
 

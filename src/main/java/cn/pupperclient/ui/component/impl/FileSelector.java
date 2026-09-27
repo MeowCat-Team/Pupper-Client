@@ -7,12 +7,11 @@ import org.lwjgl.glfw.GLFW;
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
-import cn.pupperclient.skia.font.Fonts;
-import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.api.PressAnimation;
 import cn.pupperclient.ui.component.handler.impl.FileSelectorHandler;
 import cn.pupperclient.ui.theme.MaterialTheme;
+import cn.pupperclient.ui.theme.MaterialControls;
 import cn.pupperclient.utils.thread.Multithreading;
 import cn.pupperclient.utils.file.FileDialog;
 import cn.pupperclient.utils.language.I18n;
@@ -28,8 +27,8 @@ public class FileSelector extends Component {
 
 	public FileSelector(float x, float y, File file, String[] extensions) {
 		super(x, y);
-		width = 126;
-		height = 32;
+		width = MaterialControls.COMPACT_WIDTH;
+		height = MaterialControls.COMPACT_HEIGHT;
 		this.file = file;
 		this.extensions = extensions;
 	}
@@ -39,20 +38,15 @@ public class FileSelector extends Component {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		drawControlSurface(mouseX, mouseY, MaterialTheme.CONTROL_RADIUS, palette);
+		MaterialControls.fileSelector(x, y, width, height, file != null ? file.getName() : "None",
+				palette, MaterialTheme.opacity(), hoverState(mouseX, mouseY));
 		Skia.save();
-		Skia.clip(x, y, width, height, MaterialTheme.CONTROL_RADIUS);
-		pressAnimation.draw(x, y, width, height, palette.getPrimary(), 0.12F);
-		Skia.drawFullCenteredText(Icon.FOLDER_OPEN, x + 18, y + height / 2,
-				palette.getPrimary(), Fonts.getIcon(18));
-
-		String fileName = file != null ? file.getName() : "None";
-		fileName = Skia.getLimitText(fileName, Fonts.getMedium(14), width - 42);
-
-		Skia.clip(x + 32, y, width - 42, height, 0);
-		Skia.drawHeightCenteredText(fileName, x + 32, y + (height / 2), palette.getOnSurface(),
-				Fonts.getMedium(14));
-		Skia.restore();
+		try {
+			Skia.clip(x, y, width, height, MaterialTheme.CONTROL_RADIUS);
+			pressAnimation.draw(x, y, width, height, palette.getPrimary(), 0.12F);
+		} finally {
+			Skia.restore();
+		}
 	}
 
 	@Override

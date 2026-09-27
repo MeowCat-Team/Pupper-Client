@@ -7,6 +7,7 @@ import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.ui.component.handler.ComponentHandler;
 import cn.pupperclient.ui.theme.MaterialTheme;
+import cn.pupperclient.ui.theme.MaterialControls;
 import cn.pupperclient.utils.mouse.MouseUtils;
 import net.minecraft.client.Minecraft;
 
@@ -29,14 +30,17 @@ public class Component {
 
 	/** Shared glass surface and Material state layer for compact controls. */
 	protected void drawControlSurface(double mouseX, double mouseY, float radius, ColorPalette palette) {
-		MaterialTheme.card(x, y, width, height, radius, palette);
-		drawHoverState(mouseX, mouseY, radius, palette.getPrimary());
+		MaterialControls.surface(x, y, width, height, radius, palette, MaterialTheme.opacity(), hoverState(mouseX, mouseY), 0);
+	}
+
+	protected float hoverState(double mouseX, double mouseY) {
+		hoverAnimation.onTick(MouseUtils.isInside(mouseX, mouseY, x, y, width, height) ? 1 : 0, 12);
+		return hoverAnimation.getValue();
 	}
 
 	protected void drawHoverState(double mouseX, double mouseY, float radius, Color color) {
-		hoverAnimation.onTick(MouseUtils.isInside(mouseX, mouseY, x, y, width, height) ? 1 : 0, 12);
 		Skia.drawRoundedRect(x, y, width, height, radius,
-				MaterialTheme.alpha(color, hoverAnimation.getValue() * 0.08F));
+				MaterialTheme.alpha(color, hoverState(mouseX, mouseY) * 0.08F));
 	}
 
 	public void mousePressed(double mouseX, double mouseY, int button) {

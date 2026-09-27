@@ -11,13 +11,11 @@ import cn.pupperclient.animation.cubicbezier.impl.EaseStandard;
 import cn.pupperclient.animation.other.DummyAnimation;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
-import cn.pupperclient.skia.font.Fonts;
-import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.api.PressAnimation;
 import cn.pupperclient.ui.component.handler.impl.ComboButtonHandler;
 import cn.pupperclient.ui.theme.MaterialTheme;
-import cn.pupperclient.utils.color.ColorUtils;
+import cn.pupperclient.ui.theme.MaterialControls;
 import cn.pupperclient.utils.language.I18n;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
@@ -34,8 +32,8 @@ public class ComboButton extends Component {
 		this.options = options;
 		this.option = option;
 		this.animation = new DummyAnimation(1);
-		width = 126;
-		height = 32;
+		width = MaterialControls.COMPACT_WIDTH;
+		height = MaterialControls.COMPACT_HEIGHT;
 	}
 
 	@Override
@@ -43,19 +41,16 @@ public class ComboButton extends Component {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		drawControlSurface(mouseX, mouseY, MaterialTheme.CONTROL_RADIUS, palette);
+		MaterialControls.choice(x, y, width, height, I18n.get(option), palette, MaterialTheme.opacity(),
+				hoverState(mouseX, mouseY), (animation.getEnd() - animation.getValue()) * 22,
+				Math.abs(animation.getValue()));
 		Skia.save();
-		Skia.clip(x, y, width, height, MaterialTheme.CONTROL_RADIUS);
-		pressAnimation.draw(x, y, width, height, palette.getPrimary(), 0.12F);
-		Skia.drawFullCenteredText(Icon.CHEVRON_LEFT, x + 16, y + (height / 2),
-				palette.getPrimary(), Fonts.getIcon(20));
-		Skia.drawFullCenteredText(Icon.CHEVRON_RIGHT, x + width - 16, y + (height / 2),
-				palette.getPrimary(), Fonts.getIcon(20));
-		Skia.clip(x + 28, y, width - 56, height, 0);
-		Skia.drawFullCenteredText(Skia.getLimitText(I18n.get(option), Fonts.getMedium(14), width - 56),
-				x + (width / 2) + ((animation.getEnd() - animation.getValue()) * 22), y + (height / 2),
-				ColorUtils.applyAlpha(palette.getOnSurface(), Math.abs(animation.getValue())), Fonts.getMedium(14));
-		Skia.restore();
+		try {
+			Skia.clip(x, y, width, height, MaterialTheme.CONTROL_RADIUS);
+			pressAnimation.draw(x, y, width, height, palette.getPrimary(), 0.12F);
+		} finally {
+			Skia.restore();
+		}
 	}
 
 	@Override

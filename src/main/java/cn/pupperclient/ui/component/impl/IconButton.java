@@ -6,12 +6,11 @@ import cn.pupperclient.PupperClient;
 import cn.pupperclient.animation.SimpleAnimation;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
-import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.api.PressAnimation;
 import cn.pupperclient.ui.component.handler.impl.ButtonHandler;
 import cn.pupperclient.ui.theme.MaterialTheme;
-import cn.pupperclient.utils.color.ColorUtils;
+import cn.pupperclient.ui.theme.MaterialControls;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
 public class IconButton extends Component {
@@ -46,17 +45,15 @@ public class IconButton extends Component {
 
 		focusAnimation.onTick(focus ? 1F : 0, 10);
 
+		MaterialControls.iconButton(x, y, width, height, getRadius(), getFontSize(), icon, c[0], c[1], palette,
+				MaterialTheme.opacity(), focusAnimation.getValue());
 		Skia.save();
-		Skia.clip(x, y, width, height, getRadius());
-		Skia.drawRoundedRect(x, y, width, height, getRadius(), MaterialTheme.surface(c[0]));
-		MaterialTheme.outline(x, y, width, height, getRadius(), palette);
-		Skia.drawRoundedRect(x, y, width, height, getRadius(),
-				ColorUtils.applyAlpha(c[1], focusAnimation.getValue() * 0.08F));
-		pressAnimation.draw(x, y, width, height, c[1], 0.12F);
-
-		Skia.drawFullCenteredText(icon, x + (width / 2), y + (height / 2), c[1], Fonts.getIconFill(getFontSize()));
-
-		Skia.restore();
+		try {
+			Skia.clip(x, y, width, height, getRadius());
+			pressAnimation.draw(x, y, width, height, c[1], 0.12F);
+		} finally {
+			Skia.restore();
+		}
 	}
 
 	@Override

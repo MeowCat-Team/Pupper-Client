@@ -14,7 +14,7 @@ import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.TextHandler;
 import cn.pupperclient.ui.theme.MaterialTheme;
-import cn.pupperclient.utils.color.ColorUtils;
+import cn.pupperclient.ui.theme.MaterialControls;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
 public class TextField extends Component {
@@ -28,7 +28,7 @@ public class TextField extends Component {
 	public TextField(float x, float y, float width, String defaultValue) {
 		super(x, y);
 		this.width = width;
-		this.height = 40;
+		this.height = MaterialControls.TEXT_HEIGHT;
 		this.cursorFlashAnimation = new DummyAnimation(0, 0);
 		input.setText(defaultValue);
 	}
@@ -38,38 +38,15 @@ public class TextField extends Component {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		drawControlSurface(mouseX, mouseY, MaterialTheme.CONTROL_RADIUS, palette);
 		focusAnimation.onTick(isFocused() ? 1 : 0, 12);
-		Skia.drawOutline(x, y, width, height, MaterialTheme.CONTROL_RADIUS, 2,
-				MaterialTheme.alpha(palette.getPrimary(), focusAnimation.getValue()));
-
-		Skia.save();
-		Skia.clip(x + 12, y + 6, width - 24, height - 12, 0);
-
-		drawCursor();
-
-		String text = getText();
-
-		if (!text.isEmpty() || isFocused()) {
-			float availableWidth = width - 26;
-			float textWidth = Skia.getTextBounds(text, Fonts.getRegular(16)).getWidth();
-
-			float xOffset = 0;
-			if (textWidth > availableWidth) {
-				float overflow = textWidth - availableWidth;
-				xOffset = -overflow;
-			}
-
-			Skia.drawHeightCenteredText(text, x + 12 + xOffset, y + (height / 2), palette.getOnSurface(),
-					Fonts.getRegular(16));
-		}
-
-		Skia.restore();
+		updateCursor();
+		MaterialControls.textInput(x, y, width, height, false, palette, MaterialTheme.opacity(),
+				hoverState(mouseX, mouseY), focusAnimation.getValue(),
+				new MaterialControls.TextState(getText(), cursorAnimation.getValue(), cursorFlashAnimation.getValue(),
+						input.getCursorPosition(), input.getSelectionEnd(), "", 0));
 	}
 
-	private void drawCursor() {
-
-		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+	private void updateCursor() {
 
 		int selectionEnd = input.getSelectionEnd();
 		int cursorPosition = input.getCursorPosition();
@@ -88,32 +65,8 @@ public class TextField extends Component {
 			}
 		}
 
-		float textWidth = Skia.getTextBounds(text, Fonts.getRegular(16)).getWidth();
-		float availableWidth = width - 26;
-		float xOffset = 0;
-
-		if (textWidth > availableWidth) {
-			float overflow = textWidth - availableWidth;
-			xOffset = -overflow;
-		}
-
 		float cursorOffset = Skia.getTextBounds(text.substring(0, cursorPosition), Fonts.getRegular(16)).getWidth();
 		cursorAnimation.onTick(cursorOffset, 16);
-		float cursorX = x + 12 + cursorAnimation.getValue() + xOffset;
-
-		Skia.drawRect(cursorX, y + 9, 1, 24,
-				ColorUtils.applyAlpha(palette.getSurfaceTint(), (int) (cursorFlashAnimation.getValue() * 255)));
-
-		if (cursorPosition != selectionEnd) {
-			int start = Math.min(cursorPosition, selectionEnd);
-			int end = Math.max(cursorPosition, selectionEnd);
-
-			float selectionWidth = Skia.getTextBounds(text.substring(start, end), Fonts.getRegular(16)).getWidth();
-			float selectionOffset = Skia.getTextBounds(text.substring(0, start), Fonts.getRegular(16)).getWidth();
-
-			Skia.drawRoundedRect(x + 12 + selectionOffset + xOffset, y + 9, selectionWidth, 24, 4,
-					MaterialTheme.alpha(palette.getPrimary(), 0.26F));
-		}
 	}
 
 	@Override

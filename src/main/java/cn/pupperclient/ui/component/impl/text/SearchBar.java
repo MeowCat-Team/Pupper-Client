@@ -11,10 +11,9 @@ import cn.pupperclient.animation.other.DummyAnimation;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
-import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.theme.MaterialTheme;
-import cn.pupperclient.utils.color.ColorUtils;
+import cn.pupperclient.ui.theme.MaterialControls;
 import cn.pupperclient.utils.language.I18n;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
@@ -34,7 +33,7 @@ public class SearchBar extends Component {
 		super(x, y);
 		this.shortcutEvent = shortcutEvent;
 		this.width = width;
-		this.height = 42;
+		this.height = MaterialControls.SEARCH_HEIGHT;
 		this.setText(text);
 
 		if (getText().isBlank()) {
@@ -52,43 +51,15 @@ public class SearchBar extends Component {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		float hintTextValue = hintTextAnimation.getValue();
-
-		drawControlSurface(mouseX, mouseY, height / 2, palette);
 		focusAnimation.onTick(isFocused() ? 1 : 0, 12);
-		Skia.drawOutline(x, y, width, height, height / 2, 2,
-				MaterialTheme.alpha(palette.getPrimary(), focusAnimation.getValue()));
-		Skia.drawHeightCenteredText(Icon.SEARCH, x + 12, y + (height / 2), palette.getPrimary(), Fonts.getIcon(24));
-		Skia.save();
-		Skia.clip(x + 40, y + 4, width - 52, height - 8, 0);
-		Skia.drawHeightCenteredText(I18n.get(hintText), x + 40 - (25 * (1 - hintTextValue)), y + (height / 2),
-				ColorUtils.applyAlpha(palette.getOnSurfaceVariant(), (int) (hintTextValue * 255)),
-				Fonts.getRegular(16));
-
-		drawCursor();
-
-		String text = getText();
-
-		if (!text.isEmpty() || isFocused()) {
-			float availableWidth = width - 54;
-			float textWidth = Skia.getTextBounds(text, Fonts.getRegular(16)).getWidth();
-
-			float xOffset = 0;
-			if (textWidth > availableWidth) {
-				float overflow = textWidth - availableWidth;
-				xOffset = -overflow;
-			}
-
-			Skia.drawHeightCenteredText(text, x + 40 + xOffset, y + (height / 2), palette.getOnSurface(),
-					Fonts.getRegular(16));
-		}
-
-		Skia.restore();
+		updateCursor();
+		MaterialControls.textInput(x, y, width, height, true, palette, MaterialTheme.opacity(),
+				hoverState(mouseX, mouseY), focusAnimation.getValue(),
+				new MaterialControls.TextState(getText(), cursorAnimation.getValue(), cursorFlashAnimation.getValue(),
+						input.getCursorPosition(), input.getSelectionEnd(), I18n.get(hintText), hintTextAnimation.getValue()));
 	}
 
-	private void drawCursor() {
-
-		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+	private void updateCursor() {
 
 		int selectionEnd = input.getSelectionEnd();
 		int cursorPosition = input.getCursorPosition();
@@ -107,32 +78,8 @@ public class SearchBar extends Component {
 			}
 		}
 
-		float textWidth = Skia.getTextBounds(text, Fonts.getRegular(16)).getWidth();
-		float availableWidth = width - 54;
-		float xOffset = 0;
-
-		if (textWidth > availableWidth) {
-			float overflow = textWidth - availableWidth;
-			xOffset = -overflow;
-		}
-
 		float cursorOffset = Skia.getTextBounds(text.substring(0, cursorPosition), Fonts.getRegular(16)).getWidth();
 		cursorAnimation.onTick(cursorOffset, 16);
-		float cursorX = x + 40 + cursorAnimation.getValue() + xOffset;
-
-		Skia.drawRect(cursorX, y + 9, 1, 24,
-				ColorUtils.applyAlpha(palette.getSurfaceTint(), (int) (cursorFlashAnimation.getValue() * 255)));
-
-		if (cursorPosition != selectionEnd) {
-			int start = Math.min(cursorPosition, selectionEnd);
-			int end = Math.max(cursorPosition, selectionEnd);
-
-			float selectionWidth = Skia.getTextBounds(text.substring(start, end), Fonts.getRegular(16)).getWidth();
-			float selectionOffset = Skia.getTextBounds(text.substring(0, start), Fonts.getRegular(16)).getWidth();
-
-			Skia.drawRoundedRect(x + 40 + selectionOffset + xOffset, y + 9, selectionWidth, 24, 4,
-					MaterialTheme.alpha(palette.getPrimary(), 0.26F));
-		}
 	}
 
 	@Override
