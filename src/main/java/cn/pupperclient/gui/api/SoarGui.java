@@ -15,13 +15,14 @@ import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.config.ConfigType;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.ui.component.Component;
+import cn.pupperclient.ui.theme.MaterialTheme;
 
 import net.minecraft.client.gui.screens.Screen;
 
 public abstract class SoarGui extends SimpleSoarGui {
 	private static final float MIN_SCREEN_SCALE = 0.96F;
 	private static final int SCREEN_ANIMATION_DURATION = Duration.MEDIUM_1;
-	private static final float SCREEN_CORNER_RADIUS = 28;
+	private static final float SCREEN_CORNER_RADIUS = MaterialTheme.SURFACE_RADIUS;
 
 	protected List<Component> components = new ArrayList<>();
 	protected List<SimplePage> pages;
@@ -70,7 +71,7 @@ public abstract class SoarGui extends SimpleSoarGui {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 		float animationValue = inOutAnimation.getValue();
-		float screenScale = MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue);
+		float screenScale = getLayoutScale() * (MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue));
 		double contentMouseX = toContentMouseX(mouseX, screenScale);
 		double contentMouseY = toContentMouseY(mouseY, screenScale);
 
@@ -78,10 +79,9 @@ public abstract class SoarGui extends SimpleSoarGui {
 		Skia.setAlpha((int) (animationValue * 255));
 		Skia.scale(getX(), getY(), getWidth(), getHeight(), screenScale);
 
-		Skia.drawShadow(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS);
+		MaterialTheme.panel(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS, palette);
+		Skia.save();
 		Skia.clip(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS);
-		Skia.drawRoundedRect(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS,
-				palette.getSurfaceContainer());
 
 		if (currentPage != null && lastPage == null) {
 			currentPage.draw(contentMouseX, contentMouseY);
@@ -120,6 +120,7 @@ public abstract class SoarGui extends SimpleSoarGui {
 			c.draw(contentMouseX, contentMouseY);
 		}
 
+		Skia.restore();
 		Skia.restore();
 		Skia.restore();
 
@@ -317,10 +318,16 @@ public abstract class SoarGui extends SimpleSoarGui {
 
 	private float getScreenScale() {
 		if (inOutAnimation == null) {
-			return 1;
+			return getLayoutScale();
 		}
 		float animationValue = inOutAnimation.getValue();
-		return MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue);
+		return getLayoutScale() * (MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue));
+	}
+
+	private float getLayoutScale() {
+		float availableWidth = Math.max(1, client.getWindow().getWidth() - 32);
+		float availableHeight = Math.max(1, client.getWindow().getHeight() - 32);
+		return Math.min(1, Math.min(availableWidth / getWidth(), availableHeight / getHeight()));
 	}
 
 	private double toContentMouseX(double mouseX, float screenScale) {

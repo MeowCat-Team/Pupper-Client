@@ -13,12 +13,14 @@ import cn.pupperclient.gui.api.SimpleSoarGui;
 import cn.pupperclient.gui.edithud.api.GrabOffset;
 import cn.pupperclient.gui.edithud.api.HUDCore;
 import cn.pupperclient.gui.edithud.api.SnappingLine;
+import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.mod.api.Position;
 import cn.pupperclient.management.mod.api.hud.HUDMod;
 import cn.pupperclient.management.mod.api.hud.design.HUDColors;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Icon;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.language.I18n;
 import cn.pupperclient.utils.language.Language;
 
@@ -98,10 +100,12 @@ public class GuiEditHUD extends SimpleSoarGui {
 
 		float closeX = screenWidth - EDGE_GAP - CLOSE_SIZE;
 		boolean closeHovered = isInside(mouseX, mouseY, closeX, EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE);
-		Skia.drawRoundedRect(closeX, EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE, HUDTokens.COMPACT_RADIUS,
-				closeHovered ? colors.raised() : colors.surface());
-		Skia.drawOutline(closeX, EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE, HUDTokens.COMPACT_RADIUS, 0.8f,
-				withAlpha(colors.outline(), 120));
+		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+		MaterialTheme.panel(closeX, EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE, MaterialTheme.CONTROL_RADIUS, palette);
+		if (closeHovered) {
+			Skia.drawRoundedRect(closeX, EDGE_GAP, CLOSE_SIZE, CLOSE_SIZE, MaterialTheme.CONTROL_RADIUS,
+					MaterialTheme.alpha(palette.getOnSurface(), 0.08F));
+		}
 		Skia.drawFullCenteredText(Icon.CLOSE, closeX + CLOSE_SIZE / 2, EDGE_GAP + CLOSE_SIZE / 2,
 				colors.text(), HUDTokens.icon());
 
@@ -124,11 +128,8 @@ public class GuiEditHUD extends SimpleSoarGui {
 	}
 
 	private void drawGlass(float x, float y, float width, float height, float radius, HUDColors colors) {
-		Skia.drawRoundedRect(x, y + 2, width, height, radius, new Color(0, 0, 0, 42));
-		Skia.drawRoundedRect(x, y, width, height, radius, colors.surface());
-		Skia.drawOutline(x, y, width, height, radius, 0.8f, withAlpha(colors.outline(), 130));
-		Skia.drawLine(x + radius, y + 1, x + width - radius, y + 1, 0.7f,
-				new Color(255, 255, 255, 64));
+		MaterialTheme.panel(x, y, width, height, radius,
+				PupperClient.getInstance().getColorManager().getPalette());
 	}
 
 	private void drawFocusOutline(HUDMod mod, boolean focused, HUDColors colors) {
@@ -172,8 +173,8 @@ public class GuiEditHUD extends SimpleSoarGui {
 		float x = Math.max(EDGE_GAP, Math.min(pos.getX(), screenWidth - EDGE_GAP - width));
 		float preferredY = pos.getY() >= 29 ? pos.getY() - 25 : pos.getBottomY() + 7;
 		float y = Math.max(EDGE_GAP, Math.min(screenHeight - 22, preferredY));
-		Skia.drawRoundedRect(x, y, width, 19, 9.5f, colors.raised());
-		Skia.drawOutline(x, y, width, 19, 9.5f, 0.8f, withAlpha(colors.outline(), 120));
+		MaterialTheme.panel(x, y, width, 19, 9.5f,
+				PupperClient.getInstance().getColorManager().getPalette());
 		Skia.drawCircle(x + 9, y + 9.5f, 2.5f, colors.accent());
 		Skia.drawText(label, x + 15, y + 5, colors.text(), font);
 	}

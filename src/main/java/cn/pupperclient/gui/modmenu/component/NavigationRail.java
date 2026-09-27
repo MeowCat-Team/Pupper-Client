@@ -24,6 +24,7 @@ import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.ButtonHandler;
 import cn.pupperclient.ui.component.impl.IconButton;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.language.I18n;
 import cn.pupperclient.utils.mouse.MouseUtils;
@@ -74,11 +75,11 @@ public class NavigationRail extends Component {
 
         ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-        float borderRadius = 28;
+        float borderRadius = MaterialTheme.SURFACE_RADIUS;
         Skia.drawRoundedRectVarying(x, y, width, height, borderRadius, 0, 0, borderRadius,
-            palette.getSurfaceContainerLow());
+            MaterialTheme.alpha(palette.getSurfaceContainerLow(), MaterialTheme.opacity() * 0.28F));
         Skia.drawLine(x + width - 1, y + 20, x + width - 1, y + height - 20, 1,
-            ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.5F));
+            MaterialTheme.alpha(palette.getOutlineVariant(), 0.24F));
 
         editButton.draw(mouseX, mouseY);
         Skia.drawCenteredText("HUD", x + width / 2, y + 84, palette.getOnSurfaceVariant(), Fonts.getMedium(10));
@@ -87,6 +88,7 @@ public class NavigationRail extends Component {
         float itemSpacing = 70;
 
         Skia.save();
+        Skia.clip(x, y + 104, width, height - 112, 0);
         Skia.translate(0, scrollHelper.getValue());
 
         double translatedMouseY = mouseY - scrollHelper.getValue();
@@ -111,8 +113,8 @@ public class NavigationRail extends Component {
         float iconWidth = bounds.getWidth();
         float iconHeight = bounds.getHeight();
 
-        Color c0 = isSelected ? palette.getOnSurface() : palette.getOnSurfaceVariant();
-        Color c1 = isSelected ? palette.getOnSurface() : palette.getOnSurfaceVariant();
+        Color c0 = isSelected ? palette.getOnSecondaryContainer() : palette.getOnSurfaceVariant();
+        Color c1 = isSelected ? palette.getPrimary() : palette.getOnSurfaceVariant();
 
         Animation animation = n.animation;
         float selWidth = 64;
@@ -124,7 +126,7 @@ public class NavigationRail extends Component {
         Skia.drawRoundedRect(x + (width / 2) - (selWidth / 2), y + offsetY, selWidth, selHeight, 16, ColorUtils.applyAlpha(palette.getOnSurfaceVariant(), n.focusAnimation.getValue()));
 
         if (animation.getEnd() != 0 || !animation.isFinished()) {
-            Skia.drawRoundedRect(x + (width / 2) - (selWidth / 2) + (selWidth - selWidth * animation.getValue()) / 2, y + offsetY, selWidth * animation.getValue(), selHeight, 16, ColorUtils.applyAlpha(palette.getSurfaceContainerHighest(), animation.getValue()));
+            Skia.drawRoundedRect(x + (width / 2) - (selWidth / 2) + (selWidth - selWidth * animation.getValue()) / 2, y + offsetY, selWidth * animation.getValue(), selHeight, 17, MaterialTheme.alpha(palette.getSecondaryContainer(), animation.getValue() * MaterialTheme.opacity()));
         }
 
         Skia.drawText(icon, x + (width / 2) - (iconWidth / 2), y + (offsetY + (selHeight / 2)) - (iconHeight / 2), c0, font);
@@ -135,6 +137,7 @@ public class NavigationRail extends Component {
     @Override
     public void mousePressed(double mouseX, double mouseY, int button) {
         editButton.mousePressed(mouseX, mouseY, button);
+        if (!MouseUtils.isInside(mouseX, mouseY, x, y + 104, width, height - 112)) return;
         double translatedMouseY = mouseY - scrollHelper.getValue();
         float offsetY = 112;
         float itemSpacing = 70;
@@ -167,7 +170,9 @@ public class NavigationRail extends Component {
             float itemX = x + (width / 2) - (selWidth / 2);
             float itemY = y + offsetY;
 
-            if (MouseUtils.isInside(mouseX, translatedMouseY, itemX, itemY, selWidth, selHeight) && button == GLFW.GLFW_MOUSE_BUTTON_LEFT && !currentNavigation.equals(n)) {
+            if (MouseUtils.isInside(mouseX, mouseY, x, y + 104, width, height - 112)
+                && MouseUtils.isInside(mouseX, translatedMouseY, itemX, itemY, selWidth, selHeight)
+                && button == GLFW.GLFW_MOUSE_BUTTON_LEFT && !currentNavigation.equals(n)) {
                 selectNavigation(n);
             }
             n.pressed = false;

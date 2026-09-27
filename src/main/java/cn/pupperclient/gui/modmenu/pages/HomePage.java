@@ -18,6 +18,7 @@ import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
@@ -58,7 +59,6 @@ public class HomePage extends SimplePage {
         PupperClient client = PupperClient.getInstance();
         ColorPalette palette = client.getColorManager().getPalette();
 
-        Skia.drawRect(x, y, width, height, palette.getSurfaceContainer());
         drawBackgroundDecoration(palette);
         drawHeader(palette);
         drawQuickActions(mouseX, mouseY, palette);
@@ -76,7 +76,7 @@ public class HomePage extends SimplePage {
         float badgeX = x + PAGE_PADDING;
         float badgeY = y + 30;
 
-        Skia.drawRoundedRect(badgeX, badgeY, 132, 28, 14, palette.getSurfaceContainerHighest());
+        Skia.drawRoundedRect(badgeX, badgeY, 132, 28, 14, MaterialTheme.surface(palette.getSecondaryContainer()));
         Skia.drawHeightCenteredText(Icon.AUTO_AWESOME, badgeX + 12, badgeY + 14,
             palette.getOnSurfaceVariant(), Fonts.getIconFill(16));
         Skia.drawHeightCenteredText("PUPPER HOME", badgeX + 36, badgeY + 14,
@@ -110,8 +110,8 @@ public class HomePage extends SimplePage {
             float cardX = x + PAGE_PADDING + i * (cardWidth + CARD_GAP);
             QuickAction action = quickActions.get(i);
             action.setBounds(cardX, cardY, cardWidth, CARD_HEIGHT);
-            drawQuickAction(action, mouseX, mouseY, palette.getOnSurfaceVariant(),
-                palette.getSurfaceContainerHighest(), palette.getOnSurface(), palette);
+            drawQuickAction(action, mouseX, mouseY, palette.getPrimary(),
+                MaterialTheme.surface(palette.getPrimaryContainer()), palette.getOnPrimaryContainer(), palette);
         }
     }
 
@@ -123,12 +123,11 @@ public class HomePage extends SimplePage {
         float hover = action.hoverAnimation.getValue();
         float visualY = action.y - hover * 4;
 
-        Skia.drawRoundedRect(action.x, visualY, action.width, action.height, 20,
-            palette.getSurfaceContainer());
+        MaterialTheme.card(action.x, visualY, action.width, action.height, MaterialTheme.CARD_RADIUS, palette);
         Skia.drawRoundedRect(action.x, visualY, action.width, action.height, 20,
             ColorUtils.applyAlpha(accent, hover * 0.035F));
-        Skia.drawOutline(action.x, visualY, action.width, action.height, 20, 1,
-            ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.45F + hover * 0.25F));
+        Skia.drawOutline(action.x, visualY, action.width, action.height, MaterialTheme.CARD_RADIUS, 1,
+            MaterialTheme.alpha(palette.getPrimary(), hover * 0.4F));
 
         Skia.drawRoundedRect(action.x + 18, visualY + 18, 48, 48, 14, iconBackground);
         Skia.drawFullCenteredText(action.icon, action.x + 42, visualY + 42,
@@ -181,10 +180,7 @@ public class HomePage extends SimplePage {
         float panelWidth = width - PAGE_PADDING * 2;
         float panelHeight = 80;
 
-        Skia.drawRoundedRect(panelX, panelY, panelWidth, panelHeight, 18,
-            palette.getSurfaceContainerLowest());
-        Skia.drawOutline(panelX, panelY, panelWidth, panelHeight, 18, 1,
-            ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.45F));
+        MaterialTheme.card(panelX, panelY, panelWidth, panelHeight, MaterialTheme.CARD_RADIUS, palette);
 
         int totalMods = PupperClient.getInstance().getModManager().getMods().size();
         long enabledMods = PupperClient.getInstance().getModManager().getMods().stream()
@@ -194,11 +190,11 @@ public class HomePage extends SimplePage {
 
         float metricWidth = panelWidth / 3;
         drawMetric(panelX, panelY, metricWidth, Icon.BOLT, enabledMods + " / " + totalMods,
-            "Active modules", palette.getOnSurfaceVariant(), palette);
+            "Active modules", palette.getPrimary(), palette);
         drawMetric(panelX + metricWidth, panelY, metricWidth, Icon.DESCRIPTION, String.valueOf(profiles),
-            "Saved profiles", palette.getOnSurfaceVariant(), palette);
+            "Saved profiles", palette.getSecondary(), palette);
         drawMetric(panelX + metricWidth * 2, panelY, metricWidth, Icon.MUSIC_NOTE, String.valueOf(tracks),
-            "Music tracks", palette.getOnSurfaceVariant(), palette);
+            "Music tracks", palette.getTertiary(), palette);
 
         Skia.drawLine(panelX + metricWidth, panelY + 16, panelX + metricWidth, panelY + panelHeight - 16, 1,
             ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.55F));

@@ -19,7 +19,7 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.api.PressAnimation;
-import cn.pupperclient.utils.color.ColorUtils;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.misc.SearchUtils;
 import cn.pupperclient.utils.language.I18n;
 import cn.pupperclient.utils.mouse.MouseUtils;
@@ -114,18 +114,14 @@ public class ModsPage extends Page {
 
     @Override
     public void draw(double mouseX, double mouseY) {
+        super.draw(mouseX, mouseY);
         updateFilteredItems();
         ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
         double relativeMouseY = mouseY - scrollHelper.getValue();
-        Skia.save();
-        Skia.translate(0, scrollHelper.getValue());
-
-        super.draw(mouseX, relativeMouseY);
 
         float categoryBarY = y + 56;
         float categoryBarHeight = 24;
-        float categoryBarMarginBottom = 16;
         float categoryX = x + 26;
 
         for (Category category : Category.values()) {
@@ -134,18 +130,22 @@ public class ModsPage extends Page {
             float padding = 20.0f;
             float buttonWidth = textWidth + padding;
             boolean isSelected = category == selectedCategory;
-            boolean isHovered = MouseUtils.isInside(mouseX, relativeMouseY, categoryX, categoryBarY, buttonWidth, categoryBarHeight);
+            boolean isHovered = MouseUtils.isInside(mouseX, mouseY, categoryX, categoryBarY, buttonWidth, categoryBarHeight);
             Skia.drawRoundedRect(categoryX, categoryBarY, buttonWidth, categoryBarHeight, 12,
-                isSelected ? palette.getSurfaceContainerHighest() :
-                    isHovered ? palette.getSurfaceContainerHigh() : palette.getSurfaceContainerLow());
+                MaterialTheme.surface(isSelected ? palette.getSecondaryContainer() :
+                    isHovered ? palette.getSurfaceContainerHigh() : palette.getSurfaceContainerLow()));
             Skia.drawFullCenteredText(categoryName, categoryX + buttonWidth / 2, categoryBarY + categoryBarHeight / 2,
-                isSelected ? palette.getOnSurface() : palette.getOnSurfaceVariant(), Fonts.getRegular(16));
+                isSelected ? palette.getOnSecondaryContainer() : palette.getOnSurfaceVariant(), Fonts.getMedium(14));
             categoryX += buttonWidth + 10;
         }
 
         int index = 0;
         float offsetX = 26;
-        float offsetY = categoryBarHeight + categoryBarMarginBottom;
+        float offsetY = 0;
+
+        Skia.save();
+        Skia.clip(x, y + 88, width, height - 88, 0);
+        Skia.translate(0, scrollHelper.getValue());
 
         for (Item i : filteredItems) {
             Mod m = i.mod;
@@ -169,15 +169,13 @@ public class ModsPage extends Page {
                 continue;
             }
 
-            Skia.drawRoundedRectVarying(itemX, itemY, 244, 116, 26, 26, 0, 0, palette.getSurfaceContainerLow());
-            Skia.drawRoundedRectVarying(itemX, itemY + 116, 244, 35, 0, 0, 26, 26, palette.getSurfaceContainerLow());
-            Skia.drawRoundedRectVarying(itemX, itemY + 116, 244, 35, 0, 0, 26, 26, ColorUtils.applyAlpha(palette.getSurfaceContainerLowest(), i.focusAnimation.getValue()));
-            Skia.drawOutline(itemX, itemY, 244, 151, 26, 1,
-                ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.45F));
+            MaterialTheme.card(itemX, itemY, 244, 151, MaterialTheme.CARD_RADIUS, palette);
+            Skia.drawRoundedRect(itemX, itemY, 244, 151, MaterialTheme.CARD_RADIUS,
+                MaterialTheme.alpha(palette.getPrimary(), i.focusAnimation.getValue()));
 
             Skia.save();
-            Skia.clip(itemX, itemY + 116, 244, 35, 0, 0, 26, 26);
-            i.pressAnimation.draw(itemX, itemY + 116, 224, 35, palette.getSurfaceContainerHighest(), 1);
+            Skia.clip(itemX, itemY + 116, 244, 35, 0, 0, MaterialTheme.CARD_RADIUS, MaterialTheme.CARD_RADIUS);
+            i.pressAnimation.draw(itemX, itemY + 116, 244, 35, MaterialTheme.surface(palette.getPrimaryContainer()), 1);
             Skia.restore();
 
             String modname;
@@ -185,7 +183,8 @@ public class ModsPage extends Page {
             else modname = m.getName();
 
             Skia.drawFullCenteredText(modname, itemX + ((float) 244 / 2), itemY + 116 + ((float) 35 / 2), palette.getOnSurfaceVariant(), Fonts.getRegular(16));
-            Skia.drawFullCenteredText(m.getIcon(), itemX + ((float) 244 / 2), itemY + ((float) 116 / 2), palette.getOnSurfaceVariant(), Fonts.getIcon(68));
+            Skia.drawFullCenteredText(m.getIcon(), itemX + ((float) 244 / 2), itemY + ((float) 116 / 2),
+                m.isEnabled() ? palette.getPrimary() : palette.getOnSurfaceVariant(), Fonts.getIcon(60));
 
             index++;
             offsetX += 32 + 244;
@@ -195,7 +194,7 @@ public class ModsPage extends Page {
             }
         }
 
-        scrollHelper.setMaxScroll(151, 22, filteredItems.size() + 3, 3, height);
+        scrollHelper.setMaxScroll(151, 22, filteredItems.size(), 3, height - 96);
 
         Skia.restore();
     }
@@ -204,7 +203,7 @@ public class ModsPage extends Page {
     public void mousePressed(double mouseX, double mouseY, int button) {
         double relativeMouseY = mouseY - scrollHelper.getValue();
 
-        super.mousePressed(mouseX, relativeMouseY, button);
+        super.mousePressed(mouseX, mouseY, button);
 
         float categoryBarY = y + 56;
         float categoryBarHeight = 24;
@@ -216,9 +215,10 @@ public class ModsPage extends Page {
                 float textWidth = getEstimatedTextWidth(categoryName);
                 float padding = 20.0f;
                 float buttonWidth = textWidth + padding;
-                if (MouseUtils.isInside(mouseX, relativeMouseY, categoryX, categoryBarY, buttonWidth, categoryBarHeight)) {
+                if (MouseUtils.isInside(mouseX, mouseY, categoryX, categoryBarY, buttonWidth, categoryBarHeight)) {
                     if (this.selectedCategory != category) {
                         this.selectedCategory = category;
+                        scrollHelper.reset();
                     }
                     return;
                 }
@@ -226,6 +226,7 @@ public class ModsPage extends Page {
             }
         }
 
+        if (!MouseUtils.isInside(mouseX, mouseY, x, y + 88, width, height - 88)) return;
         for (Item i : filteredItems) {
             float itemX = i.xAnimation.getValue();
             float itemY = i.yAnimation.getValue();
@@ -239,12 +240,14 @@ public class ModsPage extends Page {
 
     @Override
     public void mouseReleased(double mouseX, double mouseY, int button) {
+        super.mouseReleased(mouseX, mouseY, button);
+        boolean overContent = MouseUtils.isInside(mouseX, mouseY, x, y + 88, width, height - 88);
         double relativeMouseY = mouseY - scrollHelper.getValue();
         for (Item i : filteredItems) {
             Mod m = i.mod;
             float itemX = i.xAnimation.getValue();
             float itemY = i.yAnimation.getValue();
-            if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            if (overContent && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
                 if (MouseUtils.isInside(mouseX, relativeMouseY, itemX, itemY + 116, 244, 35)) {
                     m.toggle();
                     if (m.isEnabled()) {

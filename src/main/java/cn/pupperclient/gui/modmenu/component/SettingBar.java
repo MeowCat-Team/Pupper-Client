@@ -34,7 +34,7 @@ import cn.pupperclient.ui.component.impl.Keybind;
 import cn.pupperclient.ui.component.impl.Slider;
 import cn.pupperclient.ui.component.impl.Switch;
 import cn.pupperclient.ui.component.impl.text.TextField;
-import cn.pupperclient.utils.color.ColorUtils;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.language.I18n;
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -175,12 +175,13 @@ public class SettingBar extends Component {
 			component.setY(itemY + (height - component.getHeight()) / 2);
 		}
 
-		Skia.drawRoundedRect(x, itemY, width, height, 18, palette.getSurfaceContainerLow());
-		Skia.drawOutline(x, itemY, width, height, 18, 1,
-			ColorUtils.applyAlpha(palette.getOutlineVariant(), 0.45F));
-		Skia.drawFullCenteredText(icon, x + 30, itemY + (height / 2), palette.getOnSurface(), Fonts.getIcon(32));
-		Skia.drawText(I18n.get(title), x + 52, itemY + 20, palette.getOnSurface(), Fonts.getRegular(17));
-		Skia.drawText(I18n.get(description), x + 52, itemY + 37, palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+		MaterialTheme.card(x, itemY, width, height, MaterialTheme.CARD_RADIUS, palette);
+		Skia.drawFullCenteredText(icon, x + 30, itemY + (height / 2), palette.getPrimary(), Fonts.getIcon(28));
+		float textWidth = Math.max(40, component == null ? width - 76 : component.getX() - x - 68);
+		Skia.drawText(Skia.getLimitText(I18n.get(title), Fonts.getMedium(17), textWidth), x + 52, itemY + 20,
+				palette.getOnSurface(), Fonts.getMedium(17));
+		Skia.drawText(Skia.getLimitText(I18n.get(description), Fonts.getRegular(14), textWidth), x + 52, itemY + 39,
+				palette.getOnSurfaceVariant(), Fonts.getRegular(14));
 
 		if (component != null) {
 			component.draw(mouseX, mouseY);

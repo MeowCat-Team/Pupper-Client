@@ -1,7 +1,6 @@
 package cn.pupperclient.gui.api.page;
 
 import cn.pupperclient.gui.api.SoarGui;
-import cn.pupperclient.skia.Skia;
 import cn.pupperclient.ui.component.impl.text.SearchBar;
 import cn.pupperclient.utils.mouse.ScrollHelper;
 
@@ -33,24 +32,16 @@ public class Page extends SimplePage {
 
 		scrollHelper.onUpdate();
 
-		Skia.save();
-		Skia.translate(0, scrollHelper.getValue());
-
-		mouseY = (int) (mouseY - scrollHelper.getValue());
 		searchBar.draw(mouseX, mouseY);
-
-		Skia.restore();
 	}
 
 	@Override
 	public void mousePressed(double mouseX, double mouseY, int button) {
-		mouseY = mouseY - scrollHelper.getValue();
 		searchBar.mousePressed(mouseX, mouseY, button);
 	}
 
 	@Override
 	public void mouseReleased(double mouseX, double mouseY, int button) {
-		mouseY = mouseY - scrollHelper.getValue();
 		searchBar.mouseReleased(mouseX, mouseY, button);
 	}
 

@@ -20,6 +20,7 @@ import cn.pupperclient.management.music.MusicManager;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.chat.ChatUtils;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.misc.SearchUtils;
@@ -33,7 +34,6 @@ import io.github.humbleui.types.Rect;
 
 public class MusicPage extends Page {
 
-    private final SimpleAnimation controlBarAnimation = new SimpleAnimation();
     private MusicControlBar controlBar;
     private final List<Item> items = new ArrayList<>();
 
@@ -85,12 +85,10 @@ public class MusicPage extends Page {
         float offsetX = 28;
         float offsetY = 96;
 
-        controlBarAnimation.onTick(MouseUtils.isInside(mouseX, mouseY, controlBar.getX(), controlBar.getY(),
-            controlBar.getWidth(), controlBar.getHeight()) ? 1 : 0, 12);
-
         mouseY = mouseY - scrollHelper.getValue();
 
         Skia.save();
+        Skia.clip(x, y + 90, width, height - 180, 0);
         Skia.translate(0, scrollHelper.getValue());
 
         for (Item i : items) {
@@ -127,11 +125,14 @@ public class MusicPage extends Page {
             }
 
             if (m.getAlbum() != null) {
-                drawRoundedImage(m.getAlbum(), itemX, itemY, 174, 174, 26,
+                drawRoundedImage(m.getAlbum(), itemX, itemY, 174, 174, MaterialTheme.CARD_RADIUS,
                     (Math.abs(focusAnimation.getValue()) + 0.001F) * 6);
             } else {
-                Skia.drawRoundedRect(itemX, itemY, 174, 174, 26, palette.getSurfaceContainerHigh());
+                MaterialTheme.card(itemX, itemY, 174, 174, MaterialTheme.CARD_RADIUS, palette);
+                Skia.drawFullCenteredText(Icon.MUSIC_NOTE, itemX + 87, itemY + 87,
+                    palette.getPrimary(), Fonts.getIcon(52));
             }
+            MaterialTheme.outline(itemX, itemY, 174, 174, MaterialTheme.CARD_RADIUS, palette);
 
             String limitedTitle = Skia.getLimitText(m.getTitle(), Fonts.getRegular(15), 174);
             String limitedArtist = Skia.getLimitText(m.getArtist(), Fonts.getRegular(12), 174);
@@ -145,8 +146,10 @@ public class MusicPage extends Page {
 
             Skia.save();
             Skia.translate(0, 15 - (focusAnimation.getValue() * 15));
+            Skia.drawCircle(itemX + 87, itemY + 87, 30,
+                MaterialTheme.alpha(palette.getPrimaryContainer(), focusAnimation.getValue()));
             Skia.drawFullCenteredText(icon, itemX + (174 / 2), itemY + (174 / 2),
-                ColorUtils.applyAlpha(Color.WHITE, focusAnimation.getValue()), Fonts.getIconFill(64));
+                MaterialTheme.alpha(palette.getOnPrimaryContainer(), focusAnimation.getValue()), Fonts.getIconFill(40));
             Skia.restore();
 
             offsetX += 174 + 32;
@@ -158,15 +161,12 @@ public class MusicPage extends Page {
             }
         }
 
-        scrollHelper.setMaxScroll(206, 23, index, 4, height - 96);
+        scrollHelper.setMaxScroll(206, 23, index, 4, height - 190);
         Skia.restore();
 
         mouseY = mouseY + scrollHelper.getValue();
 
-        Skia.save();
-        Skia.translate(0, 100 - (controlBarAnimation.getValue() * 100));
         controlBar.draw(mouseX, mouseY);
-        Skia.restore();
     }
 
     /**
@@ -185,7 +185,10 @@ public class MusicPage extends Page {
             hoverValue
         );
 
-        Skia.drawRoundedRect(refreshButtonX, refreshButtonY, refreshButtonSize, refreshButtonSize, 6, backgroundColor);
+        Skia.drawRoundedRect(refreshButtonX, refreshButtonY, refreshButtonSize, refreshButtonSize,
+            MaterialTheme.CONTROL_RADIUS, MaterialTheme.surface(backgroundColor));
+        MaterialTheme.outline(refreshButtonX, refreshButtonY, refreshButtonSize, refreshButtonSize,
+            MaterialTheme.CONTROL_RADIUS, palette);
 
         // 绘制刷新图标
         String refreshIcon = isRefreshing ? Icon.REFRESH : Icon.REFRESH;
@@ -198,8 +201,8 @@ public class MusicPage extends Page {
         if (isHovered && !isRefreshing) {
             String tooltip = "刷新音乐列表";
             float tooltipWidth = Skia.getTextBounds(tooltip, Fonts.getRegular(12)).getWidth() + 10;
-            Skia.drawRoundedRect((float)mouseX + 5, (float)mouseY - 25,
-                tooltipWidth, 20, 4, palette.getSurfaceContainerHigh());
+            MaterialTheme.panel((float)mouseX + 5, (float)mouseY - 25,
+                tooltipWidth, 20, 10, palette);
             Skia.drawText(tooltip, (float)mouseX + 10, (float)mouseY - 15, palette.getOnSurface(), Fonts.getRegular(12));
         }
     }
@@ -236,6 +239,8 @@ public class MusicPage extends Page {
             controlBar.getHeight())) {
             return;
         }
+
+        if (!MouseUtils.isInside(mouseX, mouseY, x, y + 90, width, height - 180)) return;
 
         mouseY = mouseY - scrollHelper.getValue();
 

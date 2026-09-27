@@ -15,6 +15,7 @@ import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.misc.SearchUtils;
 import cn.pupperclient.utils.language.I18n;
@@ -45,6 +46,7 @@ public class SettingsPage extends Page {
 		mouseY = mouseY - scrollHelper.getValue();
 
 		Skia.save();
+		Skia.clip(x, y + 88, width, height - 88, 0);
 		Skia.translate(0, scrollHelper.getValue());
 
 		for (Item i : items) {
@@ -62,14 +64,14 @@ public class SettingsPage extends Page {
 
 			itemY = yAnimation.getValue();
 
-			Skia.drawRoundedRect(x + 32, itemY, width - 64, 68, 18, palette.getSurfaceContainerLow());
-			Skia.drawFullCenteredText(m.getIcon(), x + 32 + 30, itemY + ((float) 68 / 2), palette.getOnSurface(),
-					Fonts.getIcon(32));
+			MaterialTheme.card(x + 32, itemY, width - 64, 68, MaterialTheme.CARD_RADIUS, palette);
+			Skia.drawFullCenteredText(m.getIcon(), x + 32 + 30, itemY + ((float) 68 / 2), palette.getPrimary(),
+					Fonts.getIcon(28));
 			Skia.drawText(m.getName(), x + 32 + 52, itemY + 20, palette.getOnSurface(), Fonts.getRegular(17));
 			Skia.drawText(I18n.get(m.getDescription()), x + 32 + 52, itemY + 37, palette.getOnSurfaceVariant(),
 					Fonts.getRegular(14));
-			Skia.drawHeightCenteredText(">", x + width - 54, itemY + ((float) 68 / 2), palette.getOnSurface(),
-					Fonts.getRegular(20));
+			Skia.drawHeightCenteredText(Icon.CHEVRON_RIGHT, x + width - 58, itemY + ((float) 68 / 2), palette.getOnSurfaceVariant(),
+					Fonts.getIcon(22));
 
 			offsetY += 68 + 18;
 		}
@@ -79,20 +81,11 @@ public class SettingsPage extends Page {
 	}
 
 	@Override
-	public void mousePressed(double mouseX, double mouseY, int button) {
-		super.mousePressed(mouseX, mouseY, button);
-
-		mouseY = mouseY - scrollHelper.getValue();
-		searchBar.mousePressed(mouseX, mouseY, button);
-	}
-
-	@Override
 	public void mouseReleased(double mouseX, double mouseY, int button) {
 		super.mouseReleased(mouseX, mouseY, button);
+		if (!MouseUtils.isInside(mouseX, mouseY, x, y + 88, width, height - 88)) return;
 
 		mouseY = mouseY - scrollHelper.getValue();
-
-		searchBar.mouseReleased(mouseX, mouseY, button);
 
 		for (Item i : items) {
 

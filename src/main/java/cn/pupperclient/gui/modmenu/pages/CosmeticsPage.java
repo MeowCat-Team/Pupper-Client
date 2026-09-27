@@ -10,11 +10,11 @@ import cn.pupperclient.management.cape.CapeRenderer;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.ButtonHandler;
 import cn.pupperclient.ui.component.impl.IconButton;
-import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.thread.Multithreading;
 import cn.pupperclient.utils.file.FileLocation;
 import cn.pupperclient.utils.file.FileDialog;
@@ -144,14 +144,14 @@ public class CosmeticsPage extends Page {
         double relativeMouseY = mouseY - scrollHelper.getValue();
 
         // Draw category bar (similar to ModsPage)
-        drawCategoryBar(mouseX, relativeMouseY);
-
-        addButton.draw(mouseX, mouseY);
+        drawCategoryBar(mouseX, mouseY);
 
         Skia.save();
+        Skia.clip(x, y + 88, width, height - 88, 0);
         Skia.translate(0, scrollHelper.getValue());
         drawMd3Style(mouseX, relativeMouseY);
         Skia.restore();
+        addButton.draw(mouseX, mouseY);
     }
 
     private void drawCategoryBar(double mouseX, double mouseY) {
@@ -169,9 +169,10 @@ public class CosmeticsPage extends Page {
             boolean isHovered = MouseUtils.isInside(mouseX, mouseY, categoryX, categoryBarY, buttonWidth, categoryBarHeight);
 
             Skia.drawRoundedRect(categoryX, categoryBarY, buttonWidth, categoryBarHeight, 12,
-                isHovered ? palette.getSurfaceContainerLow() : palette.getSurface());
+                MaterialTheme.surface(isSelected ? palette.getSecondaryContainer() :
+                    isHovered ? palette.getSurfaceContainerHigh() : palette.getSurfaceContainerLow()));
             Skia.drawFullCenteredText(categoryName, categoryX + buttonWidth / 2, categoryBarY + categoryBarHeight / 2,
-                isSelected ? palette.getPrimary() : palette.getOnSurfaceVariant(), Fonts.getRegular(16));
+                isSelected ? palette.getOnSecondaryContainer() : palette.getOnSurfaceVariant(), Fonts.getMedium(14));
             categoryX += buttonWidth + 10;
         }
     }
@@ -205,22 +206,23 @@ public class CosmeticsPage extends Page {
             boolean isHovered = MouseUtils.isInside(mouseX, mouseY, itemX, itemY, itemWidth, itemHeight);
             item.focusAnimation.onTick(isHovered ? 1 : 0, 10);
 
-            Color bgColor = isSelected ? palette.getPrimaryContainer() : palette.getSurface();
-            Skia.drawRoundedRect(itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, 12, bgColor);
+            MaterialTheme.card(itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, MaterialTheme.CARD_RADIUS, palette);
+            Skia.drawRoundedRect(itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, MaterialTheme.CARD_RADIUS,
+                MaterialTheme.alpha(palette.getPrimary(), (isSelected ? 0.12F : 0) + item.focusAnimation.getValue() * 0.06F));
 
             if (isSelected) {
-                Skia.drawOutline(itemX + 3, itemY + 3, itemWidth - 6, itemHeight - 6, 14, 3, palette.getPrimary());
+                Skia.drawOutline(itemX + 3, itemY + 3, itemWidth - 6, itemHeight - 6, MaterialTheme.CARD_RADIUS + 2, 1.5F, palette.getPrimary());
             }
 
             if (item.capeFile.exists()) {
                 Identifier capeTexture = PupperClient.getInstance().getCapeManager().getLoadedCape(item.capeId);
                 if (capeTexture != null) {
                     CapeRenderer.renderRoundedCapePreview(capeTexture,
-                        itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, 8);
+                        itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, MaterialTheme.CARD_RADIUS);
                 } else {
                     // 如果纹理尚未加载，显示加载状态或占位符
-                    Skia.drawRoundedRect(itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, 8, 
-                        ColorUtils.applyAlpha(palette.getSurfaceVariant(), 0.5f));
+                    Skia.drawRoundedRect(itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, MaterialTheme.CARD_RADIUS,
+                        MaterialTheme.alpha(palette.getSurfaceVariant(), MaterialTheme.opacity() * 0.2F));
                     // 可以添加加载中的文字提示
                     String loadingText = "Loading...";
                     float textWidth = Skia.getTextBounds(loadingText, Fonts.getRegular(12)).getWidth();
@@ -240,8 +242,6 @@ public class CosmeticsPage extends Page {
         super.mousePressed(mouseX, mouseY, button);
         addButton.mousePressed(mouseX, mouseY, button);
 
-        double relativeMouseY = mouseY - scrollHelper.getValue();
-
         // Handle category selection
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             float categoryBarY = y + 56;
@@ -253,7 +253,7 @@ public class CosmeticsPage extends Page {
                 float textWidth = getTextWidth(categoryName, Fonts.getRegular(16));
                 float padding = 20.0f;
                 float buttonWidth = textWidth + padding;
-                if (MouseUtils.isInside(mouseX, relativeMouseY, categoryX, categoryBarY, buttonWidth, categoryBarHeight)) {
+                if (MouseUtils.isInside(mouseX, mouseY, categoryX, categoryBarY, buttonWidth, categoryBarHeight)) {
                     if (this.selectedCategory != category) {
                         this.selectedCategory = category;
                     }
@@ -269,7 +269,9 @@ public class CosmeticsPage extends Page {
         super.mouseReleased(mouseX, mouseY, button);
         addButton.mouseReleased(mouseX, mouseY, button);
 
-        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT
+            || MouseUtils.isInside(mouseX, mouseY, addButton.getX(), addButton.getY(), addButton.getWidth(), addButton.getHeight())
+            || !MouseUtils.isInside(mouseX, mouseY, x, y + 88, width, height - 88)) {
             return;
         }
 

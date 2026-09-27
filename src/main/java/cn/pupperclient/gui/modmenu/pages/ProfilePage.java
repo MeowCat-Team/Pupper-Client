@@ -18,6 +18,7 @@ import cn.pupperclient.management.profile.Profile;
 import cn.pupperclient.management.profile.ProfileIcon;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.handler.impl.ButtonHandler;
 import cn.pupperclient.ui.component.impl.IconButton;
@@ -66,8 +67,6 @@ public class ProfilePage extends Page {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		addButton.draw(mouseX, mouseY);
-
 		mouseY = mouseY - scrollHelper.getValue();
 
 		int index = 0;
@@ -75,6 +74,7 @@ public class ProfilePage extends Page {
 		float offsetY = 0;
 
 		Skia.save();
+		Skia.clip(x, y + 88, width, height - 88, 0);
 		Skia.translate(0, scrollHelper.getValue());
 
 		for (Item i : items) {
@@ -98,17 +98,20 @@ public class ProfilePage extends Page {
 			itemX = xAnimation.getValue();
 			itemY = yAnimation.getValue();
 
-			Skia.drawRoundedRect(itemX, itemY, 245, 88, 12, palette.getSurface());
+			MaterialTheme.card(itemX, itemY, 245, 88, MaterialTheme.CARD_RADIUS, palette);
 			
 			if (icon instanceof ProfileIcon) {
 				Skia.drawRoundedImage(((ProfileIcon) icon).getIconPath(), itemX + 8, itemY + 8, 72, 72, 12);
 			} else if (icon instanceof File) {
 				Skia.drawRoundedImage(((File) icon), itemX + 8, itemY + 8, 72, 72, 12);
 			} else {
-				Skia.drawRoundedRect(itemX + 8, itemY + 8, 72, 72, 12, palette.getSurfaceContainer());
+				Skia.drawRoundedRect(itemX + 8, itemY + 8, 72, 72, MaterialTheme.CONTROL_RADIUS, MaterialTheme.surface(palette.getSecondaryContainer()));
 			}
 			
-			Skia.drawText(p.getName(), itemX + 86, itemY + 16, palette.getOnSurface(), Fonts.getMedium(20));
+			Skia.drawText(Skia.getLimitText(p.getName(), Fonts.getMedium(18), 144), itemX + 86, itemY + 20,
+					palette.getOnSurface(), Fonts.getMedium(18));
+			Skia.drawText(Skia.getLimitText(p.getAuthor(), Fonts.getRegular(12), 144), itemX + 86, itemY + 47,
+					palette.getOnSurfaceVariant(), Fonts.getRegular(12));
 
 			index++;
 			offsetX += 26 + 245;
@@ -122,6 +125,7 @@ public class ProfilePage extends Page {
 		scrollHelper.setMaxScroll(88, 22, index, 3, height - 96);
 
 		Skia.restore();
+		addButton.draw(mouseX, mouseY + scrollHelper.getValue());
 	}
 
 	@Override
@@ -134,8 +138,13 @@ public class ProfilePage extends Page {
 	public void mouseReleased(double mouseX, double mouseY, int button) {
 		super.mouseReleased(mouseX, mouseY, button);
 		addButton.mouseReleased(mouseX, mouseY, button);
+		if (MouseUtils.isInside(mouseX, mouseY, addButton.getX(), addButton.getY(), addButton.getWidth(), addButton.getHeight())
+				|| !MouseUtils.isInside(mouseX, mouseY, x, y + 88, width, height - 88)) return;
+		mouseY -= scrollHelper.getValue();
 		
 		for (Item i : items) {
+			if (!searchBar.getText().isEmpty()
+					&& !SearchUtils.isSimilar(i.profile.getName() + " " + i.profile.getAuthor(), searchBar.getText())) continue;
 			
 			float itemX = i.xAnimation.getValue();
 			float itemY = i.yAnimation.getValue();

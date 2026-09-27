@@ -11,6 +11,7 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.misc.SearchUtils;
 import cn.pupperclient.utils.language.I18n;
+import cn.pupperclient.utils.mouse.MouseUtils;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -84,6 +85,7 @@ public class SettingsImplPage extends Page {
         mouseY = mouseY - scrollHelper.getValue();
 
         Skia.save();
+        Skia.clip(x, y + 88, width, height - 88, 0);
         Skia.translate(0, scrollHelper.getValue());
 
         for (SettingBar b : bars) {
@@ -105,10 +107,10 @@ public class SettingsImplPage extends Page {
     @Override
     public void mousePressed(double mouseX, double mouseY, int button) {
         super.mousePressed(mouseX, mouseY, button);
+        boolean overContent = MouseUtils.isInside(mouseX, mouseY, x, y + 88, width, height - 88);
 
         mouseY = mouseY - scrollHelper.getValue();
-
-        searchBar.mousePressed(mouseX, mouseY, button);
+        if (!overContent) mouseX = -Double.MAX_VALUE;
 
         for (SettingBar b : bars) {
 
@@ -123,10 +125,10 @@ public class SettingsImplPage extends Page {
     @Override
     public void mouseReleased(double mouseX, double mouseY, int button) {
         super.mouseReleased(mouseX, mouseY, button);
+        boolean overContent = MouseUtils.isInside(mouseX, mouseY, x, y + 88, width, height - 88);
 
-        mouseY = (int) (mouseY - scrollHelper.getValue());
-
-        searchBar.mousePressed(mouseX, mouseY, button);
+        mouseY = mouseY - scrollHelper.getValue();
+        if (!overContent) mouseX = -Double.MAX_VALUE;
 
         for (SettingBar b : bars) {
 

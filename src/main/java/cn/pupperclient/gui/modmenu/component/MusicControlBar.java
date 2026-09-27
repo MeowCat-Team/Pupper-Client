@@ -21,6 +21,7 @@ import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.ButtonHandler;
 import cn.pupperclient.ui.component.impl.IconButton;
 import cn.pupperclient.ui.component.impl.text.TextField;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.thread.Multithreading;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
@@ -119,10 +120,10 @@ public class MusicControlBar extends Component {
 
 		animation.onTick(addMusic ? 1 : 0, 16);
 
-		Skia.drawRoundedRect(x, y, width, height, 16, palette.getSurface());
+		MaterialTheme.panel(x, y, width, height, MaterialTheme.CARD_RADIUS, palette);
 
 		Skia.save();
-		Skia.clip(x, y, width, height, 16);
+		Skia.clip(x, y, width, height, MaterialTheme.CARD_RADIUS);
 
 		Skia.save();
 		Skia.translate(0, animation.getValue() * -height);
@@ -132,7 +133,8 @@ public class MusicControlBar extends Component {
 		if (album != null) {
 			Skia.drawRoundedImage(album, x + 8, y + 8, 48, 48, 10);
 		} else {
-			Skia.drawRoundedRect(x + 8, y + 8, 48, 48, 10, palette.getSurfaceContainerHigh());
+			Skia.drawRoundedRect(x + 8, y + 8, 48, 48, MaterialTheme.CONTROL_RADIUS, MaterialTheme.surface(palette.getSecondaryContainer()));
+			Skia.drawFullCenteredText(Icon.MUSIC_NOTE, x + 32, y + 32, palette.getPrimary(), Fonts.getIcon(24));
 		}
 
 		if (music != null) {
@@ -184,8 +186,9 @@ public class MusicControlBar extends Component {
 		float current = musicManager.getCurrentTime();
 		float end = musicManager.getEndTime();
 
-		Skia.drawRoundedRect(x, y, width, height, 3.5F, palette.getSurfaceContainerHigh());
-		Skia.drawRoundedRect(x, y, (current / end) * width, height, 3.5F, palette.getPrimary());
+		float progress = end > 0 && Float.isFinite(current) && Float.isFinite(end) ? Math.clamp(current / end, 0, 1) : 0;
+		Skia.drawRoundedRect(x, y, width, height, 3.5F, MaterialTheme.surface(palette.getSecondaryContainer()));
+		Skia.drawRoundedRect(x, y, progress * width, height, 3.5F, palette.getPrimary());
 	}
 
 	@Override
@@ -258,6 +261,13 @@ public class MusicControlBar extends Component {
 
 		@Override
 		public void draw(double mouseX, double mouseY) {
+			ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+			if (MouseUtils.isInside(mouseX, mouseY, x - 14, y - 14, 28, 28)) {
+				Skia.drawCircle(x, y, 16, MaterialTheme.alpha(palette.getPrimary(), 0.12F));
+			}
+			if (!icon.equals(Icon.REPEAT) && !icon.equals(Icon.SHUFFLE)) {
+				color = palette.getOnSurface();
+			}
 			Skia.drawFullCenteredText(icon, ControlButton.this.x, ControlButton.this.y, color, Fonts.getIconFill(28));
 		}
 

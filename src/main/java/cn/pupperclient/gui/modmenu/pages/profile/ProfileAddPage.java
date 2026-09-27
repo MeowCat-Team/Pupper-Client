@@ -16,6 +16,7 @@ import cn.pupperclient.management.config.ConfigType;
 import cn.pupperclient.management.profile.ProfileIcon;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.ButtonHandler;
@@ -85,7 +86,7 @@ public class ProfileAddPage extends SimplePage {
 		float itemX = x + offset;
 		float itemY = y + offset;
 
-		Skia.drawRoundedRect(itemX, itemY, width - offset * 2, height - offset * 2, 24, palette.getSurface());
+		MaterialTheme.card(itemX, itemY, width - offset * 2, height - offset * 2, MaterialTheme.CARD_RADIUS, palette);
 
 		Skia.drawText(I18n.get("text.createprofile"), itemX + 24, itemY + 24, palette.getOnSurface(),
 				Fonts.getMedium(28));
@@ -107,14 +108,16 @@ public class ProfileAddPage extends SimplePage {
 				float borderSize = 4;
 
 				Skia.drawRoundedRect(iconX - borderSize, iconY - borderSize, iconSize + borderSize * 2,
-						iconSize + borderSize * 2, 12 + (borderSize / 2), palette.getTertiaryContainer());
+						iconSize + borderSize * 2, 12 + (borderSize / 2), MaterialTheme.surface(palette.getPrimaryContainer()));
+				Skia.drawOutline(iconX - borderSize, iconY - borderSize, iconSize + borderSize * 2,
+						iconSize + borderSize * 2, 12 + (borderSize / 2), 1.5F, palette.getPrimary());
 			}
 
 			if (icon.equals(ProfileIcon.CUSTOM)) {
 				if(currentIcon instanceof File) {
 					Skia.drawRoundedImage(((File)currentIcon), iconX, iconY, iconSize, iconSize, 12);
 				} else {
-					Skia.drawRoundedRect(iconX, iconY, iconSize, iconSize, 12, palette.getSurfaceContainer());
+					Skia.drawRoundedRect(iconX, iconY, iconSize, iconSize, MaterialTheme.CONTROL_RADIUS, MaterialTheme.surface(palette.getSecondaryContainer()));
 					Skia.drawFullCenteredText(Icon.ADD, iconX + (iconSize / 2), iconY + (iconSize / 2),
 							palette.getOnSurface(), Fonts.getIcon(26));
 				}
