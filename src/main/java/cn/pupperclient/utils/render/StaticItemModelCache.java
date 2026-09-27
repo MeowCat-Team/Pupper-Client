@@ -13,13 +13,14 @@ import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.Identifier;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
-/** Reuses only proven static, unmodified ground block models; no entity state is cached. */
+/** Reuses proven static ground geometry, including tools and glint variants; no entity state is cached. */
 public final class StaticItemModelCache {
     private static final int MAX_MODELS = 256;
     private static final Map<Identifier, Entry> MODELS = new LinkedHashMap<>(32, 0.75F, true) {
@@ -44,8 +45,7 @@ public final class StaticItemModelCache {
             MODELS.clear();
             world = new WeakReference<>(currentWorld);
         }
-        if (stack.isEmpty() || !(stack.getItem() instanceof BlockItem)
-                || !stack.getComponentsPatch().isEmpty() || stack.hasFoil()) return null;
+        if (stack.isEmpty()) return null;
 
         Identifier id = stack.get(DataComponents.ITEM_MODEL);
         if (id == null) return null;
@@ -54,26 +54,31 @@ public final class StaticItemModelCache {
         Entry previous = MODELS.get(id);
         // A reload replaces the baked model objects. Identity is checked even if a reload
         // listener runs after this call; an old model is never selected by identifier alone.
-        if (previous != null && previous.model == model) return previous.state;
-
-        // Do not infer staticness from BlockItem or isAnimated alone: resource packs may use
+        // Do not infer staticness from the item type or isAnimated alone: resource packs may use
         // time/entity/count/component conditions, custom renderers, or world-dependent tints.
-        // Vanilla's exact Cuboid wrapper with no tints/foil reads no other stack/world/seed data.
-        if (model == null || model.getClass() != CuboidItemModelWrapper.class
-                || !((CuboidItemModelWrapperAccessor) model).pupper$getTints().isEmpty()) {
-            MODELS.put(id, new Entry(model, null));
-            return null;
+        // An exact, untinted Cuboid only reads stack data to choose its foil type. Damage,
+        // names and enchantment components cannot alter this model's geometry; conditional
+        // resource-pack models are different classes and still use the original resolver.
+        if (previous == null || previous.model != model) {
+            boolean cacheable = model != null && model.getClass() == CuboidItemModelWrapper.class
+                    && ((CuboidItemModelWrapperAccessor) model).pupper$getTints().isEmpty();
+            previous = new Entry(model, cacheable);
+            MODELS.put(id, previous);
         }
+        if (!previous.cacheable) return null;
+
+        int variant = !stack.hasFoil() ? 0 : (stack.is(ItemTags.COMPASSES) || stack.is(Items.CLOCK) ? 2 : 1);
+        if (previous.resolved[variant]) return previous.states[variant];
 
         ItemStackRenderState resolved = new ItemStackRenderState();
         resolver.updateForNonLiving(resolved, stack, ItemDisplayContext.GROUND, entity);
-        if (resolved.isEmpty() || resolved.isAnimated()) {
-            MODELS.put(id, new Entry(model, null));
-            return null;
-        }
         if (model != access.pupper$getItemModel(id)) return null;
+        previous.resolved[variant] = true;
+        if (resolved.isEmpty()) return null;
+        // Cuboid's animated flag means shader glint or atlas animation, not changing geometry.
+        // Keep that flag and foil type intact; their animations still advance when submitted.
         resolved.getModelBoundingBox();
-        MODELS.put(id, new Entry(model, resolved));
+        previous.states[variant] = resolved;
         return resolved;
     }
 
@@ -83,5 +88,15 @@ public final class StaticItemModelCache {
         world.clear();
     }
 
-    private record Entry(ItemModel model, ItemStackRenderState state) {}
+    private static final class Entry {
+        final ItemModel model;
+        final boolean cacheable;
+        final ItemStackRenderState[] states = new ItemStackRenderState[3];
+        final boolean[] resolved = new boolean[3];
+
+        Entry(ItemModel model, boolean cacheable) {
+            this.model = model;
+            this.cacheable = cacheable;
+        }
+    }
 }

@@ -40,9 +40,11 @@ public final class ItemRenderChecks {
         checkBudget();
         checkThreadIsolation();
         checkMinecraftContracts();
+        checkItemSubmitContracts();
         System.out.printf("Item rendering checks passed: %d assertions covering shadow-budget boundaries, "
                 + "world/disable reset, thread isolation, exact 26.2 mixin targets, static-model inputs and "
-                + "read-only model submission. Minecraft was not initialized; these are not in-game FPS measurements.%n",
+                + "read-only model submission and contiguous vertex buffers. Minecraft was not initialized; "
+                + "these are not in-game FPS measurements.%n",
                 CHECKS.get());
     }
 
@@ -229,6 +231,56 @@ public final class ItemRenderChecks {
         MethodInfo properties = uncheckedRead(ITEM + "ModelRenderProperties").method("applyToLayer", "(L" + LAYER
                 + ";Lnet/minecraft/world/item/ItemDisplayContext;)V", ACC_PUBLIC);
         checkReadOnlySubmit(properties);
+        MethodInfo special = cuboid.method("hasSpecialAnimatedTexture", "(L" + STACK + ";)Z", ACC_PRIVATE | ACC_STATIC);
+        special.requireCall(STACK, "is", "(Lnet/minecraft/tags/TagKey;)Z");
+        special.requireCall(STACK, "is", "(Ljava/lang/Object;)Z");
+        for (Instruction instruction : special.instructions) {
+            if (instruction.opcode == GETSTATIC) {
+                require(("net/minecraft/tags/ItemTags".equals(instruction.owner) && "COMPASSES".equals(instruction.name))
+                        || ("net/minecraft/world/item/Items".equals(instruction.owner) && "CLOCK".equals(instruction.name)),
+                        "Cuboid special foil selection now depends on another item/tag");
+            }
+            if (STACK.equals(instruction.owner)) require("is".equals(instruction.name),
+                    "Cuboid special foil selection now reads additional stack components");
+        }
+    }
+
+    private static void checkItemSubmitContracts() throws IOException {
+        String feature = "net/minecraft/client/renderer/feature/ItemFeatureRenderer";
+        String base = "net/minecraft/client/renderer/feature/RenderTypeFeatureRenderer";
+        String type = "net/minecraft/client/renderer/rendertype/RenderType";
+        String vertex = "com/mojang/blaze3d/vertex/VertexConsumer";
+        String instance = "com/mojang/blaze3d/vertex/QuadInstance";
+        String getter = "(L" + type + ";)L" + vertex + ";";
+        String descriptor = "(L" + feature + "$Submit;)V";
+        ClassInfo renderer = read(feature);
+        renderer.field("quadInstance", "L" + instance + ";", ACC_PRIVATE | ACC_FINAL);
+        MethodInfo main = renderer.method("prepareMainSubmit", descriptor, ACC_PRIVATE);
+        main.requireCall(feature, "getVertexBuilder", getter);
+        main.requireCall(instance, "setLightCoords", "(I)V");
+        main.requireCall(instance, "setOverlayCoords", "(I)V");
+        main.requireCall(instance, "setColor", "(I)V");
+        main.requireCall(vertex, "putBakedQuad", "(Lcom/mojang/blaze3d/vertex/PoseStack$Pose;"
+                + "Lnet/minecraft/client/resources/model/geometry/BakedQuad;L" + instance + ";)V");
+        MethodInfo dispatch = renderer.method("prepareSubmit", "(L" + feature + "$Submit;Z)V", ACC_PRIVATE);
+        dispatch.requireCall(feature, "prepareMainSubmit", descriptor);
+        dispatch.requireCall(feature, "prepareFoilSubmit", descriptor);
+        dispatch.requireCall(feature, "prepareOutlineSubmit", descriptor);
+        read(base).method("getVertexBuilder", getter, ACC_PROTECTED | ACC_FINAL);
+        ClassInfo group = read(base + "$Group");
+        group.field("lastRenderType", "L" + type + ";", ACC_PRIVATE);
+        MethodInfo buffer = group.method("getVertexBuilder", getter, ACC_PUBLIC);
+        buffer.requireCall(type, "canConsolidateConsecutiveGeometry", "()Z");
+        buffer.requireCall("net/minecraft/client/renderer/StagedVertexBuffer", "getVertexBuilder",
+                "(Lnet/minecraft/client/renderer/StagedVertexBuffer$Draw;)L" + vertex + ";");
+        // Sodium and Pupper must keep using the same pose-normal contract and vertex format.
+        MethodInfo sodium = read("net/caffeinemc/mods/sodium/client/render/immediate/model/BakedModelEncoder")
+                .method("writeQuadVertices", "(Lnet/caffeinemc/mods/sodium/api/vertex/buffer/VertexBufferWriter;"
+                        + "Lcom/mojang/blaze3d/vertex/PoseStack$Pose;Lnet/caffeinemc/mods/sodium/client/model/quad/BakedQuadView;"
+                        + "L" + instance + ";)V", ACC_PUBLIC | ACC_STATIC);
+        sodium.requireCall("net/caffeinemc/mods/sodium/api/math/MatrixHelper", "transformNormal", "(Lorg/joml/Matrix3f;ZI)I");
+        sodium.requireCall("net/caffeinemc/mods/sodium/api/vertex/buffer/VertexBufferWriter", "push",
+                "(Lorg/lwjgl/system/MemoryStack;JILcom/mojang/blaze3d/vertex/VertexFormat;)V");
     }
 
     private static void checkReadOnlySubmit(MethodInfo method) {
