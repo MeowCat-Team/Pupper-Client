@@ -16,6 +16,9 @@ public class EntityRenderOptimizerMod extends Mod {
     private final BooleanSetting optimizeChests = new BooleanSetting(
         "setting.entityoptimizer.chests", "setting.entityoptimizer.chests.description",
         Icon.INVENTORY_2, this, true);
+    private final BooleanSetting optimizeItemShadows = new BooleanSetting(
+        "setting.entityoptimizer.shadows", "setting.entityoptimizer.shadows.description",
+        Icon.PERFORMANCE_MAX, this, true);
     private final NumberSetting itemThreshold = new NumberSetting(
         "setting.entityoptimizer.threshold", "setting.entityoptimizer.threshold.description",
         Icon.PERFORMANCE_MAX, this, 64, 16, 256, 16);
@@ -36,6 +39,10 @@ public class EntityRenderOptimizerMod extends Mod {
 
     public boolean optimizeChests() {
         return isEnabled() && optimizeChests.isEnabled();
+    }
+
+    public boolean optimizeItemShadows() {
+        return optimizeItems() && optimizeItemShadows.isEnabled();
     }
 
     public int getItemThreshold() {

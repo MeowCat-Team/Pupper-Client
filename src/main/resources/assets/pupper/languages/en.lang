@@ -589,9 +589,11 @@ setting.hud.backgroundblur.description=Blur the scene behind HUD panels
 
 mod.entityoptimizer.name=Entity Render Optimizer
 mod.entityoptimizer.description=Reduce repeated item and chest rendering work without hiding entities
-setting.entityoptimizer.items=Optimize item piles
-setting.entityoptimizer.items.description=Limit duplicate models per dropped stack when many items are visible
+setting.entityoptimizer.items=Optimize dropped items
+setting.entityoptimizer.items.description=Reuse static dropped block models and limit duplicate models under load
 setting.entityoptimizer.chests=Optimize closed chests
 setting.entityoptimizer.chests.description=Reuse the static render state of closed single chests
 setting.entityoptimizer.threshold=Item load threshold
-setting.entityoptimizer.threshold.description=Visible dropped items before reducing models per stack
+setting.entityoptimizer.threshold.description=Visible item count before limiting model copies and simplifying distant shadows
+setting.entityoptimizer.shadows=Simplify item shadows
+setting.entityoptimizer.shadows.description=Under load keep shadows within 8 blocks, or 4 at twice the threshold; items remain visible
