@@ -165,6 +165,15 @@ tasks.register<JavaExec>("previewHudTheme") {
     args(layout.buildDirectory.file("reports/hud/theme-preview.png").get().asFile.absolutePath)
 }
 
+tasks.register<JavaExec>("previewMaterialTheme") {
+    group = "verification"
+    description = "Renders light and dark Material glass surfaces and checks their compositing (Windows)."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.MaterialThemePreview")
+    args(layout.buildDirectory.file("reports/ui/material-preview.png").get().asFile.absolutePath)
+}
+
 val releaseType = when {
     modVersion.contains("alpha", ignoreCase = true) -> "alpha"
     modVersion.contains("beta", ignoreCase = true) -> "beta"
