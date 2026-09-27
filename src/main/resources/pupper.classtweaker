@@ -13,3 +13,6 @@ accessible method com/mojang/blaze3d/pipeline/RenderPipeline$Builder withSnippet
 
 # MixinMultiplayerScreen onRemoved
 accessible field net/minecraft/client/gui/screens/multiplayer/JoinMultiplayerScreen serverSelectionList Lnet/minecraft/client/gui/screens/multiplayer/ServerSelectionList;
+
+# Preserve Sodium's exact packed-normal transform in batched item encoding.
+accessible field com/mojang/blaze3d/vertex/PoseStack$Pose trustedNormals Z

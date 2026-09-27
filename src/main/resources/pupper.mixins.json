@@ -30,6 +30,7 @@
     "minecraft.client.render.MixinLevelExtractorOptimization",
     "minecraft.client.render.MixinItemShadowOptimization",
     "minecraft.client.render.MixinItemClusterRenderStateOptimization",
+    "minecraft.client.render.MixinItemFeatureRendererOptimization",
     "minecraft.client.render.MixinModelManagerItemCache",
     "minecraft.client.render.MixinGameRenderer",
     "minecraft.client.render.MixinHeldItemRenderer",

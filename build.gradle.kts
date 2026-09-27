@@ -62,6 +62,8 @@ dependencies {
     // Mod runtime
     implementation(libs.viafabricplus.api)
     runtimeOnly(libs.sodium)
+    // Optional fast vertex writer; ordinary VertexConsumer remains the fallback without Sodium.
+    compileOnly(libs.sodium)
     runtimeOnly(libs.iris)
     runtimeOnly(libs.lithium)
     runtimeOnly(libs.immediatelyfast)
@@ -193,6 +195,30 @@ val verifyItemRendering = tasks.register<JavaExec>("verifyItemRendering") {
     mainClass.set("cn.pupperclient.hud.ItemRenderChecks")
 }
 tasks.check { dependsOn(verifyItemRendering) }
+
+val verifyItemVertices = tasks.register<JavaExec>("verifyItemVertices") {
+    group = "verification"
+    description = "Compares packed item vertices byte-for-byte with Sodium's encoder."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.ItemVertexChecks")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    workingDir(layout.buildDirectory.dir("verification"))
+    doFirst { workingDir.mkdirs() }
+}
+tasks.check { dependsOn(verifyItemVertices) }
+
+tasks.register<JavaExec>("benchmarkItemVertices") {
+    group = "verification"
+    description = "Measures dropped-item encoding and native staging CPU cost, excluding game/GPU work."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.ItemVertexChecks")
+    args("--benchmark")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    workingDir(layout.buildDirectory.dir("verification"))
+    doFirst { workingDir.mkdirs() }
+}
 
 tasks.register<JavaExec>("benchmarkGlassGpu") {
     group = "verification"
