@@ -6,7 +6,7 @@ The HUD uses Material 3 Expressive principles adapted to Minecraft GUI units. It
 
 - `HUDTokens`: shared spacing, shapes, text sizes and cached native fonts. Use these instead of allocating a font for each label each frame. Fonts have the same lifetime as the renderer.
 - `HUDColors`: translucent surface roles, opaque paired foregrounds and contrast correction where attainable. At low opacity, retain the Material role's hue when black/white adjustment cannot meet the target on both bright and dark backdrops. Never use the raw HCT seed as a component background.
-- `HUDText`: original filled glyphs and font weight, with a faint blurred black shadow below text on translucent surfaces. It never strokes or expands glyphs. Cached native shadow resources are released with the renderer.
+- `HUDText`: original filled glyphs and font weight, with a faint offset black shadow below text on translucent surfaces. The shadow reuses normal glyph rendering, with no per-line image blur or offscreen filter. It never strokes glyphs. Cached native paint is released with the renderer.
 - `HUDDesign`: the single surface renderer and palette cache. A theme change invalidates the cache through the new `ColorPalette` snapshot.
 - `HUDMotion`: elapsed-time effects and a critically damped spatial spring. Changing a target preserves velocity. `reducedMotion()` snaps to the final state and disables music artwork movement.
 - `SimpleHUDMod`: compact metric, accent-container icon badge, optional subordinate unit, and bounded text.
@@ -15,7 +15,7 @@ The HUD uses Material 3 Expressive principles adapted to Minecraft GUI units. It
 
 Use `colors().surface()` with `text()` / `secondaryText()`, or `accentContainer()` with `onAccentContainer()`. `accent()` indicates active state/progress. `danger()` indicates low health or an expiring effect; retain a number, icon or label so color is not the only cue. Progress tracks use `track()`.
 
-Background opacity defaults to 45% and can be adjusted from 0% to 100% in HUD settings. The default is shared with GUI surfaces through `MaterialTokens`. Only the base and raised surfaces become translucent; text, badges and progress remain opaque. Foreground roles are corrected against dark and bright sRGB composites where the target is attainable, otherwise retaining the Material role's color. Below 70%, `HUDText` adds a soft black shadow (at most 18% alpha, 0.8-unit blur, 0.7-unit downward offset); it fades out as the surface becomes more opaque. Solid accent badges do not need a shadow. This preserves the original font shapes and does not guarantee a fixed contrast ratio over arbitrary world pixels at low opacity. Rounded backdrop blur is enabled by default and can be disabled independently. Text is not faded during list transitions; the row is revealed by clipping and movement instead.
+Background opacity defaults to 45% and can be adjusted from 0% to 100% in HUD settings. The default is shared with GUI surfaces through `MaterialTokens`. Only the base and raised surfaces become translucent; text, badges and progress remain opaque. Foreground roles are corrected against dark and bright sRGB composites where the target is attainable, otherwise retaining the Material role's color. Below 70%, `HUDText` adds a faint black shadow (at most 14% alpha, no image blur, 0.6-unit downward offset); it fades out as the surface becomes more opaque. Solid accent badges do not need a shadow. This preserves the original font shapes and does not guarantee a fixed contrast ratio over arbitrary world pixels at low opacity. Rounded backdrop blur is enabled by default and can be disabled independently. Text is not faded during list transitions; the row is revealed by clipping and movement instead.
 
 ## Overlay priority
 
@@ -31,7 +31,7 @@ Skia HUD rendering currently happens at the end of the frame. While the vanilla 
 - The custom Boss HUD uses Skia, the shared theme and the saved position/scale, retaining progress and segment counts. The explicit vanilla-position option still uses Minecraft's original presentation; custom is the new-install default.
 - The scoreboard uses plain component text with theme colors; server formatting colors are intentionally replaced. Siblings are no longer duplicated and the list follows the usual 15-row limit.
 - The Bedwars table measures its row count before drawing and respects the configured maximum. It now participates in HUD scaling.
-- HUD blur uses Skia rounded backdrop layers. Menu blur remains separate and reads its own enable and intensity settings before drawing the GUI.
+- HUD and menu glass sample one shared scene snapshot taken before custom HUD content. Their enable settings remain independent; only rounded panels sample the scene. Disabling both effects skips the snapshot entirely.
 
 ## Verification
 

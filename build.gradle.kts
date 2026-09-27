@@ -174,6 +174,37 @@ tasks.register<JavaExec>("previewMaterialTheme") {
     args(layout.buildDirectory.file("reports/ui/material-preview.png").get().asFile.absolutePath)
 }
 
+tasks.register<JavaExec>("verifyGlassGpu") {
+    group = "verification"
+    description = "Checks glass brightness, clipping and GL state against a hidden GPU framebuffer."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.GlassGpuChecks")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    workingDir(layout.buildDirectory.dir("verification"))
+    doFirst { workingDir.mkdirs() }
+}
+
+val verifyItemRendering = tasks.register<JavaExec>("verifyItemRendering") {
+    group = "verification"
+    description = "Checks item shadow budgets and Minecraft render hook compatibility."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.ItemRenderChecks")
+}
+tasks.check { dependsOn(verifyItemRendering) }
+
+tasks.register<JavaExec>("benchmarkGlassGpu") {
+    group = "verification"
+    description = "Measures representative Skia/glass GPU and CPU cost in a hidden window."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.GlassGpuBenchmark")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    workingDir(layout.buildDirectory.dir("verification"))
+    doFirst { workingDir.mkdirs() }
+}
+
 val releaseType = when {
     modVersion.contains("alpha", ignoreCase = true) -> "alpha"
     modVersion.contains("beta", ignoreCase = true) -> "beta"
