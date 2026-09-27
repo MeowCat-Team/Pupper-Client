@@ -13,7 +13,14 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import cn.pupperclient.PupperClient;
-import cn.pupperclient.utils.minecraft.interfaces.IMinecraft;
+import cn.pupperclient.gui.api.SimpleSoarGui;
+import cn.pupperclient.management.color.api.ColorPalette;
+import cn.pupperclient.skia.Skia;
+import cn.pupperclient.skia.font.Fonts;
+import cn.pupperclient.skia.font.Icon;
+import cn.pupperclient.ui.theme.MaterialTheme;
+import cn.pupperclient.utils.language.I18n;
+import cn.pupperclient.utils.language.Language;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import cn.pupperclient.libraries.resourcepack.ResourcePackConverter;
@@ -22,24 +29,24 @@ import cn.pupperclient.utils.thread.Multithreading;
 import cn.pupperclient.utils.file.FileLocation;
 
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
-import net.minecraft.util.CommonColors;
-import org.jspecify.annotations.NonNull;
 
-public class GuiResourcePackConvert extends Screen implements IMinecraft {
+public class GuiResourcePackConvert extends SimpleSoarGui {
 
-	private String progress = "Converting...";
-	private Screen prevScreen;
+	private volatile String progress = "Converting...";
+	private final Screen prevScreen;
+	private boolean conversionStarted;
 
 	public GuiResourcePackConvert(Screen prevScreen) {
-		super(Component.literal("PackConvert"));
+		super();
 		this.prevScreen = prevScreen;
 	}
 
 	@Override
 	public void init() {
+		super.init();
+		if (conversionStarted) return;
+		conversionStarted = true;
 		Multithreading.runAsync(() -> {
 			ResourcePackConverter converter = createConverter();
             try {
@@ -47,15 +54,36 @@ public class GuiResourcePackConvert extends Screen implements IMinecraft {
             } catch (Exception e) {
                 PupperClient.LOGGER.error("converter error: {}", e.getMessage());
             }
-            client.gui.setScreen(prevScreen);
+            client.execute(() -> client.gui.setScreen(prevScreen));
         });
-		super.init();
 	}
 
 	@Override
-	public void extractRenderState(@NonNull GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
-		super.extractRenderState(context, mouseX, mouseY, delta);
-		context.text(this.font, Component.literal(progress), this.width / 2, this.height / 2 - 50, CommonColors.WHITE);
+	public void draw(double mouseX, double mouseY) {
+		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+		float panelWidth = 520;
+		float panelHeight = 228;
+		float scale = Math.min(1, Math.min(Math.max(1, client.getWindow().getWidth() - 32) / panelWidth,
+			Math.max(1, client.getWindow().getHeight() - 32) / panelHeight));
+		Skia.save();
+		Skia.translate((client.getWindow().getWidth() - panelWidth * scale) / 2,
+			(client.getWindow().getHeight() - panelHeight * scale) / 2);
+		Skia.scale(scale);
+		MaterialTheme.panel(0, 0, panelWidth, panelHeight, MaterialTheme.SURFACE_RADIUS, palette);
+		Skia.drawCircle(56, 56, 24, MaterialTheme.surface(palette.getPrimaryContainer()));
+		Skia.drawFullCenteredText(Icon.INVENTORY_2, 56, 56, palette.getPrimary(), Fonts.getIcon(26));
+		boolean chinese = I18n.getCurrentLanguage() == Language.CHINESE;
+		Skia.drawText(chinese ? "正在转换资源包" : "Converting resource packs", 96, 41,
+			palette.getOnSurface(), Fonts.getMedium(24));
+		Skia.drawText(Skia.getLimitText(progress, Fonts.getRegular(15), panelWidth - 64), 32, 111,
+			palette.getOnSurfaceVariant(), Fonts.getRegular(15));
+		Skia.drawRoundedRect(32, 150, panelWidth - 64, 6, 3, MaterialTheme.surface(palette.getSecondaryContainer()));
+		float phase = (System.nanoTime() % 1_600_000_000L) / 1_600_000_000F;
+		float travel = (float) ((1 - Math.cos(phase * Math.PI * 2)) / 2);
+		Skia.drawRoundedRect(32 + travel * (panelWidth - 160), 150, 96, 6, 3, palette.getPrimary());
+		Skia.drawText(chinese ? "完成后自动返回" : "Returning automatically when ready", 32, 183,
+			palette.getOnSurfaceVariant(), Fonts.getRegular(13));
+		Skia.restore();
 	}
 
 	private ResourcePackConverter createConverter() {
