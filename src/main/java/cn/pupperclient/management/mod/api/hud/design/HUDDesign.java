@@ -47,7 +47,7 @@ public abstract class HUDDesign {
     }
 
     public void drawText(String text, float x, float y, Font font) {
-        Skia.drawText(text, x, y, colors().text(), font);
+        HUDText.drawText(text, x, y, colors().text(), font);
     }
     public final Color getTextColor() { return colors().text(); }
     public final String getName() { return name; }

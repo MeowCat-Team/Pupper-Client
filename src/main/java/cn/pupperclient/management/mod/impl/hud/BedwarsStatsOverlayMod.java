@@ -12,6 +12,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.management.mod.settings.impl.NumberSetting;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.minecraft.player.SkinUtils;
 import cn.pupperclient.utils.server.Server;
@@ -63,13 +64,13 @@ public class BedwarsStatsOverlayMod extends HUDMod {
             Skia.drawRoundedRect(getX() + 8, getY() + 6, 18, 18, 6, colors().accentContainer());
             Skia.drawFullCenteredText(Icon.SINGLE_BED, getX() + 17, getY() + 15,
                 colors().onAccentContainer(), HUDTokens.icon());
-            Skia.drawHeightCenteredText(Skia.getLimitText(getName(), HUDTokens.title(), WIDTH - 48),
+            HUDText.drawHeightCenteredText(Skia.getLimitText(getName(), HUDTokens.title(), WIDTH - 48),
                 getX() + 32, getY() + 15, colors().text(), HUDTokens.title());
             Skia.drawRoundedRect(getX() + 8, getY() + 30, WIDTH - 16, 18, 6, colors().raised());
             String[] headers = {I18n.get("hud.player"), I18n.get("hud.level"), "WLR", "FKDR", "BBLR"};
             float[] columns = {48, 126, 176, 226, 276};
             for (int i = 0; i < headers.length; i++)
-                Skia.drawFullCenteredText(headers[i], getX() + columns[i], getY() + 39,
+                HUDText.drawFullCenteredText(headers[i], getX() + columns[i], getY() + 39,
                     colors().secondaryText(), HUDTokens.label());
             float y = getY() + 52;
             for (StatRow row : rows.values()) {
@@ -82,7 +83,7 @@ public class BedwarsStatsOverlayMod extends HUDMod {
                 y += rowHeight;
             }
             if (rows.isEmpty())
-                Skia.drawHeightCenteredText(I18n.get("hud.empty"), getX() + 8, y + 10,
+                HUDText.drawHeightCenteredText(I18n.get("hud.empty"), getX() + 8, y + 10,
                     colors().secondaryText(), HUDTokens.label());
         } finally { finish(); }
     };
@@ -93,16 +94,17 @@ public class BedwarsStatsOverlayMod extends HUDMod {
         if (skin != null && skin.exists()) Skia.drawPlayerHead(skin, getX() + 8, y + 3, 14, 14, 4);
         else Skia.drawFullCenteredText(Icon.PERSON, getX() + 15, y + 10,
             colors().onAccentContainer(), HUDTokens.icon());
-        Skia.drawHeightCenteredText(Skia.getLimitText(row.player.getProfile().name(), HUDTokens.body(), 72),
+        HUDText.drawHeightCenteredText(Skia.getLimitText(row.player.getProfile().name(), HUDTokens.body(), 72),
             getX() + 28, y + 10, colors().text(), HUDTokens.body());
         String[] values = {row.stats.getBedwarsLevel(), row.stats.getWinLoseRatio(),
             row.stats.getFinalKillDeathRatio(), row.stats.getBedsBrokeLostRatio()};
         Skia.drawRoundedRect(getX() + columns[1] - 19, y + 3, 38, 14, 7,
             colors().accentContainer());
         for (int i = 0; i < values.length; i++)
-            Skia.drawFullCenteredText(Skia.getLimitText(values[i], HUDTokens.label(), i == 0 ? 34 : 42),
+            HUDText.drawFullCenteredText(Skia.getLimitText(values[i], HUDTokens.label(), i == 0 ? 34 : 42),
                 getX() + columns[i + 1], y + 10,
-                i == 0 ? colors().onAccentContainer() : colors().text(), HUDTokens.label());
+                i == 0 ? colors().onAccentContainer() : colors().text(), HUDTokens.label(),
+                i == 0 ? 1 : HUDText.backgroundOpacity());
     }
 
     private static final class StatRow {

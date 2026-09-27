@@ -19,7 +19,7 @@ public class HUDModSettings extends Mod {
 	private final NumberSetting backgroundOpacitySetting = new NumberSetting("setting.hud.backgroundopacity",
 			"setting.hud.backgroundopacity.description", Icon.PALETTE, this, HUDColors.DEFAULT_OPACITY * 100, HUDColors.MIN_OPACITY * 100, 100, 1);
 	private final BooleanSetting backgroundBlurSetting = new BooleanSetting("setting.hud.backgroundblur",
-			"setting.hud.backgroundblur.description", Icon.BLUR_ON, this, false);
+			"setting.hud.backgroundblur.description", Icon.BLUR_ON, this, true);
 
 	private final BooleanSetting reducedMotionSetting = new BooleanSetting("setting.hud.reducedmotion",
 			"setting.hud.reducedmotion.description", Icon.MOVIE, this, false);

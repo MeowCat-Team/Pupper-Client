@@ -8,6 +8,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 import io.github.humbleui.skija.Font;
 
@@ -123,19 +124,19 @@ public abstract class SimpleHUDMod extends HUDMod {
         float x = getX() + CHIP_PADDING;
         float centerY = getY() + HUDTokens.CHIP_HEIGHT / 2;
         if (content.hasIcon) {
-            Skia.drawFullCenteredText(content.icon, x + ICON_WIDTH / 2, centerY,
+            HUDText.drawFullCenteredText(content.icon, x + ICON_WIDTH / 2, centerY,
                 fade(palette.secondaryText(), opacity), getIconFont(HUDTokens.ICON_SIZE));
             x += ICON_WIDTH + ICON_GAP;
         }
         if (!content.label.isBlank()) {
-            Skia.drawHeightCenteredText(content.label, x, centerY,
+            HUDText.drawHeightCenteredText(content.label, x, centerY,
                 fade(palette.secondaryText(), opacity), HUDTokens.label());
             x += content.labelWidth;
         }
-        Skia.drawHeightCenteredText(content.value, x, centerY,
+        HUDText.drawHeightCenteredText(content.value, x, centerY,
             fade(content.urgent ? palette.danger() : palette.text(), opacity), font);
         if (!content.unit.isBlank())
-            Skia.drawHeightCenteredText(content.unit, x + content.valueWidth + HUDTokens.GAP,
+            HUDText.drawHeightCenteredText(content.unit, x + content.valueWidth + HUDTokens.GAP,
                 centerY, fade(palette.secondaryText(), opacity), HUDTokens.label());
     }
 

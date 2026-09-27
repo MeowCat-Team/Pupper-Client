@@ -12,6 +12,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.management.mod.settings.impl.StringSetting;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.language.I18n;
@@ -107,21 +108,21 @@ public class DynamicIsland extends HUDMod {
             Skia.clip(getX(), getY(), width, height, getRadius());
             if (outgoingTitle != null) {
                 float leaving = 1 - titleReveal;
-                Skia.drawFullCenteredText(outgoingNextGame ? Icon.CHECK : Icon.PETS,
+                HUDText.drawFullCenteredText(outgoingNextGame ? Icon.CHECK : Icon.PETS,
                     getX() + 18, getY() + 18 - 4 * titleReveal,
                     ColorUtils.applyAlpha(outgoingNextGame ? colors().accent() : colors().secondaryText(), leaving), HUDTokens.icon());
-                Skia.drawHeightCenteredText(Skia.getLimitText(outgoingTitle, HUDTokens.title(), width - 44),
+                HUDText.drawHeightCenteredText(Skia.getLimitText(outgoingTitle, HUDTokens.title(), width - 44),
                     getX() + 34, getY() + 15 - 4 * titleReveal,
                     ColorUtils.applyAlpha(colors().text(), leaving), HUDTokens.title());
             }
             float entering = outgoingTitle == null ? 1 : titleReveal;
-            Skia.drawFullCenteredText(nextGame ? Icon.CHECK : Icon.PETS,
+            HUDText.drawFullCenteredText(nextGame ? Icon.CHECK : Icon.PETS,
                 getX() + 18, getY() + 18 + 4 * (1 - entering),
                 ColorUtils.applyAlpha(nextGame ? colors().accent() : colors().secondaryText(), entering), HUDTokens.icon());
-            Skia.drawHeightCenteredText(Skia.getLimitText(title, HUDTokens.title(), width - 44),
+            HUDText.drawHeightCenteredText(Skia.getLimitText(title, HUDTokens.title(), width - 44),
                 getX() + 34, getY() + 15 + 4 * (1 - entering),
                 ColorUtils.applyAlpha(colors().text(), entering), HUDTokens.title());
-            Skia.drawHeightCenteredText(Skia.getLimitText(detail, HUDTokens.label(), width - 44),
+            HUDText.drawHeightCenteredText(Skia.getLimitText(detail, HUDTokens.label(), width - 44),
                 getX() + 34, getY() + 30, colors().secondaryText(), HUDTokens.label());
             if (!notices.isEmpty()) Skia.drawRoundedRect(getX() + 8, getY() + 40,
                 width - 16, 0.75f, 0.375f, colors().outline());
@@ -132,13 +133,13 @@ public class DynamicIsland extends HUDMod {
                 try {
                     Skia.clip(getX(), y, width, rowHeight, 0);
                     Skia.drawRoundedRect(getX() + 4, y, width - 8, 24, 7, colors().raised());
-                    Skia.drawFullCenteredText(notice.enabled ? Icon.CHECK : Icon.CLOSE,
+                    HUDText.drawFullCenteredText(notice.enabled ? Icon.CHECK : Icon.CLOSE,
                         getX() + 16, y + 12, colors().accent(), HUDTokens.icon());
                     String state = I18n.get(notice.enabled ? "hud.enabled" : "hud.disabled");
                     float stateWidth = Skia.getTextBounds(state, HUDTokens.label()).getWidth();
-                    Skia.drawHeightCenteredText(Skia.getLimitText(notice.title, HUDTokens.body(),
+                    HUDText.drawHeightCenteredText(Skia.getLimitText(notice.title, HUDTokens.body(),
                         Math.max(8, width - stateWidth - 52)), getX() + 30, y + 12, colors().text(), HUDTokens.body());
-                    Skia.drawHeightCenteredText(state, getX() + width - 12 - stateWidth, y + 12,
+                    HUDText.drawHeightCenteredText(state, getX() + width - 12 - stateWidth, y + 12,
                         colors().secondaryText(), HUDTokens.label());
                 } finally { Skia.restore(); }
                 y += rowHeight;

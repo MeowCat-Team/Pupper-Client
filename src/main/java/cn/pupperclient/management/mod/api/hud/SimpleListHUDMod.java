@@ -12,6 +12,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDColors;
 import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import io.github.humbleui.skija.Font;
 
 /** Stable line boxes with interruptible width, row, and visibility motion. */
@@ -131,7 +132,7 @@ public abstract class SimpleListHUDMod extends HUDMod {
                         width - HUDTokens.PADDING * 2, 1, 0.5f,
                         fade(palette.outline(), headerVisibility));
                 if (!icon.isBlank())
-                    Skia.drawFullCenteredText(icon, x + width - HUDTokens.PADDING - 6,
+                    HUDText.drawFullCenteredText(icon, x + width - HUDTokens.PADDING - 6,
                         y + HUDTokens.PADDING + 7, fade(palette.accent(), headerVisibility), HUDTokens.icon());
                 if (outgoingTitle != null)
                     drawTitle(outgoingTitle, innerWidth, palette, headerVisibility * (1 - titleProgress));
@@ -146,7 +147,7 @@ public abstract class SimpleListHUDMod extends HUDMod {
 
     private void drawTitle(String value, float innerWidth, HUDColors palette, float opacity) {
         if (opacity <= 0) return;
-        Skia.drawHeightCenteredText(Skia.getLimitText(value, HUDTokens.title(), Math.max(8, innerWidth - 24)),
+        HUDText.drawHeightCenteredText(Skia.getLimitText(value, HUDTokens.title(), Math.max(8, innerWidth - 24)),
             getX() + HUDTokens.PADDING, getY() + HUDTokens.PADDING + 7,
             fade(palette.text(), opacity), HUDTokens.title());
     }
@@ -154,7 +155,7 @@ public abstract class SimpleListHUDMod extends HUDMod {
     private void drawLine(Line entry, float innerWidth, HUDColors palette) {
         if (entry.visibility <= 0) return;
         Font font = HUDTokens.body();
-        Skia.drawHeightCenteredText(Skia.getLimitText(entry.text, font, innerWidth),
+        HUDText.drawHeightCenteredText(Skia.getLimitText(entry.text, font, innerWidth),
             getX() + HUDTokens.PADDING, getY() + entry.renderSlot + 7,
             fade(palette.secondaryText(), entry.visibility), font);
     }

@@ -7,7 +7,7 @@ import io.github.humbleui.skija.Font;
 public final class HUDTokens {
     public static final float GAP = 4;
     public static final float PADDING = 8;
-    public static final float RADIUS = 10;
+    public static final float RADIUS = 12;
     public static final float COMPACT_RADIUS = 8;
     public static final float ROW_HEIGHT = 20;
     public static final float LINE_HEIGHT = 14;

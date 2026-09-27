@@ -837,6 +837,7 @@ public class Skia {
     }
 
     public static void releaseResources() {
+        cn.pupperclient.management.mod.api.hud.design.HUDText.releaseResources();
         imageHelper.clear();
         if (shadowPaint != null) {
             shadowPaint.close();

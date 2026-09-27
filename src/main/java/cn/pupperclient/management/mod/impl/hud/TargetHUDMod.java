@@ -12,6 +12,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.management.mod.settings.impl.ComboSetting;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.minecraft.player.HealthUtils;
@@ -105,17 +106,17 @@ public class TargetHUDMod extends HUDMod {
             } else drawAvatar(current.skin(), avatarX, avatarY);
             float x = getX() + 48;
             if (outgoingAppearance != null)
-                Skia.drawText(Skia.getLimitText(outgoingAppearance.name(), HUDTokens.title(), WIDTH - 56),
+                HUDText.drawText(Skia.getLimitText(outgoingAppearance.name(), HUDTokens.title(), WIDTH - 56),
                     x, getY() + 9 - 4 * appearanceReveal,
                     ColorUtils.applyAlpha(colors().text(), 1 - appearanceReveal), HUDTokens.title());
             float entering = outgoingAppearance == null ? 1 : appearanceReveal;
-            Skia.drawText(Skia.getLimitText(current.name(), HUDTokens.title(), WIDTH - 56),
+            HUDText.drawText(Skia.getLimitText(current.name(), HUDTokens.title(), WIDTH - 56),
                 x, getY() + 9 + 4 * (1 - entering),
                 ColorUtils.applyAlpha(colors().text(), entering), HUDTokens.title());
             String value = String.format(Locale.ROOT, "%.1f / %.1f HP", health, maxHealth);
             var color = fraction <= 0.25f ? colors().danger() : colors().secondaryText();
-            Skia.drawFullCenteredText(Icon.FAVORITE, x + 5, getY() + 30, color, HUDTokens.icon());
-            Skia.drawText(value, x + 13, getY() + 25, color, HUDTokens.label());
+            HUDText.drawFullCenteredText(Icon.FAVORITE, x + 5, getY() + 30, color, HUDTokens.icon());
+            HUDText.drawText(value, x + 13, getY() + 25, color, HUDTokens.label());
             if (healthDisplaySetting.getOption().equals("setting.health.display.bar")) {
                 float barWidth = WIDTH - 56;
                 Skia.drawRoundedRect(x, getY() + 42, barWidth, 6, 3, colors().track());

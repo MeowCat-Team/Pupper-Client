@@ -8,6 +8,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
 import cn.pupperclient.management.mod.settings.impl.ComboSetting;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.language.I18n;
 
@@ -70,13 +71,13 @@ public abstract class AnimatedListHUDMod extends HUDMod {
             if (backgroundSetting.isEnabled() || entries.isEmpty()) drawBackground(getX(), getY(), width, height);
             else drawBackground(getX(), getY(), width, VERTICAL_PADDING + HEADER_HEIGHT + SECTION_GAP / 2);
             float headerCenterY = getY() + VERTICAL_PADDING + HEADER_HEIGHT / 2;
-            Skia.drawHeightCenteredText(Skia.getLimitText(getName(), HUDTokens.title(),
+            HUDText.drawHeightCenteredText(Skia.getLimitText(getName(), HUDTokens.title(),
                     width - HORIZONTAL_PADDING * 2 - HEADER_ICON_SIZE - 8),
                 getX() + HORIZONTAL_PADDING, headerCenterY, colors().text(), HUDTokens.title());
             float iconX = getX() + width - HORIZONTAL_PADDING - HEADER_ICON_SIZE;
             float iconY = headerCenterY - HEADER_ICON_SIZE / 2;
             Skia.drawRoundedRect(iconX, iconY, HEADER_ICON_SIZE, HEADER_ICON_SIZE, 8, colors().raised());
-            Skia.drawFullCenteredText(getIcon(), iconX + HEADER_ICON_SIZE / 2, headerCenterY,
+            HUDText.drawFullCenteredText(getIcon(), iconX + HEADER_ICON_SIZE / 2, headerCenterY,
                 colors().secondaryText(), HUDTokens.icon());
             if (backgroundSetting.isEnabled() && !entries.isEmpty()) {
                 Color outline = colors().outline();
@@ -98,20 +99,20 @@ public abstract class AnimatedListHUDMod extends HUDMod {
                     float x = getX() + HORIZONTAL_PADDING + offset;
                     float centerY = y + itemHeight / 2;
                     boolean hasIcon = hasIcon(row);
-                    if (hasIcon) Skia.drawFullCenteredText(row.icon(), x + 5, centerY,
+                    if (hasIcon) HUDText.drawFullCenteredText(row.icon(), x + 5, centerY,
                         row.urgent() ? colors().danger() : colors().secondaryText(), HUDTokens.icon());
                     String detail = Skia.getLimitText(row.detail(), HUDTokens.label(), width / 3);
                     float detailWidth = Skia.getTextBounds(detail, HUDTokens.label()).getWidth();
-                    Skia.drawHeightCenteredText(Skia.getLimitText(row.label(), HUDTokens.body(),
+                    HUDText.drawHeightCenteredText(Skia.getLimitText(row.label(), HUDTokens.body(),
                         Math.max(8, width - HORIZONTAL_PADDING * 2 - (hasIcon ? 28 : 8) - detailWidth)),
                         x + (hasIcon ? 20 : 0), centerY, colors().text(), HUDTokens.body());
-                    Skia.drawHeightCenteredText(detail, getX() + width - HORIZONTAL_PADDING - detailWidth + offset,
+                    HUDText.drawHeightCenteredText(detail, getX() + width - HORIZONTAL_PADDING - detailWidth + offset,
                         centerY, row.urgent() ? colors().danger() : colors().secondaryText(), HUDTokens.label());
                 } finally { Skia.restore(); }
                 y += rowHeight;
             }
             if (entries.isEmpty())
-                Skia.drawHeightCenteredText(I18n.get("hud.empty"), getX() + HORIZONTAL_PADDING,
+                HUDText.drawHeightCenteredText(I18n.get("hud.empty"), getX() + HORIZONTAL_PADDING,
                     y + itemHeight / 2, colors().secondaryText(), HUDTokens.label());
         } finally { finish(); }
     }

@@ -2,13 +2,14 @@ package cn.pupperclient.management.mod.api.hud.design;
 
 import java.awt.Color;
 import cn.pupperclient.management.color.api.ColorPalette;
+import cn.pupperclient.ui.theme.MaterialTokens;
 
-/** Translucent surfaces with opaque foregrounds checked against composited backgrounds. */
+/** Translucent surfaces with opaque Material foregrounds and bounded contrast correction. */
 public record HUDColors(Color surface, Color raised, Color text, Color secondaryText,
                         Color accent, Color accentContainer, Color onAccentContainer,
                         Color outline, Color track, Color danger) {
     public static final float MIN_OPACITY = 0f;
-    public static final float DEFAULT_OPACITY = 0.80f;
+    public static final float DEFAULT_OPACITY = MaterialTokens.DEFAULT_OPACITY;
 
     public static HUDColors from(ColorPalette palette, Color surface) {
         return from(palette, surface, DEFAULT_OPACITY);
@@ -42,6 +43,9 @@ public record HUDColors(Color surface, Color raised, Color text, Color secondary
         if (minimumContrast(preferred, backgrounds) >= minimum) return preferred;
         Color target = minimumContrast(Color.BLACK, backgrounds) >= minimumContrast(Color.WHITE, backgrounds)
             ? Color.BLACK : Color.WHITE;
+        // At low surface opacity no single foreground can pass on every world color.
+        // Keep the Material role's hue instead of forcing it to pure black or white.
+        if (minimumContrast(target, backgrounds) < minimum) return preferred;
         double low = 0, high = 1;
         for (int i = 0; i < 14; i++) {
             double middle = (low + high) / 2;

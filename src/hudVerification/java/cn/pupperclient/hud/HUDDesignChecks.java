@@ -9,6 +9,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 /** Run with gradlew verifyHudDesign; no game window or third-party test runner needed. */
 public final class HUDDesignChecks {
     public static void main(String[] args) {
+        require(HUDColors.DEFAULT_OPACITY == 0.45f, "Default glass opacity must be 45%");
         int schemes = 0;
         double minimum = Double.MAX_VALUE;
         for (int hue = 0; hue < 360; hue += 30) {
@@ -39,6 +40,9 @@ public final class HUDDesignChecks {
                                 require(colors.surface().getAlpha() == Math.round(opacity / 100f * 255), "Surface opacity");
                                 require(colors.raised().getAlpha() == colors.surface().getAlpha(), "Raised opacity");
                                 require(colors.text().getAlpha() == 255, "Text must stay opaque");
+                                require(colors.secondaryText().getAlpha() == 255, "Secondary text must stay opaque");
+                                require(colors.accent().getAlpha() == 255, "Accent must stay opaque");
+                                require(colors.danger().getAlpha() == 255, "Danger color must stay opaque");
                                 schemes++;
                             }
                         }
@@ -60,7 +64,7 @@ public final class HUDDesignChecks {
         require(spring.update(12, 0.016f, true) == 12, "Reduced motion did not snap");
         HUDMotion.approach(0, 1, 0.016f, true);
         require(true, "Reduced effects did not snap");
-        System.out.printf("HUD checks passed: %d color/surface/opacity combinations (0-100%%), minimum composited text contrast at 70-100%% opacity %.2f:1; motion at 30/60/144/240 FPS.%n", schemes, minimum);
+        System.out.printf("HUD checks passed: %d color/surface/opacity combinations (0-100%%), 45%% default glass opacity, opaque foregrounds and paired badge contrast, minimum composited text contrast at 70-100%% opacity %.2f:1; motion at 30/60/144/240 FPS.%n", schemes, minimum);
     }
 
     private static float springAt(int fps) {

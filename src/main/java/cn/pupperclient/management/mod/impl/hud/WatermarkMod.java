@@ -9,6 +9,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
 import cn.pupperclient.management.mod.settings.impl.StringSetting;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 
 public class WatermarkMod extends HUDMod {
@@ -64,10 +65,10 @@ public class WatermarkMod extends HUDMod {
                 x += 24;
             }
             if (previousText != null && !previousText.isBlank())
-                Skia.drawHeightCenteredText(previousText, x, getY() + 16 - 3 * textReveal,
+                HUDText.drawHeightCenteredText(previousText, x, getY() + 16 - 3 * textReveal,
                     withOpacity(colors().text(), 1 - textReveal), HUDTokens.title());
             if (!displayedText.isBlank())
-                Skia.drawHeightCenteredText(displayedText, x, getY() + 16 + 3 * (1 - textReveal),
+                HUDText.drawHeightCenteredText(displayedText, x, getY() + 16 + 3 * (1 - textReveal),
                     withOpacity(colors().text(), textReveal), HUDTokens.title());
         } finally { finish(); }
     };

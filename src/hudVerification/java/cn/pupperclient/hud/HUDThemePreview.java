@@ -1,12 +1,16 @@
 package cn.pupperclient.hud;
 
 import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import javax.imageio.ImageIO;
 import cn.pupperclient.libraries.material3.hct.Hct;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.mod.api.hud.design.HUDColors;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.skia.Skia;
 import io.github.humbleui.skija.*;
@@ -16,6 +20,7 @@ import io.github.humbleui.types.RRect;
 public final class HUDThemePreview {
     public static void main(String[] args) throws Exception {
         verifyTextBounds();
+        verifyTextRendering();
         Path output = Path.of(args[0]);
         Files.createDirectories(output.getParent());
         try (Surface surface = Surface.makeRasterN32Premul(1280, 840)) {
@@ -30,6 +35,48 @@ public final class HUDThemePreview {
             }
         }
         System.out.println("HUD theme specimen: " + output);
+        HUDText.releaseResources();
+    }
+
+    private static void verifyTextRendering() throws Exception {
+        for (Color color : new Color[]{Color.WHITE, new Color(0x25282d)}) {
+            BufferedImage original = renderGlyphs(color, false, 1);
+            BufferedImage opaque = renderGlyphs(color, true, 1);
+            BufferedImage glass = renderGlyphs(color, true, HUDColors.DEFAULT_OPACITY);
+            int filledPixels = 0;
+            for (int y = 0; y < original.getHeight(); y++) {
+                for (int x = 0; x < original.getWidth(); x++) {
+                    int expected = original.getRGB(x, y);
+                    int actual = glass.getRGB(x, y);
+                    if (opaque.getRGB(x, y) != expected)
+                        throw new AssertionError("Opaque HUD text changed the original glyph");
+                    int alpha = expected >>> 24;
+                    if (alpha == 255) {
+                        filledPixels++;
+                        if (actual != expected)
+                            throw new AssertionError("Glass HUD text changed the filled glyph color");
+                    } else if (alpha == 0 && (actual >>> 24) > 46) {
+                        throw new AssertionError("Text outside the original glyph is stronger than a soft shadow");
+                    }
+                }
+            }
+            if (filledPixels == 0) throw new AssertionError("Glyph specimen has no filled pixels");
+        }
+        System.out.println("HUD typography checks passed: original filled glyphs retained; shadow-only pixels <= 18% alpha.");
+    }
+
+    private static BufferedImage renderGlyphs(Color color, boolean hud, float opacity) throws Exception {
+        try (Surface surface = Surface.makeRasterN32Premul(160, 48);
+             Paint paint = new Paint().setAntiAlias(true).setColor(color.getRGB())) {
+            Canvas canvas = surface.getCanvas();
+            canvas.clear(0);
+            if (hud) HUDText.drawAtBaseline(canvas, paint, "HUD 字体", 8, 24, color, HUDTokens.title(), opacity);
+            else canvas.drawString("HUD 字体", 8, 24, HUDTokens.title(), paint);
+            try (Image image = surface.makeImageSnapshot(); Data png = image.encodeToData(EncodedImageFormat.PNG)) {
+                if (png == null) throw new IllegalStateException("Glyph PNG encoding failed");
+                return ImageIO.read(new ByteArrayInputStream(png.getBytes()));
+            }
+        }
     }
 
     private static void verifyTextBounds() {
@@ -56,18 +103,18 @@ public final class HUDThemePreview {
         ColorPalette palette = new ColorPalette(Hct.from(220, 26, 6), dark);
         HUDColors c = HUDColors.from(palette, palette.getSurfaceContainer());
         rect(canvas, x, 16, 292, 388, 14, dark ? new Color(0x25303a) : new Color(0xeef1ef));
-        text(canvas, dark ? "深色主题 / 80%" : "浅色主题 / 80%", x + 14, 30, c.text(), HUDTokens.title());
+        text(canvas, dark ? "深色主题 / 45%" : "浅色主题 / 45%", x + 14, 30, c.text(), HUDTokens.title());
         float left = x + 14;
         rect(canvas, left, 52, 102, 24, 12, c.surface());
         rect(canvas, left + 5, 55, 18, 18, 6, c.accentContainer());
-        text(canvas, Icon.MONITOR, left + 8, 58, c.onAccentContainer(), HUDTokens.icon());
+        solidText(canvas, Icon.MONITOR, left + 8, 58, c.onAccentContainer(), HUDTokens.icon());
         text(canvas, "144", left + 30, 59, c.text(), HUDTokens.value());
         text(canvas, "FPS", left + 54, 60, c.secondaryText(), HUDTokens.label());
         rect(canvas, left + 112, 52, 90, 24, 12, c.surface());
         text(canvas, "24", left + 124, 59, c.text(), HUDTokens.value());
         text(canvas, "ms", left + 144, 60, c.secondaryText(), HUDTokens.label());
 
-        rect(canvas, left, 88, 264, 80, 10, c.surface());
+        rect(canvas, left, 88, 264, 80, HUDTokens.RADIUS, c.surface());
         text(canvas, "药水效果", left + 8, 98, c.text(), HUDTokens.title());
         text(canvas, "速度 II", left + 26, 123, c.text(), HUDTokens.body());
         text(canvas, Icon.SCIENCE, left + 8, 122, c.accent(), HUDTokens.icon());
@@ -76,9 +123,9 @@ public final class HUDThemePreview {
         text(canvas, Icon.TIMER, left + 8, 142, c.danger(), HUDTokens.icon());
         text(canvas, "8s", left + 232, 144, c.danger(), HUDTokens.label());
 
-        rect(canvas, left, 180, 180, 56, 10, c.surface());
+        rect(canvas, left, 180, 180, 56, HUDTokens.RADIUS, c.surface());
         rect(canvas, left + 8, 192, 32, 32, 8, c.accentContainer());
-        text(canvas, Icon.PERSON, left + 18, 202, c.onAccentContainer(), HUDTokens.icon());
+        solidText(canvas, Icon.PERSON, left + 18, 202, c.onAccentContainer(), HUDTokens.icon());
         text(canvas, "Pupper", left + 48, 190, c.text(), HUDTokens.title());
         text(canvas, "4.0 / 20.0 HP", left + 48, 205, c.danger(), HUDTokens.label());
         rect(canvas, left + 48, 222, 124, 5, 2.5f, c.track());
@@ -86,18 +133,18 @@ public final class HUDThemePreview {
         rect(canvas, left + 196, 180, 28, 28, 8, c.surface());
         text(canvas, "W", left + 205, 189, c.text(), HUDTokens.title());
         rect(canvas, left + 232, 182, 26, 26, 12, c.accentContainer());
-        text(canvas, "D", left + 241, 190, c.onAccentContainer(), HUDTokens.title());
+        solidText(canvas, "D", left + 241, 190, c.onAccentContainer(), HUDTokens.title());
         text(canvas, "常态 / 按下", left + 192, 221, c.secondaryText(), HUDTokens.label());
 
-        rect(canvas, left, 248, 264, 56, 10, c.surface());
+        rect(canvas, left, 248, 264, 56, HUDTokens.RADIUS, c.surface());
         rect(canvas, left + 8, 258, 36, 36, 8, c.accentContainer());
-        text(canvas, Icon.MUSIC_NOTE, left + 20, 270, c.onAccentContainer(), HUDTokens.icon());
+        solidText(canvas, Icon.MUSIC_NOTE, left + 20, 270, c.onAccentContainer(), HUDTokens.icon());
         text(canvas, "夜空中的旋律", left + 56, 258, c.text(), HUDTokens.title());
         text(canvas, "Pupper Radio", left + 56, 274, c.secondaryText(), HUDTokens.label());
         rect(canvas, left + 56, 292, 198, 3, 1.5f, c.track());
         rect(canvas, left + 56, 292, 92, 3, 1.5f, c.accent());
 
-        rect(canvas, left, 316, 264, 68, 10, c.surface());
+        rect(canvas, left, 316, 264, 68, HUDTokens.RADIUS, c.surface());
         text(canvas, "Pupper Client", left + 8, 326, c.text(), HUDTokens.title());
         text(canvas, "Player · 单人游戏 · 144 FPS", left + 8, 342, c.secondaryText(), HUDTokens.label());
         rect(canvas, left + 4, 358, 256, 22, 7, c.raised());
@@ -112,9 +159,15 @@ public final class HUDThemePreview {
         }
     }
     private static void text(Canvas canvas, String text, float x, float y, Color color, Font font) {
+        text(canvas, text, x, y, color, font, HUDColors.DEFAULT_OPACITY);
+    }
+    private static void solidText(Canvas canvas, String text, float x, float y, Color color, Font font) {
+        text(canvas, text, x, y, color, font, 1);
+    }
+    private static void text(Canvas canvas, String text, float x, float y, Color color, Font font, float opacity) {
         var bounds = font.measureText(text);
         try (Paint paint = new Paint().setColor(color.getRGB()).setAntiAlias(true)) {
-            canvas.drawString(text, x - bounds.getLeft(), y - bounds.getTop(), font, paint);
+            HUDText.drawAtBaseline(canvas, paint, text, x - bounds.getLeft(), y - bounds.getTop(), color, font, opacity);
         }
     }
 }

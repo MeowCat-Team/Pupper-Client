@@ -10,6 +10,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
 import cn.pupperclient.mixin.interfaces.IMixinKeyBinding;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 import net.minecraft.client.KeyMapping;
 
@@ -67,8 +68,9 @@ public class KeystrokesMod extends HUDMod {
             Color foreground = blend(colors().text(), colors().onAccentContainer(), state);
             if (!unmarkSetting.isEnabled()) {
                 if (jump) Skia.drawRoundedRect(px + 18, py + h / 2 - 1, w - 36, 2, 1, foreground);
-                else Skia.drawFullCenteredText(Skia.getLimitText(key.getTranslatedKeyMessage().getString(),
-                    HUDTokens.title(), w - 6), px + w / 2, py + h / 2, foreground, HUDTokens.title());
+                else HUDText.drawFullCenteredText(Skia.getLimitText(key.getTranslatedKeyMessage().getString(),
+                    HUDTokens.title(), w - 6), px + w / 2, py + h / 2, foreground, HUDTokens.title(),
+                    HUDText.backgroundOpacity() + (1 - HUDText.backgroundOpacity()) * Math.max(0, Math.min(1, state)));
             }
         }
     }

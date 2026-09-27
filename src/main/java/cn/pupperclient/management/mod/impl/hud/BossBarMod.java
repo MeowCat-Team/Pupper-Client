@@ -12,6 +12,7 @@ import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
 import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
 import cn.pupperclient.mixin.interfaces.IMixinBossHealthOverlay;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 import net.minecraft.client.gui.components.LerpingBossEvent;
 import net.minecraft.world.BossEvent;
@@ -82,9 +83,9 @@ public class BossBarMod extends HUDMod {
     private void drawBoss(String name, float progress, BossEvent.BossBarOverlay overlay, float y) {
         float value = Math.max(0, Math.min(1, progress));
         Skia.drawCircle(getX() + 13, y + 7, 3, colors().accent());
-        Skia.drawHeightCenteredText(Skia.getLimitText(name, HUDTokens.title(), 132),
+        HUDText.drawHeightCenteredText(Skia.getLimitText(name, HUDTokens.title(), 132),
             getX() + 22, y + 7, colors().text(), HUDTokens.title());
-        Skia.drawFullCenteredText(Math.round(value * 100) + "%", getX() + 176, y + 7,
+        HUDText.drawFullCenteredText(Math.round(value * 100) + "%", getX() + 176, y + 7,
             colors().secondaryText(), HUDTokens.label());
         Skia.drawRoundedRect(getX() + 8, y + 20, 184, 6, 3, colors().track());
         if (value > 0) Skia.drawRoundedRect(getX() + 8, y + 20, 184 * value, 6, 3, colors().accent());

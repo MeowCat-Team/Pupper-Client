@@ -17,6 +17,7 @@ import cn.pupperclient.management.music.MusicManager;
 import cn.pupperclient.management.music.MusicPlayer;
 import cn.pupperclient.management.music.lyric.LyricsManager;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.language.I18n;
 
@@ -103,14 +104,14 @@ public class MusicInfoMod extends SimpleHUDMod {
             float textX = getX() + textOffset;
             float textWidth = Math.max(8, width - textOffset - 10);
             if (previousTitle != null) {
-                Skia.drawText(Skia.getLimitText(previousTitle, HUDTokens.title(), textWidth),
+                HUDText.drawText(Skia.getLimitText(previousTitle, HUDTokens.title(), textWidth),
                     textX, getY() + 10 - 3 * trackReveal, faded(colors().text(), 1 - trackReveal), HUDTokens.title());
-                Skia.drawText(Skia.getLimitText(previousArtist, HUDTokens.label(), textWidth),
+                HUDText.drawText(Skia.getLimitText(previousArtist, HUDTokens.label(), textWidth),
                     textX, getY() + 26 - 3 * trackReveal, faded(colors().secondaryText(), 1 - trackReveal), HUDTokens.label());
             }
-            Skia.drawText(Skia.getLimitText(displayedTitle, HUDTokens.title(), textWidth),
+            HUDText.drawText(Skia.getLimitText(displayedTitle, HUDTokens.title(), textWidth),
                 textX, getY() + 10 + 3 * (1 - trackReveal), faded(colors().text(), trackReveal), HUDTokens.title());
-            Skia.drawText(Skia.getLimitText(displayedArtist, HUDTokens.label(), textWidth),
+            HUDText.drawText(Skia.getLimitText(displayedArtist, HUDTokens.label(), textWidth),
                 textX, getY() + 26 + 3 * (1 - trackReveal), faded(colors().secondaryText(), trackReveal), HUDTokens.label());
             float end = manager.getEndTime();
             float targetProgress = end > 0 ? Math.max(0, Math.min(1, manager.getCurrentTime() / end)) : 0;
@@ -124,13 +125,13 @@ public class MusicInfoMod extends SimpleHUDMod {
             if (lyricHeight > 0.5f) {
                 Skia.drawRoundedRect(getX() + 8, getY() + baseHeight, width - 16,
                     0.75f, 0.375f, colors().outline());
-                Skia.drawFullCenteredText(Icon.MUSIC_NOTE, getX() + 14, getY() + baseHeight + 9,
+                HUDText.drawFullCenteredText(Icon.MUSIC_NOTE, getX() + 14, getY() + baseHeight + 9,
                     colors().accent(), HUDTokens.icon());
                 if (previousLyric != null)
-                    Skia.drawHeightCenteredText(Skia.getLimitText(previousLyric, HUDTokens.label(), width - 34),
+                    HUDText.drawHeightCenteredText(Skia.getLimitText(previousLyric, HUDTokens.label(), width - 34),
                         getX() + 24, getY() + baseHeight + 9 - 3 * lyricReveal,
                         faded(colors().secondaryText(), 1 - lyricReveal), HUDTokens.label());
-                Skia.drawHeightCenteredText(Skia.getLimitText(displayedLyric, HUDTokens.label(), width - 34),
+                HUDText.drawHeightCenteredText(Skia.getLimitText(displayedLyric, HUDTokens.label(), width - 34),
                     getX() + 24, getY() + baseHeight + 9 + 3 * (1 - lyricReveal),
                     faded(colors().secondaryText(), lyricReveal), HUDTokens.label());
             }
