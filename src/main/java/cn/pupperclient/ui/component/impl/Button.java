@@ -11,6 +11,7 @@ import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.api.PressAnimation;
 import cn.pupperclient.ui.component.handler.impl.ButtonHandler;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.language.I18n;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
@@ -36,10 +37,17 @@ public class Button extends Component {
 	public void draw(double mouseX, double mouseY) {
 
 		Color[] colors = getColor();
+		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+		float radius = height / 2;
 
-		Skia.drawRoundedRect(x, y, width, height, 25, colors[0]);
+		Skia.drawRoundedRect(x, y, width, height, radius,
+				style == Style.FILLED ? colors[0] : MaterialTheme.surface(colors[0]));
+		if (style != Style.FILLED) {
+			MaterialTheme.outline(x, y, width, height, radius, palette);
+		}
+		drawHoverState(mouseX, mouseY, radius, colors[1]);
 		Skia.save();
-		Skia.clip(x, y, width, height, 25);
+		Skia.clip(x, y, width, height, radius);
 		pressAnimation.draw(x, y, width, height, colors[1], 0.12F);
 		Skia.restore();
 		Skia.drawFullCenteredText(I18n.get(text), x + (width / 2), y + (height / 2), colors[1], Fonts.getRegular(16));
@@ -75,7 +83,7 @@ public class Button extends Component {
 		case TONAL:
 			return new Color[] { palette.getSecondaryContainer(), palette.getOnSecondaryContainer() };
 		default:
-			return new Color[] { Color.RED, Color.RED };
+			return new Color[] { palette.getSurfaceContainer(), palette.getOnSurface() };
 		}
 	}
 

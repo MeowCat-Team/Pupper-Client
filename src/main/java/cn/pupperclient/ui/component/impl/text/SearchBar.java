@@ -13,6 +13,7 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.language.I18n;
 import cn.pupperclient.utils.mouse.MouseUtils;
@@ -22,6 +23,7 @@ public class SearchBar extends Component {
 	private Runnable shortcutEvent;
 
 	private SimpleAnimation cursorAnimation = new SimpleAnimation();
+	private SimpleAnimation focusAnimation = new SimpleAnimation();
 	private Animation cursorFlashAnimation;
 	private Animation hintTextAnimation;
 
@@ -52,21 +54,23 @@ public class SearchBar extends Component {
 
 		float hintTextValue = hintTextAnimation.getValue();
 
-		Skia.drawRoundedRect(x, y, width, height, 20, palette.getSurface());
-		Skia.drawHeightCenteredText(Icon.SEARCH, x + 12, y + (height / 2), palette.getOnSurface(), Fonts.getIcon(24));
+		drawControlSurface(mouseX, mouseY, height / 2, palette);
+		focusAnimation.onTick(isFocused() ? 1 : 0, 12);
+		Skia.drawOutline(x, y, width, height, height / 2, 2,
+				MaterialTheme.alpha(palette.getPrimary(), focusAnimation.getValue()));
+		Skia.drawHeightCenteredText(Icon.SEARCH, x + 12, y + (height / 2), palette.getPrimary(), Fonts.getIcon(24));
+		Skia.save();
+		Skia.clip(x + 40, y + 4, width - 52, height - 8, 0);
 		Skia.drawHeightCenteredText(I18n.get(hintText), x + 40 - (25 * (1 - hintTextValue)), y + (height / 2),
 				ColorUtils.applyAlpha(palette.getOnSurfaceVariant(), (int) (hintTextValue * 255)),
 				Fonts.getRegular(16));
-
-		Skia.save();
-		Skia.clip(x, y, width, height, 20);
 
 		drawCursor();
 
 		String text = getText();
 
 		if (!text.isEmpty() || isFocused()) {
-			float availableWidth = width - 50;
+			float availableWidth = width - 54;
 			float textWidth = Skia.getTextBounds(text, Fonts.getRegular(16)).getWidth();
 
 			float xOffset = 0;
@@ -75,7 +79,7 @@ public class SearchBar extends Component {
 				xOffset = -overflow;
 			}
 
-			Skia.drawHeightCenteredText(text, x + 40 + xOffset, y + (height / 2), palette.getOnSurfaceVariant(),
+			Skia.drawHeightCenteredText(text, x + 40 + xOffset, y + (height / 2), palette.getOnSurface(),
 					Fonts.getRegular(16));
 		}
 
@@ -104,7 +108,7 @@ public class SearchBar extends Component {
 		}
 
 		float textWidth = Skia.getTextBounds(text, Fonts.getRegular(16)).getWidth();
-		float availableWidth = width - 50;
+		float availableWidth = width - 54;
 		float xOffset = 0;
 
 		if (textWidth > availableWidth) {
@@ -126,7 +130,8 @@ public class SearchBar extends Component {
 			float selectionWidth = Skia.getTextBounds(text.substring(start, end), Fonts.getRegular(16)).getWidth();
 			float selectionOffset = Skia.getTextBounds(text.substring(0, start), Fonts.getRegular(16)).getWidth();
 
-			Skia.drawRect(x + 40 + selectionOffset + xOffset, y + 9, selectionWidth, 24, palette.getSurfaceTint());
+			Skia.drawRoundedRect(x + 40 + selectionOffset + xOffset, y + 9, selectionWidth, 24, 4,
+					MaterialTheme.alpha(palette.getPrimary(), 0.26F));
 		}
 	}
 

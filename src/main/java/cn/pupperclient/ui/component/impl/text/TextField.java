@@ -13,12 +13,14 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.TextHandler;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
 public class TextField extends Component {
 
 	private SimpleAnimation cursorAnimation = new SimpleAnimation();
+	private SimpleAnimation focusAnimation = new SimpleAnimation();
 	private Animation cursorFlashAnimation;
 
 	private TextInputHelper input = new TextInputHelper();
@@ -36,17 +38,20 @@ public class TextField extends Component {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		Skia.drawRoundedRect(x, y, width, height, 12, palette.getSurfaceContainer());
+		drawControlSurface(mouseX, mouseY, MaterialTheme.CONTROL_RADIUS, palette);
+		focusAnimation.onTick(isFocused() ? 1 : 0, 12);
+		Skia.drawOutline(x, y, width, height, MaterialTheme.CONTROL_RADIUS, 2,
+				MaterialTheme.alpha(palette.getPrimary(), focusAnimation.getValue()));
 
 		Skia.save();
-		Skia.clip(x, y, width, height, 20);
+		Skia.clip(x + 12, y + 6, width - 24, height - 12, 0);
 
 		drawCursor();
 
 		String text = getText();
 
 		if (!text.isEmpty() || isFocused()) {
-			float availableWidth = width - 20;
+			float availableWidth = width - 26;
 			float textWidth = Skia.getTextBounds(text, Fonts.getRegular(16)).getWidth();
 
 			float xOffset = 0;
@@ -55,7 +60,7 @@ public class TextField extends Component {
 				xOffset = -overflow;
 			}
 
-			Skia.drawHeightCenteredText(text, x + 12 + xOffset, y + (height / 2), palette.getOnSurfaceVariant(),
+			Skia.drawHeightCenteredText(text, x + 12 + xOffset, y + (height / 2), palette.getOnSurface(),
 					Fonts.getRegular(16));
 		}
 
@@ -84,7 +89,7 @@ public class TextField extends Component {
 		}
 
 		float textWidth = Skia.getTextBounds(text, Fonts.getRegular(16)).getWidth();
-		float availableWidth = width - 20;
+		float availableWidth = width - 26;
 		float xOffset = 0;
 
 		if (textWidth > availableWidth) {
@@ -106,7 +111,8 @@ public class TextField extends Component {
 			float selectionWidth = Skia.getTextBounds(text.substring(start, end), Fonts.getRegular(16)).getWidth();
 			float selectionOffset = Skia.getTextBounds(text.substring(0, start), Fonts.getRegular(16)).getWidth();
 
-			Skia.drawRect(x + 12 + selectionOffset + xOffset, y + 9, selectionWidth, 24, palette.getSurfaceTint());
+			Skia.drawRoundedRect(x + 12 + selectionOffset + xOffset, y + 9, selectionWidth, 24, 4,
+					MaterialTheme.alpha(palette.getPrimary(), 0.26F));
 		}
 	}
 

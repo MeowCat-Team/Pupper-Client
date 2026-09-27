@@ -7,9 +7,11 @@ import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
+import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.api.PressAnimation;
 import cn.pupperclient.ui.component.handler.impl.KeybindHandler;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.mouse.MouseUtils;
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -32,14 +34,23 @@ public class Keybind extends Component {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		Skia.drawRoundedRect(x, y, width, height, 12, palette.getPrimary());
+		drawControlSurface(mouseX, mouseY, MaterialTheme.CONTROL_RADIUS, palette);
+		if (binding) {
+			Skia.drawRoundedRect(x, y, width, height, MaterialTheme.CONTROL_RADIUS,
+					MaterialTheme.alpha(palette.getPrimary(), 0.12F));
+			Skia.drawOutline(x, y, width, height, MaterialTheme.CONTROL_RADIUS, 2, palette.getPrimary());
+		}
 		Skia.save();
-		Skia.clip(x, y, width, height, 12);
-		pressAnimation.draw(x, y, width, height, palette.getPrimaryContainer(), 0.12F);
-		Skia.restore();
+		Skia.clip(x, y, width, height, MaterialTheme.CONTROL_RADIUS);
+		pressAnimation.draw(x, y, width, height, palette.getPrimary(), 0.12F);
+		Skia.drawFullCenteredText(Icon.KEYBOARD, x + 18, y + height / 2,
+				palette.getPrimary(), Fonts.getIcon(18));
 
-		Skia.drawFullCenteredText(binding ? "..." : key.getDisplayName().getString(), x + (width / 2),
-				y + (height / 2), palette.getSurface(), Fonts.getMedium(14));
+		Skia.clip(x + 32, y, width - 40, height, 0);
+		String label = binding ? "..." : Skia.getLimitText(key.getDisplayName().getString(), Fonts.getMedium(14), width - 40);
+		Skia.drawFullCenteredText(label, x + (width / 2) + 12,
+				y + (height / 2), palette.getOnSurface(), Fonts.getMedium(14));
+		Skia.restore();
 	}
 
 	@Override
@@ -56,6 +67,7 @@ public class Keybind extends Component {
 			if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
 				binding = true;
 			}
+			pressAnimation.onReleased(mouseX, mouseY, x, y);
 			return;
 		}
 

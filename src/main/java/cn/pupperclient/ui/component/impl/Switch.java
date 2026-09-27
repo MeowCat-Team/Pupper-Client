@@ -8,8 +8,11 @@ import cn.pupperclient.PupperClient;
 import cn.pupperclient.animation.SimpleAnimation;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.skia.font.Fonts;
+import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.SwitchHandler;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
@@ -35,8 +38,8 @@ public class Switch extends Component {
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 		boolean focus = MouseUtils.isInside(mouseX, mouseY, x, y, width, height);
 
-		Skia.drawRoundedRect(x, y, width, height, 16, palette.getSurfaceContainerHighest());
-		Skia.drawOutline(x, y, width, height, 16, 2, palette.getOutline());
+		Skia.drawRoundedRect(x, y, width, height, 16, MaterialTheme.surface(palette.getSurfaceContainerHighest()));
+		Skia.drawOutline(x, y, width, height, 16, 2, MaterialTheme.alpha(palette.getOutline(), 0.75F));
 
 		enableAnimation.onTick(enabled ? 1 : 0, 12);
 		pressAnimation.onTick(pressed ? 1 : 0, 12);
@@ -55,6 +58,8 @@ public class Switch extends Component {
 		Skia.drawCircle(x + 16 + (20 * enableAnimation.getValue()), y + 16,
 				8 + (enableAnimation.getValue() * 4) + (pressAnimation.getValue() * 1),
 				ColorUtils.applyAlpha(fc, focusAnimation.getValue()));
+		Skia.drawFullCenteredText(Icon.CHECK, x + 16 + (20 * enableAnimation.getValue()), y + 16,
+				MaterialTheme.alpha(palette.getPrimary(), enableAnimation.getValue()), Fonts.getIcon(14));
 		Skia.drawCircle(x + 16 + (20 * enableAnimation.getValue()), y + 16,
 				8 + (enableAnimation.getValue() * 4) + (pressAnimation.getValue() * 10),
 				ColorUtils.applyAlpha(pc, pressAnimation.getValue() * 0.12F));

@@ -10,6 +10,7 @@ import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.api.PressAnimation;
 import cn.pupperclient.ui.component.handler.impl.ButtonHandler;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
@@ -41,12 +42,14 @@ public class IconButton extends Component {
 		boolean focus = MouseUtils.isInside(mouseX, mouseY, x, y, width, height);
 
 		Color[] c = getColor();
+		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
 		focusAnimation.onTick(focus ? 1F : 0, 10);
 
 		Skia.save();
 		Skia.clip(x, y, width, height, getRadius());
-		Skia.drawRoundedRect(x, y, width, height, getRadius(), c[0]);
+		Skia.drawRoundedRect(x, y, width, height, getRadius(), MaterialTheme.surface(c[0]));
+		MaterialTheme.outline(x, y, width, height, getRadius(), palette);
 		Skia.drawRoundedRect(x, y, width, height, getRadius(),
 				ColorUtils.applyAlpha(c[1], focusAnimation.getValue() * 0.08F));
 		pressAnimation.draw(x, y, width, height, c[1], 0.12F);
@@ -102,11 +105,11 @@ public class IconButton extends Component {
 	private float getRadius() {
 		switch (size) {
 		case LARGE:
-			return 18;
+			return 20;
 		case NORMAL:
 			return 16;
 		case SMALL:
-			return 12;
+			return MaterialTheme.CONTROL_RADIUS;
 		default:
 			return 0F;
 		}
@@ -126,7 +129,7 @@ public class IconButton extends Component {
 		case TERTIARY:
 			return new Color[] { palette.getTertiaryContainer(), palette.getOnTertiaryContainer() };
 		default:
-			return new Color[] { Color.RED, Color.RED };
+			return new Color[] { palette.getSurfaceContainer(), palette.getOnSurface() };
 		}
 	}
 

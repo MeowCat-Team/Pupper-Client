@@ -8,9 +8,11 @@ import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
+import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.api.PressAnimation;
 import cn.pupperclient.ui.component.handler.impl.FileSelectorHandler;
+import cn.pupperclient.ui.theme.MaterialTheme;
 import cn.pupperclient.utils.thread.Multithreading;
 import cn.pupperclient.utils.file.FileDialog;
 import cn.pupperclient.utils.language.I18n;
@@ -37,16 +39,20 @@ public class FileSelector extends Component {
 
 		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		Skia.drawRoundedRect(x, y, width, height, 12, palette.getPrimary());
+		drawControlSurface(mouseX, mouseY, MaterialTheme.CONTROL_RADIUS, palette);
 		Skia.save();
-		Skia.clip(x, y, width, height, 12);
-		pressAnimation.draw(x, y, width, height, palette.getPrimaryContainer(), 0.12F);
-		Skia.restore();
+		Skia.clip(x, y, width, height, MaterialTheme.CONTROL_RADIUS);
+		pressAnimation.draw(x, y, width, height, palette.getPrimary(), 0.12F);
+		Skia.drawFullCenteredText(Icon.FOLDER_OPEN, x + 18, y + height / 2,
+				palette.getPrimary(), Fonts.getIcon(18));
 
 		String fileName = file != null ? file.getName() : "None";
+		fileName = Skia.getLimitText(fileName, Fonts.getMedium(14), width - 42);
 
-		Skia.drawFullCenteredText(fileName, x + (width / 2), y + (height / 2), palette.getSurface(),
+		Skia.clip(x + 32, y, width - 42, height, 0);
+		Skia.drawHeightCenteredText(fileName, x + 32, y + (height / 2), palette.getOnSurface(),
 				Fonts.getMedium(14));
+		Skia.restore();
 	}
 
 	@Override
