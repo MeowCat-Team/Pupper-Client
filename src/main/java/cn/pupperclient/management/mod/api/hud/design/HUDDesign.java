@@ -42,8 +42,9 @@ public abstract class HUDDesign {
 
     protected final void drawBackdropBlur(float x, float y, float width, float height, float radius) {
         HUDModSettings settings = HUDModSettings.getInstance();
-        if (settings.getBackgroundBlurSetting().isEnabled() && settings.getBackgroundOpacity() < 1)
-            Skia.drawBackdropBlur(x, y, width, height, radius);
+        if (settings.getBackgroundBlurSetting().isEnabled()
+                && settings.getBackgroundOpacity() > 0 && settings.getBackgroundOpacity() < 1)
+            Skia.drawGlassBackdrop(x, y, width, height, radius, 1.5f, .65f);
     }
 
     public void drawText(String text, float x, float y, Font font) {

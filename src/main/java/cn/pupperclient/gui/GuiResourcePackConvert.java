@@ -69,7 +69,7 @@ public class GuiResourcePackConvert extends SimpleSoarGui {
 		Skia.translate((client.getWindow().getWidth() - panelWidth * scale) / 2,
 			(client.getWindow().getHeight() - panelHeight * scale) / 2);
 		Skia.scale(scale);
-		MaterialTheme.panel(0, 0, panelWidth, panelHeight, MaterialTheme.SURFACE_RADIUS, palette);
+		MaterialTheme.glassPanel(0, 0, panelWidth, panelHeight, MaterialTheme.SURFACE_RADIUS, palette);
 		Skia.drawCircle(56, 56, 24, MaterialTheme.surface(palette.getPrimaryContainer()));
 		Skia.drawFullCenteredText(Icon.INVENTORY_2, 56, 56, palette.getPrimary(), Fonts.getIcon(26));
 		boolean chinese = I18n.getCurrentLanguage() == Language.CHINESE;

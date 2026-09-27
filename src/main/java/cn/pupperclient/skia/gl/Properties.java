@@ -12,6 +12,8 @@
 package cn.pupperclient.skia.gl;
 
 import java.util.BitSet;
+import java.nio.ByteBuffer;
+import org.lwjgl.BufferUtils;
 
 /*
  *  Converted to Java by oneachina
@@ -19,7 +21,9 @@ import java.util.BitSet;
 public class Properties {
 
     public final int[] lastActiveTexture = new int[1];
-    public final int[] lastFramebuffer = new int[1];
+    public final int[] lastDrawFramebuffer = new int[1];
+    public final int[] lastReadFramebuffer = new int[1];
+    public final ByteBuffer lastColorMask = BufferUtils.createByteBuffer(4);
     public final int[] lastProgram = new int[1];
     public final int[] lastTexture = new int[1];
     public final int[] lastSampler = new int[1];
@@ -53,7 +57,7 @@ public class Properties {
     public final int[] lastUnpackImageHeight = new int[1];
     public final int[] lastUnpackSkipImages = new int[1];
 
-    private final BitSet flags = new BitSet(7);
+    private final BitSet flags = new BitSet(8);
 
     // Boolean Properties via BitSet
 
@@ -77,4 +81,7 @@ public class Properties {
 
     public boolean isLastDepthMask() { return flags.get(6); }
     public void setLastDepthMask(boolean value) { flags.set(6, value); }
+
+    public boolean isLastEnableFramebufferSrgb() { return flags.get(7); }
+    public void setLastEnableFramebufferSrgb(boolean value) { flags.set(7, value); }
 }

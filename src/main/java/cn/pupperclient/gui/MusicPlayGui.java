@@ -41,7 +41,7 @@ public class MusicPlayGui extends SimpleSoarGui {
         Skia.save();
         Skia.translate(getUiOffsetX(scale), getUiOffsetY(scale));
         Skia.scale(scale);
-        MaterialTheme.panel(0, 0, UI_WIDTH, UI_HEIGHT, MaterialTheme.SURFACE_RADIUS, palette);
+        MaterialTheme.glassPanel(0, 0, UI_WIDTH, UI_HEIGHT, MaterialTheme.SURFACE_RADIUS, palette);
 
         Skia.drawRoundedRect(28, 24, 40, 40, MaterialTheme.CONTROL_RADIUS,
             MaterialTheme.surface(palette.getPrimaryContainer()));

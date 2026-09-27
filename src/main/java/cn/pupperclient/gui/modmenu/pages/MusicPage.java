@@ -26,11 +26,7 @@ import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.misc.SearchUtils;
 import cn.pupperclient.utils.mouse.MouseUtils;
 
-import io.github.humbleui.skija.FilterTileMode;
 import io.github.humbleui.skija.Image;
-import io.github.humbleui.skija.ImageFilter;
-import io.github.humbleui.skija.Paint;
-import io.github.humbleui.types.Rect;
 
 public class MusicPage extends Page {
 
@@ -320,17 +316,7 @@ public class MusicPage extends Page {
         Skia.save();
         try {
             Skia.clip(x, y, width, height, cornerRadius);
-            if (blurRadius < 0.5f) {
-                Skia.getCanvas().drawImageRect(image, Rect.makeWH(image.getWidth(), image.getHeight()),
-                    Rect.makeXYWH(x, y, width, height), null, true);
-            } else {
-                try (ImageFilter blur = ImageFilter.makeBlur(blurRadius, blurRadius, FilterTileMode.CLAMP);
-                     Paint blurPaint = new Paint()) {
-                    blurPaint.setImageFilter(blur);
-                Skia.getCanvas().drawImageRect(image, Rect.makeWH(image.getWidth(), image.getHeight()),
-                    Rect.makeXYWH(x, y, width, height), blurPaint, true);
-                }
-            }
+            Skia.drawBlurredImage(image, x, y, width, height, blurRadius);
         } finally {
             Skia.restore();
         }

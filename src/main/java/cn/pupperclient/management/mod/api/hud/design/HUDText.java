@@ -5,13 +5,10 @@ import cn.pupperclient.management.mod.impl.settings.HUDModSettings;
 import cn.pupperclient.skia.Skia;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.Font;
-import io.github.humbleui.skija.FilterTileMode;
-import io.github.humbleui.skija.ImageFilter;
 import io.github.humbleui.skija.Paint;
 
-/** Original filled glyphs with a subtle, soft shadow on translucent glass. */
+/** Original filled glyphs with a faint atlas-rendered shadow on translucent glass. */
 public final class HUDText {
-    private static ImageFilter shadowBlur;
     private static Paint shadowPaint;
 
     private HUDText() {}
@@ -58,11 +55,12 @@ public final class HUDText {
         float shadowStrength = Math.max(0, Math.min(1, (0.70f - opacity) / 0.25f));
         if (shadowStrength > 0) {
             if (shadowPaint == null) {
-                shadowBlur = ImageFilter.makeBlur(0.8f, 0.8f, FilterTileMode.DECAL);
-                shadowPaint = new Paint().setAntiAlias(true).setImageFilter(shadowBlur);
+                // An image blur here creates offscreen work for every line of every HUD.
+                // Reuse the normal glyph atlas for this faint offset copy instead.
+                shadowPaint = new Paint().setAntiAlias(true);
             }
-            shadowPaint.setARGB(Math.round(color.getAlpha() * shadowStrength * 0.18f), 0, 0, 0);
-            canvas.drawString(text, x, baseline + 0.7f, font, shadowPaint);
+            shadowPaint.setARGB(Math.round(color.getAlpha() * shadowStrength * 0.14f), 0, 0, 0);
+            canvas.drawString(text, x, baseline + 0.6f, font, shadowPaint);
         }
         // The foreground is always the original filled glyph; never stroke or expand it.
         canvas.drawString(text, x, baseline, font, paint.setColor(color.getRGB()));
@@ -72,10 +70,6 @@ public final class HUDText {
         if (shadowPaint != null) {
             shadowPaint.close();
             shadowPaint = null;
-        }
-        if (shadowBlur != null) {
-            shadowBlur.close();
-            shadowBlur = null;
         }
     }
 }

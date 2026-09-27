@@ -1,7 +1,6 @@
 package cn.pupperclient.gui.api;
 
 import cn.pupperclient.skia.Skia;
-import cn.pupperclient.management.mod.impl.settings.ModMenuSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -44,7 +43,7 @@ public abstract class SimpleSoarGui extends Screen {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
-        // Keep the world visible through glass; the Skia pass owns the configurable blur.
+        // Material panels own their local glass. Do not post-process the whole world.
         if (client.level == null) extractPanorama(context, delta);
         client.gui.hud.extractDeferredSubtitles();
     }
@@ -57,12 +56,6 @@ public abstract class SimpleSoarGui extends Screen {
     public final void renderSkia(double guiMouseX, double guiMouseY) {
         Skia.save();
         try {
-            ModMenuSettings settings = ModMenuSettings.getInstance();
-            // HUD editing must keep the world sharp so positions can be judged in context.
-            if (!usesMinecraftGuiScale() && settings != null && settings.getBlurSetting().isEnabled()) {
-                Skia.drawBackdropBlur(0, 0, client.getWindow().getWidth(), client.getWindow().getHeight(), 0,
-                        settings.getBlurIntensitySetting().getValue());
-            }
             draw(toScreenX(guiMouseX), toScreenY(guiMouseY));
         } finally {
             Skia.restore();

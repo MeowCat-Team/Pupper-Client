@@ -54,7 +54,8 @@ public class State {
      */
     public State push() {
         glGetIntegerv(GL_ACTIVE_TEXTURE, props.lastActiveTexture);
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, props.lastFramebuffer);
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, props.lastDrawFramebuffer);
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, props.lastReadFramebuffer);
         glActiveTexture(GL_TEXTURE0);
         glGetIntegerv(GL_CURRENT_PROGRAM, props.lastProgram);
         glGetIntegerv(GL_TEXTURE_BINDING_2D, props.lastTexture);
@@ -84,6 +85,8 @@ public class State {
         props.setLastEnableDepthTest(glIsEnabled(GL_DEPTH_TEST));
         props.setLastEnableStencilTest(glIsEnabled(GL_STENCIL_TEST));
         props.setLastEnableScissorTest(glIsEnabled(GL_SCISSOR_TEST));
+        props.setLastEnableFramebufferSrgb(glIsEnabled(GL_FRAMEBUFFER_SRGB));
+        glGetBooleanv(GL_COLOR_WRITEMASK, props.lastColorMask);
 
         if (glVersion >= 310) {
             props.setLastEnablePrimitiveRestart(glIsEnabled(GL_PRIMITIVE_RESTART));
@@ -130,6 +133,7 @@ public class State {
      */
     public State pop() {
         glUseProgram(props.lastProgram[0]);
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, props.lastTexture[0]);
 
         if (glVersion >= 330 || GL.getCapabilities().GL_ARB_sampler_objects) {
@@ -137,7 +141,8 @@ public class State {
         }
 
         glActiveTexture(props.lastActiveTexture[0]);
-        glBindFramebuffer(GL_FRAMEBUFFER, props.lastFramebuffer[0]);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, props.lastDrawFramebuffer[0]);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, props.lastReadFramebuffer[0]);
         glBindVertexArray(props.lastVertexArrayObject[0]);
         glBindBuffer(GL_ARRAY_BUFFER, props.lastArrayBuffer[0]);
 
@@ -154,6 +159,9 @@ public class State {
         if (props.isLastEnableDepthTest()) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
         if (props.isLastEnableStencilTest()) glEnable(GL_STENCIL_TEST); else glDisable(GL_STENCIL_TEST);
         if (props.isLastEnableScissorTest()) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+        if (props.isLastEnableFramebufferSrgb()) glEnable(GL_FRAMEBUFFER_SRGB); else glDisable(GL_FRAMEBUFFER_SRGB);
+        glColorMask(props.lastColorMask.get(0) != 0, props.lastColorMask.get(1) != 0,
+            props.lastColorMask.get(2) != 0, props.lastColorMask.get(3) != 0);
 
         if (glVersion >= 310) {
             if (props.isLastEnablePrimitiveRestart()) glEnable(GL_PRIMITIVE_RESTART);

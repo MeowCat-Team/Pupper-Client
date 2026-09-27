@@ -2,8 +2,6 @@ package cn.pupperclient.skia;
 
 import java.awt.Color;
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
 
 import net.minecraft.resources.Identifier;
 import cn.pupperclient.skia.context.SkiaContext;
@@ -14,11 +12,11 @@ import io.github.humbleui.skija.FilterTileMode;
 import io.github.humbleui.skija.Font;
 import io.github.humbleui.skija.FontMetrics;
 import io.github.humbleui.skija.ImageFilter;
+import io.github.humbleui.skija.Image;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.PaintMode;
 import io.github.humbleui.skija.Path;
 import io.github.humbleui.skija.Shader;
-import io.github.humbleui.skija.SaveLayerRec;
 import io.github.humbleui.skija.SurfaceOrigin;
 import io.github.humbleui.types.Point;
 import io.github.humbleui.types.RRect;
@@ -37,7 +35,7 @@ public class Skia {
     private static final Paint SHARED_PAINT = new Paint();
     private static ImageFilter shadowBlur;
     private static Paint shadowPaint;
-    private static final Map<Integer, ImageFilter> backdropBlurs = new HashMap<>();
+    private static final Paint[] IMAGE_BLUR_PAINTS = new Paint[25];
 
     /**
      * Draws a filled rectangle with the specified color.
@@ -136,24 +134,19 @@ public class Skia {
         }
     }
 
-    /** Blurs the already rendered scene inside a rounded HUD panel. */
+    /** Softens the frame's scene snapshot inside a rounded panel, without UI feedback. */
     public static void drawBackdropBlur(float x, float y, float width, float height, float radius) {
         drawBackdropBlur(x, y, width, height, radius, 5);
     }
 
     public static void drawBackdropBlur(float x, float y, float width, float height, float radius, float strength) {
-        if (width <= 0 || height <= 0) return;
-        int sigma = Float.isFinite(strength) ? Math.max(1, Math.min(20, Math.round(strength))) : 5;
-        ImageFilter backdropBlur = backdropBlurs.computeIfAbsent(sigma,
-                value -> ImageFilter.makeBlur(value, value, FilterTileMode.CLAMP));
-        save();
-        try {
-            clip(x, y, width, height, radius);
-            getCanvas().saveLayer(new SaveLayerRec(Rect.makeXYWH(x, y, width, height), null, backdropBlur));
-            getCanvas().restore();
-        } finally {
-            restore();
-        }
+        drawGlassBackdrop(x, y, width, height, radius, strength, 0);
+    }
+
+    /** Glass scene sampling only; paint the Material tint and opaque content afterwards. */
+    public static void drawGlassBackdrop(float x, float y, float width, float height, float radius,
+                                         float strength, float refraction) {
+        GlassRenderer.draw(getCanvas(), x, y, width, height, radius, strength, refraction);
     }
 
     /**
@@ -826,14 +819,52 @@ public class Skia {
      * @param alpha The alpha value (0-255)
      */
     public static void setAlpha(int alpha) {
+        setAlpha(alpha, null);
+    }
+
+    /**
+     * Starts a bounded opacity group. Bounds use the current canvas coordinates, so callers
+     * apply their transform first and include any shadow/antialias margin in the rectangle.
+     * Both the layer and the fully opaque fast path require exactly one matching restore.
+     */
+    public static void setAlpha(int alpha, float x, float y, float width, float height) {
+        setAlpha(alpha, Rect.makeXYWH(x, y, Math.max(0, width), Math.max(0, height)));
+    }
+
+    private static void setAlpha(int alpha, Rect bounds) {
         if (alpha >= 255) {
             getCanvas().save();
             return;
         }
+        if (alpha <= 0) {
+            getCanvas().save();
+            getCanvas().clipRect(Rect.makeXYWH(0, 0, 0, 0));
+            return;
+        }
         try (Paint paint = new Paint()) {
             paint.setAlpha(alpha);
-            getCanvas().saveLayer(null, paint);
+            getCanvas().saveLayer(bounds, paint);
         }
+    }
+
+    /** Bounded cover-art blur cache: quarter-pixel radii, at most six local pixels. */
+    public static void drawBlurredImage(Image image, float x, float y, float width, float height, float radius) {
+        if (image == null || width <= 0 || height <= 0) return;
+        float safeRadius = Float.isFinite(radius) ? Math.max(0, Math.min(6, radius)) : 0;
+        Paint paint = null;
+        if (safeRadius >= .5f) {
+            int index = Math.min(24, Math.round(safeRadius * 4));
+            paint = IMAGE_BLUR_PAINTS[index];
+            if (paint == null) {
+                try (ImageFilter blur = ImageFilter.makeBlur(index / 4f, index / 4f, FilterTileMode.CLAMP)) {
+                    // Paint retains its own filter reference; the temporary wrapper can close.
+                    paint = new Paint().setImageFilter(blur);
+                    IMAGE_BLUR_PAINTS[index] = paint;
+                }
+            }
+        }
+        getCanvas().drawImageRect(image, Rect.makeWH(image.getWidth(), image.getHeight()),
+                Rect.makeXYWH(x, y, width, height), paint, true);
     }
 
     public static void releaseResources() {
@@ -847,8 +878,13 @@ public class Skia {
             shadowBlur.close();
             shadowBlur = null;
         }
-        backdropBlurs.values().forEach(ImageFilter::close);
-        backdropBlurs.clear();
+        for (int index = 0; index < IMAGE_BLUR_PAINTS.length; index++) {
+            if (IMAGE_BLUR_PAINTS[index] != null) {
+                IMAGE_BLUR_PAINTS[index].close();
+                IMAGE_BLUR_PAINTS[index] = null;
+            }
+        }
+        GlassRenderer.releaseResources();
         SHARED_PAINT.close();
     }
 

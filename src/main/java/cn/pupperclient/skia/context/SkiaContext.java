@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 import cn.pupperclient.PupperLogger;
+import cn.pupperclient.skia.GlassRenderer;
 import cn.pupperclient.skia.api.WrappedBackendRenderTarget;
 import cn.pupperclient.skia.gl.States;
 import io.github.humbleui.skija.*;
@@ -33,21 +34,23 @@ public class SkiaContext {
      * This should be called when the window size changes.
      * @param width The width of the surface in pixels.
      * @param height The height of the surface in pixels.
-     * @param fboid framebuffer object id, if 0 or null, will use currently bound framebuffer
+     * @param fboid framebuffer object id, or null to use the currently bound draw framebuffer
      */
     public static void createSurface(int width, int height, Integer fboid) {
-        // Initialize Skia DirectContext if not already done
-        if (context == null) {
-            context = DirectContext.makeGL();
-        }
-
-        // Clean up existing surface and render target
-        if (surface != null) surface.close();
-        if (renderTarget != null) renderTarget.close();
-
+        States.push();
         try {
+            if (context == null) context = DirectContext.makeGL();
+            GlassRenderer.endFrame();
+            if (surface != null) {
+                surface.close();
+                surface = null;
+            }
+            if (renderTarget != null) {
+                renderTarget.close();
+                renderTarget = null;
+            }
             // Get current framebuffer binding
-            int currentFbo = fboid == null || fboid == 0 ? GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING) : fboid;
+            int currentFbo = fboid == null ? GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING) : fboid;
 
             // Create GL backend render target using current framebuffer
             renderTarget = WrappedBackendRenderTarget.makeGL(
@@ -65,12 +68,16 @@ public class SkiaContext {
                 Objects.requireNonNull(renderTarget, "RenderTarget must not be null"),
                 SurfaceOrigin.BOTTOM_LEFT, // Origin for GL
                 ColorType.RGBA_8888, // Color format
-                ColorSpace.getSRGB() // sRGB color space
+                // Minecraft's presented RGBA8 scene already contains display-ready RGB. Keep
+                // it untagged here so snapshots and offscreen layers preserve those bytes.
+                null
             );
 
             PupperLogger.info("Skia", "Created surface with fbo=" + currentFbo + ", size=" + width + "x" + height);
         } catch (Exception e) {
             PupperLogger.error("Skia", "Failed to create Skia surface: ", e);
+        } finally {
+            States.pop();
         }
     }
 
@@ -80,6 +87,11 @@ public class SkiaContext {
      * @param drawingLogic A consumer that takes a Canvas and performs drawing operations.
      */
     public static void draw(Consumer<Canvas> drawingLogic) {
+        draw(drawingLogic, true);
+    }
+
+    /** With glass disabled, skip the full framebuffer snapshot entirely. */
+    public static void draw(Consumer<Canvas> drawingLogic, boolean captureGlass) {
         if (context == null || surface == null) {
             PupperLogger.warn("Skia", "Context or surface is null, skipping draw");
             return;
@@ -93,12 +105,26 @@ public class SkiaContext {
         States.push();
         try {
             GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glDisable(GL30.GL_FRAMEBUFFER_SRGB);
             context.resetGLAll();
+            // Minecraft writes this wrapped render target between Skia frames. Invalidate
+            // Skia's cached image generation while retaining the scene we are about to sample.
+            surface.notifyContentWillChange(ContentChangeMode.RETAIN);
             Canvas canvas = getCanvas();
-            drawingLogic.accept(canvas);
-            context.flushAndSubmit(surface);
+            int saved = canvas.save();
+            try {
+                if (captureGlass) GlassRenderer.beginFrame(surface);
+                drawingLogic.accept(canvas);
+            } finally {
+                canvas.restoreToCount(saved);
+                context.flushAndSubmit(surface);
+            }
         } finally {
-            States.pop();
+            try {
+                GlassRenderer.endFrame();
+            } finally {
+                States.pop();
+            }
         }
     }
 

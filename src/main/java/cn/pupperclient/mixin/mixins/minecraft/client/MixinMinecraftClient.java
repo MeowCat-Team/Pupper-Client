@@ -6,6 +6,8 @@ import java.io.IOException;
 import cn.pupperclient.event.client.ResolutionChangedEvent;
 import cn.pupperclient.gui.api.SimpleSoarGui;
 import cn.pupperclient.gui.edithud.GuiEditHUD;
+import cn.pupperclient.management.mod.impl.settings.HUDModSettings;
+import cn.pupperclient.management.mod.impl.settings.ModMenuSettings;
 import cn.pupperclient.mixin.mixins.accessors.PlayerTabOverlayAccessor;
 import cn.pupperclient.skia.Skia;
 import net.minecraft.client.Minecraft;
@@ -188,6 +190,14 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
             && (screen instanceof GuiEditHUD || (!minecraft.gui.hud.isHidden() && !tabVisible))
             && EventBus.getInstance().hasListeners(RenderSkiaEvent.class);
         if (!drawHud && !skiaScreen && !preview) return;
+        HUDModSettings hudSettings = HUDModSettings.getInstance();
+        ModMenuSettings menuSettings = ModMenuSettings.getInstance();
+        boolean glassHud = (drawHud || preview) && hudSettings != null
+            && hudSettings.getBackgroundBlurSetting().isEnabled()
+            && hudSettings.getBackgroundOpacity() > 0 && hudSettings.getBackgroundOpacity() < 1;
+        boolean glassGui = skiaScreen && !(screen instanceof GuiEditHUD) && menuSettings != null
+            && menuSettings.getBlurSetting().isEnabled()
+            && menuSettings.getBackgroundOpacity() > 0 && menuSettings.getBackgroundOpacity() < 1;
         SkiaContext.draw((canvas) -> {
             Window currentWindow = minecraft.getWindow();
             if (drawHud) {
@@ -219,7 +229,7 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
                     Skia.restore();
                 }
             }
-        });
+        }, glassHud || glassGui);
     }
 
 	@Override

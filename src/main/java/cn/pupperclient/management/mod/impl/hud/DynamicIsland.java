@@ -102,7 +102,8 @@ public class DynamicIsland extends HUDMod {
         position.setSize(width, height);
         begin();
         try {
-            Skia.setAlpha(Math.round(entrance * 255));
+            // begin() has applied the HUD transform; keep the fade layer local to this card.
+            Skia.setAlpha(Math.round(entrance * 255), getX() - 8, getY() - 8, width + 16, height + 16);
             try {
             drawBackground(getX(), getY(), width, height);
             Skia.clip(getX(), getY(), width, height, getRadius());

@@ -75,54 +75,58 @@ public abstract class SoarGui extends SimpleSoarGui {
 		double contentMouseX = toContentMouseX(mouseX, screenScale);
 		double contentMouseY = toContentMouseY(mouseY, screenScale);
 
+		int saveCount = Skia.getCanvas().getSaveCount();
 		Skia.save();
-		Skia.setAlpha((int) (animationValue * 255));
-		Skia.scale(getX(), getY(), getWidth(), getHeight(), screenScale);
+		try {
+			Skia.scale(getX(), getY(), getWidth(), getHeight(), screenScale);
+			// Bound the animated layer after scaling; ten local pixels retain the panel shadow.
+			Skia.setAlpha((int) (animationValue * 255), getX() - 10, getY() - 10,
+					getWidth() + 20, getHeight() + 20);
 
-		MaterialTheme.panel(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS, palette);
-		Skia.save();
-		Skia.clip(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS);
+			MaterialTheme.glassPanel(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS, palette);
+			Skia.save();
+			Skia.clip(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS);
 
-		if (currentPage != null && lastPage == null) {
-			currentPage.draw(contentMouseX, contentMouseY);
-		}
+			if (currentPage != null && lastPage == null) {
+				currentPage.draw(contentMouseX, contentMouseY);
+			}
 
-		if (currentPage != null && lastPage != null) {
+			if (currentPage != null && lastPage != null) {
 
-			GuiTransition currentTransition = currentPage.getTransition();
-			GuiTransition lastTransition = lastPage.getTransition();
+				GuiTransition currentTransition = currentPage.getTransition();
+				GuiTransition lastTransition = lastPage.getTransition();
 
-			if (currentTransition != null && currentTransition.isConsecutive()) {
+				if (currentTransition != null && currentTransition.isConsecutive()) {
+
+					Skia.save();
+					float[] offset = getTransitionOffset(lastTransition, lastPage);
+					float offsetX = offset[0] * getWidth();
+					float offsetY = offset[1] * getHeight();
+					Skia.translate(offsetX, offsetY);
+					lastPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
+					Skia.restore();
+				}
 
 				Skia.save();
-				float[] offset = getTransitionOffset(lastTransition, lastPage);
+				float[] offset = getTransitionOffset(currentTransition, currentPage);
 				float offsetX = offset[0] * getWidth();
 				float offsetY = offset[1] * getHeight();
 				Skia.translate(offsetX, offsetY);
-				lastPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
+				currentPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
 				Skia.restore();
+
+				if (lastPage.getAnimation().isFinished()) {
+					lastPage = null;
+				}
 			}
 
-			Skia.save();
-			float[] offset = getTransitionOffset(currentTransition, currentPage);
-			float offsetX = offset[0] * getWidth();
-			float offsetY = offset[1] * getHeight();
-			Skia.translate(offsetX, offsetY);
-			currentPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
-			Skia.restore();
-
-			if (lastPage.getAnimation().isFinished()) {
-				lastPage = null;
+			for (Component c : components) {
+				c.draw(contentMouseX, contentMouseY);
 			}
-		}
 
-		for (Component c : components) {
-			c.draw(contentMouseX, contentMouseY);
+		} finally {
+			Skia.getCanvas().restoreToCount(saveCount);
 		}
-
-		Skia.restore();
-		Skia.restore();
-		Skia.restore();
 
 	}
 
