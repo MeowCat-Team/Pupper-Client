@@ -21,6 +21,7 @@ import cn.pupperclient.management.mod.settings.impl.HctColorSetting;
 import cn.pupperclient.management.mod.settings.impl.KeybindSetting;
 import cn.pupperclient.management.mod.settings.impl.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
+import cn.pupperclient.ui.theme.MaterialTokens;
 import cn.pupperclient.utils.language.I18n;
 import cn.pupperclient.utils.language.Language;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -43,6 +44,9 @@ public class ModMenuSettings extends Mod {
 			this, true);
 	private final NumberSetting blurIntensitySetting = new NumberSetting("setting.blurintensity",
 			"setting.blurintensity.description", Icon.BLUR_LINEAR, this, 5, 1, 20, 1);
+	private final NumberSetting backgroundOpacitySetting = new NumberSetting("setting.ui.backgroundopacity",
+			"setting.ui.backgroundopacity.description", Icon.PALETTE, this,
+			MaterialTokens.DEFAULT_OPACITY * 100, 0, 100, 1);
 
 	private final ComboSetting languageSetting = new ComboSetting("setting.language", "setting.language.description",
 			Icon.LANGUAGE, this, Arrays.asList("language.english", "language.chinese"), "language.english");
@@ -154,6 +158,11 @@ public class ModMenuSettings extends Mod {
 
 	public NumberSetting getBlurIntensitySetting() {
 		return blurIntensitySetting;
+	}
+
+	public float getBackgroundOpacity() {
+		float value = backgroundOpacitySetting.getValue() / 100f;
+		return Float.isFinite(value) ? Math.max(0, Math.min(1, value)) : MaterialTokens.DEFAULT_OPACITY;
 	}
 
 	public Screen getModMenu() {

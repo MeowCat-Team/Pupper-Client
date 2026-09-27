@@ -24,7 +24,7 @@ text.cape=披风
 
 design.simple=简约
 design.classic=经典
-design.materialyou=Material
+design.materialyou=Material 玻璃
 
 hud.shulker.hint=按住 Ctrl 查看物品
 hud.shulker.locked=已按住 Ctrl：移动鼠标查看物品
@@ -583,7 +583,9 @@ hud.player=玩家
 hud.level=等级
 
 setting.hud.backgroundopacity=HUD 背景不透明度
-setting.hud.backgroundopacity.description=调整背景不透明度（0–100%）
+setting.hud.backgroundopacity.description=调整 HUD 玻璃背景不透明度（0–100%，默认 45%）
+setting.ui.backgroundopacity=界面背景不透明度
+setting.ui.backgroundopacity.description=调整窗口与弹层的玻璃背景不透明度（0–100%，默认 45%）
 setting.hud.backgroundblur=HUD 背景模糊
 setting.hud.backgroundblur.description=模糊 HUD 面板后方的画面
 

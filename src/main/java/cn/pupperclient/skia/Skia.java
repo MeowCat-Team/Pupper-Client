@@ -2,6 +2,8 @@ package cn.pupperclient.skia;
 
 import java.awt.Color;
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 import net.minecraft.resources.Identifier;
 import cn.pupperclient.skia.context.SkiaContext;
@@ -35,7 +37,7 @@ public class Skia {
     private static final Paint SHARED_PAINT = new Paint();
     private static ImageFilter shadowBlur;
     private static Paint shadowPaint;
-    private static ImageFilter backdropBlur;
+    private static final Map<Integer, ImageFilter> backdropBlurs = new HashMap<>();
 
     /**
      * Draws a filled rectangle with the specified color.
@@ -136,8 +138,14 @@ public class Skia {
 
     /** Blurs the already rendered scene inside a rounded HUD panel. */
     public static void drawBackdropBlur(float x, float y, float width, float height, float radius) {
+        drawBackdropBlur(x, y, width, height, radius, 5);
+    }
+
+    public static void drawBackdropBlur(float x, float y, float width, float height, float radius, float strength) {
         if (width <= 0 || height <= 0) return;
-        if (backdropBlur == null) backdropBlur = ImageFilter.makeBlur(5, 5, FilterTileMode.CLAMP);
+        int sigma = Float.isFinite(strength) ? Math.max(1, Math.min(20, Math.round(strength))) : 5;
+        ImageFilter backdropBlur = backdropBlurs.computeIfAbsent(sigma,
+                value -> ImageFilter.makeBlur(value, value, FilterTileMode.CLAMP));
         save();
         try {
             clip(x, y, width, height, radius);
@@ -838,10 +846,8 @@ public class Skia {
             shadowBlur.close();
             shadowBlur = null;
         }
-        if (backdropBlur != null) {
-            backdropBlur.close();
-            backdropBlur = null;
-        }
+        backdropBlurs.values().forEach(ImageFilter::close);
+        backdropBlurs.clear();
         SHARED_PAINT.close();
     }
 

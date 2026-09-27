@@ -24,7 +24,7 @@ text.cape=Cape
 
 design.simple=Simple
 design.classic=Classic
-design.materialyou=Material
+design.materialyou=Material Glass
 
 hud.shulker.hint=Hold Ctrl to inspect items
 hud.shulker.locked=Ctrl held: inspect items
@@ -581,7 +581,9 @@ hud.player=Player
 hud.level=Level
 
 setting.hud.backgroundopacity=HUD background opacity
-setting.hud.backgroundopacity.description=Adjust background opacity (0–100%)
+setting.hud.backgroundopacity.description=HUD glass background opacity (0–100%, default 45%)
+setting.ui.backgroundopacity=Interface background opacity
+setting.ui.backgroundopacity.description=Window and popup glass background opacity (0–100%, default 45%)
 setting.hud.backgroundblur=HUD background blur
 setting.hud.backgroundblur.description=Blur the scene behind HUD panels
 
