@@ -5,12 +5,11 @@ permissions:
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, 'ver/**' ]
     paths-ignore:
       - '*.md'
-      - '.github/**'
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, 'ver/**' ]
   release:
     types: [ published ]
 
