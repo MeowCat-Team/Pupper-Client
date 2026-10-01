@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import cn.pupperclient.event.client.ResolutionChangedEvent;
-import cn.pupperclient.gui.api.SimpleSoarGui;
+import cn.pupperclient.gui.api.SimplePupperClientGui;
 import cn.pupperclient.gui.edithud.GuiEditHUD;
 import cn.pupperclient.management.mod.impl.settings.HUDModSettings;
 import cn.pupperclient.management.mod.impl.settings.ModMenuSettings;
@@ -123,7 +123,7 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
                         double zSpeed = direction.getStepZ() * 0.2;
 
                         level.addParticle(particleOption, x, y, z, xSpeed, ySpeed, zSpeed);
-						((IMixinLivingEntity) player).soarClient_CN$fakeSwingHand(InteractionHand.MAIN_HAND);
+						((IMixinLivingEntity) player).pupperClient$fakeSwingHand(InteractionHand.MAIN_HAND);
 					}
 				}
 			}
@@ -181,7 +181,7 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
     private void onBeforeFlipFrame(CallbackInfo ci) {
         Minecraft minecraft = Minecraft.getInstance();
         Screen screen = minecraft.gui.screen();
-        boolean skiaScreen = screen instanceof SimpleSoarGui;
+        boolean skiaScreen = screen instanceof SimplePupperClientGui;
         boolean preview = screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>
             && ContainerPreview.hasActive();
         boolean tabVisible = level != null
@@ -210,7 +210,7 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
                 }
             }
 
-            if (screen instanceof SimpleSoarGui skiaGui) {
+            if (screen instanceof SimplePupperClientGui skiaGui) {
                 double mouseX = minecraft.mouseHandler.getScaledXPos(currentWindow);
                 double mouseY = minecraft.mouseHandler.getScaledYPos(currentWindow);
                 Skia.save();

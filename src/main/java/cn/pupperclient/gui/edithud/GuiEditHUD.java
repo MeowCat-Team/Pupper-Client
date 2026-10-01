@@ -9,7 +9,7 @@ import net.minecraft.client.gui.screens.Screen;
 import cn.pupperclient.PupperClient;
 import org.lwjgl.glfw.GLFW;
 
-import cn.pupperclient.gui.api.SimpleSoarGui;
+import cn.pupperclient.gui.api.SimplePupperClientGui;
 import cn.pupperclient.gui.edithud.api.GrabOffset;
 import cn.pupperclient.gui.edithud.api.HUDCore;
 import cn.pupperclient.gui.edithud.api.SnappingLine;
@@ -28,7 +28,7 @@ import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import io.github.humbleui.skija.Font;
 
-public class GuiEditHUD extends SimpleSoarGui {
+public class GuiEditHUD extends SimplePupperClientGui {
 
 	private static final float SCALE_CHANGE_AMOUNT = 0.1F;
 	private static final float DEFAULT_LINE_WIDTH = 0.5F;

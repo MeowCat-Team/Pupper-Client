@@ -129,8 +129,8 @@ public class PupperMeshRenderer {
                         this.clearColor.b / 255f, this.clearColor.a / 255f)) : Optional.empty();
 
                 RenderPass pass = (depthAttachment != null && pipeline.wantsDepthTexture()) ?
-                    RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Pupper MeshRenderer", colorAttachment, clearColor, depthAttachment, OptionalDouble.empty()) :
-                    RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Pupper MeshRenderer", colorAttachment, clearColor);
+                    RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Pupper Client MeshRenderer", colorAttachment, clearColor, depthAttachment, OptionalDouble.empty()) :
+                    RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Pupper Client MeshRenderer", colorAttachment, clearColor);
 
                 pass.setPipeline(pipeline);
                 pass.setUniform("MeshData", meshData);

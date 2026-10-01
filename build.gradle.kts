@@ -126,7 +126,7 @@ tasks.processResources {
         val resourcePath = sourceSets.main.get().resources.srcDirs.first()
         val iconFile = File(resourcePath, "assets/pupper/logo.png")
         if (!iconFile.exists()) {
-            throw GradleException("Pupper icon not found: ${iconFile.absolutePath}")
+            throw GradleException("Pupper Client icon not found: ${iconFile.absolutePath}")
         }
     }
 }

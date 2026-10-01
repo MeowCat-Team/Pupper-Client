@@ -10,7 +10,7 @@ import org.lwjgl.glfw.GLFW;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.animation.SimpleAnimation;
-import cn.pupperclient.gui.api.SoarGui;
+import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.SimplePage;
 import cn.pupperclient.gui.api.page.impl.RightLeftTransition;
 import cn.pupperclient.gui.modmenu.GuiModMenu;
@@ -41,7 +41,7 @@ public class HomePage extends SimplePage {
     private String currentDate;
     private QuickAction pressedAction;
 
-    public HomePage(SoarGui parent) {
+    public HomePage(PupperClientGui parent) {
         super(parent, "text.home", Icon.HOME, new RightLeftTransition(true));
     }
 
@@ -75,11 +75,13 @@ public class HomePage extends SimplePage {
     private void drawHeader(ColorPalette palette) {
         float badgeX = x + PAGE_PADDING;
         float badgeY = y + 30;
+        String clientName = PupperClient.getInstance().getName();
+        float badgeWidth = 48 + Skia.getTextBounds(clientName, Fonts.getMedium(12)).getWidth();
 
-        Skia.drawRoundedRect(badgeX, badgeY, 132, 28, 14, MaterialTheme.surface(palette.getSecondaryContainer()));
+        Skia.drawRoundedRect(badgeX, badgeY, badgeWidth, 28, 14, MaterialTheme.surface(palette.getSecondaryContainer()));
         Skia.drawHeightCenteredText(Icon.AUTO_AWESOME, badgeX + 12, badgeY + 14,
             palette.getOnSurfaceVariant(), Fonts.getIconFill(16));
-        Skia.drawHeightCenteredText("PUPPER HOME", badgeX + 36, badgeY + 14,
+        Skia.drawHeightCenteredText(clientName, badgeX + 36, badgeY + 14,
             palette.getOnSurfaceVariant(), Fonts.getMedium(12));
 
         Skia.drawText("Welcome back.", x + PAGE_PADDING, y + 78,

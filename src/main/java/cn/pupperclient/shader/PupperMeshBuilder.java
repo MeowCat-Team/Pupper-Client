@@ -159,12 +159,12 @@ public class PupperMeshBuilder {
 
     public GpuBuffer getVertexBuffer() {
         vertices.limit(getVerticesOffset());
-        return RenderSystem.getDevice().createBuffer(() -> "Pupper mesh vertices", GpuBuffer.USAGE_VERTEX, vertices);
+        return RenderSystem.getDevice().createBuffer(() -> "Pupper Client mesh vertices", GpuBuffer.USAGE_VERTEX, vertices);
     }
 
     public GpuBuffer getIndexBuffer() {
         indices.limit(indicesCount * 4);
-        return RenderSystem.getDevice().createBuffer(() -> "Pupper mesh indices", GpuBuffer.USAGE_INDEX, indices);
+        return RenderSystem.getDevice().createBuffer(() -> "Pupper Client mesh indices", GpuBuffer.USAGE_INDEX, indices);
     }
 
     public PupperMeshBuilder tex2(float u, float v) {

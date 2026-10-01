@@ -7,7 +7,7 @@ import net.minecraft.client.Minecraft;
 import cn.pupperclient.PupperClient;
 import org.lwjgl.glfw.GLFW;
 
-import cn.pupperclient.gui.api.SoarGui;
+import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.Page;
 import cn.pupperclient.gui.api.page.SimplePage;
 import cn.pupperclient.gui.api.page.impl.RightTransition;
@@ -37,7 +37,7 @@ public class ProfileAddPage extends SimplePage {
 	private Button addButton;
 	private Object currentIcon;
 
-	public ProfileAddPage(SoarGui parent, Class<? extends Page> prevPage) {
+	public ProfileAddPage(PupperClientGui parent, Class<? extends Page> prevPage) {
 		super(parent, "text.profile", Icon.DESCRIPTION, new RightTransition(true));
 		this.prevPage = prevPage;
 		addButton = new Button(I18n.get("text.add"), 0, 0, Button.Style.TONAL);

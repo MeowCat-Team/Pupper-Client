@@ -13,7 +13,7 @@ import org.joml.Matrix4f;
 
 public class RenderUtils implements IMinecraft {
     public static final Matrix4f projection = new Matrix4f();
-    private static final ProjectionMatrixBuffer matrixBuffer = new ProjectionMatrixBuffer("pupper-projection-matrix");
+    private static final ProjectionMatrixBuffer matrixBuffer = new ProjectionMatrixBuffer("Pupper Client projection matrix");
 
     public static void unscaledProjection() {
         float width = client.getWindow().getWidth();

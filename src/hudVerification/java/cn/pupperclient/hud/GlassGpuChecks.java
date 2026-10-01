@@ -39,7 +39,7 @@ public final class GlassGpuChecks {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_STENCIL_BITS, 8);
             glfwWindowHint(GLFW_SAMPLES, 0);
-            window = glfwCreateWindow(SIZE, SIZE, "Pupper glass GPU checks", 0, 0);
+            window = glfwCreateWindow(SIZE, SIZE, "Pupper Client glass GPU checks", 0, 0);
             require(window != 0, "Unable to create a hidden OpenGL context");
             glfwMakeContextCurrent(window);
             GL.createCapabilities();

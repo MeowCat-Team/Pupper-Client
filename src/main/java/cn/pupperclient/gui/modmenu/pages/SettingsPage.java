@@ -7,7 +7,7 @@ import cn.pupperclient.PupperClient;
 import org.lwjgl.glfw.GLFW;
 
 import cn.pupperclient.animation.SimpleAnimation;
-import cn.pupperclient.gui.api.SoarGui;
+import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.Page;
 import cn.pupperclient.gui.api.page.impl.LeftRightTransition;
 import cn.pupperclient.gui.api.page.impl.RightLeftTransition;
@@ -25,7 +25,7 @@ public class SettingsPage extends Page {
 
 	private List<Item> items = new ArrayList<>();
 
-	public SettingsPage(SoarGui parent) {
+	public SettingsPage(PupperClientGui parent) {
 		super(parent, "text.settings", Icon.SETTINGS, new RightLeftTransition(true));
 
 		for (Mod m : PupperClient.getInstance().getModManager().getMods()) {

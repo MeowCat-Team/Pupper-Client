@@ -454,12 +454,12 @@ mod.fallDamageHelp.description=摔落伤害帮助
 mod.disabled=已禁用
 mod.enabled=已启用
 command.help.example=示例
-command.help.title=Soar Client 命令帮助
+command.help.title=Pupper Client 命令帮助
 command.help.toggle=切换mod开关状态
 command.help.list=显示所有mod列表
 command.help.help=显示此帮助
 
-command.help.modlist.title=Soar Client Mod列表
+command.help.modlist.title=Pupper Client Mod列表
 command.help.modlist.description=显示所有Mod列表
 mod.notFound=未找到Mod
 modManager.notInitialized=Mod管理器尚未初始化

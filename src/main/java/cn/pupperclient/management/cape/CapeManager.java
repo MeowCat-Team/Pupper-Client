@@ -94,7 +94,7 @@ public class CapeManager implements Closeable {
     private static DynamicTexture createNativeTexture(byte[] bytes) {
         if (bytes == null) return null;
         try {
-            return new DynamicTexture(() -> "pupper_capetexture", NativeImage.read(bytes));
+            return new DynamicTexture(() -> "Pupper Client cape texture", NativeImage.read(bytes));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

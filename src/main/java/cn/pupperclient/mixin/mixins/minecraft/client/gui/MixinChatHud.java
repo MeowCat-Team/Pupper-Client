@@ -15,7 +15,7 @@ public abstract class MixinChatHud {
     @Inject(method = "addClientSystemMessage", at = @At("HEAD"))
     private void onChatMessage(Component message, CallbackInfo ci) {
         String rawMessage = message.getString();
-        if (rawMessage.startsWith("§7[§bPupper§7]")) return;
+        if (rawMessage.startsWith("§7[§bPupper Client§7]")) return;
         ChatEvent event = new ChatEvent(rawMessage);
         EventBus.getInstance().post(event);
     }

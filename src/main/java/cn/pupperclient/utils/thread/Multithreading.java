@@ -9,7 +9,7 @@ public class Multithreading {
 
     private static final ExecutorService cachedThreadPool = Executors.newCachedThreadPool(
         new ThreadFactoryBuilder()
-            .setNameFormat("PupperClient-%d")
+            .setNameFormat("Pupper Client-%d")
             .setThreadFactory(Thread.ofVirtual().factory())
             .build()
     );

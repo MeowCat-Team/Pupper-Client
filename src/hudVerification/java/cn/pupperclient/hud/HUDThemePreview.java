@@ -126,7 +126,7 @@ public final class HUDThemePreview {
         rect(canvas, left, 180, 180, 56, HUDTokens.RADIUS, c.surface());
         rect(canvas, left + 8, 192, 32, 32, 8, c.accentContainer());
         solidText(canvas, Icon.PERSON, left + 18, 202, c.onAccentContainer(), HUDTokens.icon());
-        text(canvas, "Pupper", left + 48, 190, c.text(), HUDTokens.title());
+        text(canvas, "Pupper Client", left + 48, 190, c.text(), HUDTokens.title());
         text(canvas, "4.0 / 20.0 HP", left + 48, 205, c.danger(), HUDTokens.label());
         rect(canvas, left + 48, 222, 124, 5, 2.5f, c.track());
         rect(canvas, left + 48, 222, 24.8f, 5, 2.5f, c.danger());
@@ -140,7 +140,7 @@ public final class HUDThemePreview {
         rect(canvas, left + 8, 258, 36, 36, 8, c.accentContainer());
         solidText(canvas, Icon.MUSIC_NOTE, left + 20, 270, c.onAccentContainer(), HUDTokens.icon());
         text(canvas, "夜空中的旋律", left + 56, 258, c.text(), HUDTokens.title());
-        text(canvas, "Pupper Radio", left + 56, 274, c.secondaryText(), HUDTokens.label());
+        text(canvas, "Pupper Client Radio", left + 56, 274, c.secondaryText(), HUDTokens.label());
         rect(canvas, left + 56, 292, 198, 3, 1.5f, c.track());
         rect(canvas, left + 56, 292, 92, 3, 1.5f, c.accent());
 

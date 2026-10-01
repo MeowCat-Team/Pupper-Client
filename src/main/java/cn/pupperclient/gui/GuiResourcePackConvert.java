@@ -13,7 +13,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import cn.pupperclient.PupperClient;
-import cn.pupperclient.gui.api.SimpleSoarGui;
+import cn.pupperclient.gui.api.SimplePupperClientGui;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
@@ -31,7 +31,7 @@ import cn.pupperclient.utils.file.FileLocation;
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import net.minecraft.client.gui.screens.Screen;
 
-public class GuiResourcePackConvert extends SimpleSoarGui {
+public class GuiResourcePackConvert extends SimplePupperClientGui {
 
 	private volatile String progress = "Converting...";
 	private final Screen prevScreen;

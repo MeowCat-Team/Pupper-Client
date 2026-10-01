@@ -1,7 +1,7 @@
 package cn.pupperclient.gui;
 
 import cn.pupperclient.PupperClient;
-import cn.pupperclient.gui.api.SimpleSoarGui;
+import cn.pupperclient.gui.api.SimplePupperClientGui;
 import cn.pupperclient.gui.modmenu.component.MusicControlBar;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.music.Music;
@@ -14,7 +14,7 @@ import cn.pupperclient.utils.language.Language;
 import cn.pupperclient.utils.mouse.MouseUtils;
 import org.lwjgl.glfw.GLFW;
 
-public class MusicPlayGui extends SimpleSoarGui {
+public class MusicPlayGui extends SimplePupperClientGui {
     private static final float UI_WIDTH = 1100;
     private static final float UI_HEIGHT = 720;
     private static final float SCREEN_MARGIN = 24;

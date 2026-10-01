@@ -273,7 +273,7 @@ public final class ItemRenderChecks {
         buffer.requireCall(type, "canConsolidateConsecutiveGeometry", "()Z");
         buffer.requireCall("net/minecraft/client/renderer/StagedVertexBuffer", "getVertexBuilder",
                 "(Lnet/minecraft/client/renderer/StagedVertexBuffer$Draw;)L" + vertex + ";");
-        // Sodium and Pupper must keep using the same pose-normal contract and vertex format.
+        // Sodium and Pupper Client must keep using the same pose-normal contract and vertex format.
         MethodInfo sodium = read("net/caffeinemc/mods/sodium/client/render/immediate/model/BakedModelEncoder")
                 .method("writeQuadVertices", "(Lnet/caffeinemc/mods/sodium/api/vertex/buffer/VertexBufferWriter;"
                         + "Lcom/mojang/blaze3d/vertex/PoseStack$Pose;Lnet/caffeinemc/mods/sodium/client/model/quad/BakedQuadView;"

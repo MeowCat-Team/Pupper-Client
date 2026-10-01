@@ -51,7 +51,7 @@ public final class GlassGpuBenchmark {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_STENCIL_BITS, 8);
             glfwWindowHint(GLFW_SAMPLES, 0);
-            window = glfwCreateWindow(WIDTH, HEIGHT, "Pupper glass GPU benchmark", 0, 0);
+            window = glfwCreateWindow(WIDTH, HEIGHT, "Pupper Client glass GPU benchmark", 0, 0);
             if (window == 0) throw new IllegalStateException("Unable to create hidden OpenGL context");
             glfwMakeContextCurrent(window);
             GL.createCapabilities();
@@ -63,7 +63,7 @@ public final class GlassGpuBenchmark {
             try (Framebuffer target = new Framebuffer(); Paint textPaint = new Paint().setColor(0xFFF0F2F8);
                  ImageFilter legacyBlur = ImageFilter.makeBlur(5, 5, FilterTileMode.CLAMP)) {
                 Font font = Fonts.getRegular(14);
-                if (font.measureText("Pupper 144 FPS").getWidth() <= 0)
+                if (font.measureText("Pupper Client 144 FPS").getWidth() <= 0)
                     throw new AssertionError("Benchmark font must contain visible glyphs");
                 glBindFramebuffer(GL_FRAMEBUFFER, target.id);
                 SkiaContext.createSurface(WIDTH, HEIGHT, target.id);
@@ -124,7 +124,7 @@ public final class GlassGpuBenchmark {
                 drawPanel(panel, mode, legacyBlur);
                 int rows = index == 0 ? 24 : (panel[3] > 60 ? 2 : 1);
                 for (int row = 0; row < rows; row++) {
-                    canvas.drawString(index == 0 ? "Enabled module " + row : "Pupper 144 FPS",
+                    canvas.drawString(index == 0 ? "Enabled module " + row : "Pupper Client 144 FPS",
                             panel[0] + 12, panel[1] + 23 + row * 26, font, textPaint);
                 }
             }

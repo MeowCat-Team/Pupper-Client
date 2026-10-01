@@ -1,13 +1,14 @@
 package cn.pupperclient.management.websocket.packet.impl;
 
 import com.google.gson.JsonObject;
-import cn.pupperclient.management.websocket.packet.SoarPacket;
+import cn.pupperclient.management.websocket.packet.PupperClientPacket;
 
-public class SC_SoarUserPacket extends SoarPacket {
+public class SC_PupperClientUserPacket extends PupperClientPacket {
 
 	private final String uuid;
 	
-	public SC_SoarUserPacket(String uuid) {
+	public SC_PupperClientUserPacket(String uuid) {
+		// Keep the server's existing wire protocol identifier for compatibility.
 		super("sc-soar-user");
 		this.uuid = uuid;
 	}

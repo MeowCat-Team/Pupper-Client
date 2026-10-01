@@ -3,12 +3,12 @@ package cn.pupperclient.gui.modmenu;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.pupperclient.gui.api.SoarGui;
+import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.SimplePage;
 import cn.pupperclient.gui.modmenu.component.NavigationRail;
 import cn.pupperclient.gui.modmenu.pages.*;
 
-public class GuiModMenu extends SoarGui {
+public class GuiModMenu extends PupperClientGui {
 
 	private NavigationRail navigationRail;
 

@@ -13,7 +13,7 @@ import cn.pupperclient.animation.Duration;
 import cn.pupperclient.animation.SimpleAnimation;
 import cn.pupperclient.animation.cubicbezier.impl.EaseStandard;
 import cn.pupperclient.animation.other.DummyAnimation;
-import cn.pupperclient.gui.api.SoarGui;
+import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.SimplePage;
 import cn.pupperclient.gui.edithud.GuiEditHUD;
 import cn.pupperclient.management.color.api.ColorPalette;
@@ -39,9 +39,9 @@ public class NavigationRail extends Component {
     private final IconButton editButton;
     private final ScrollHelper scrollHelper = new ScrollHelper();
 
-    private final SoarGui parent;
+    private final PupperClientGui parent;
 
-    public NavigationRail(SoarGui parent, float x, float y, float width, float height) {
+    public NavigationRail(PupperClientGui parent, float x, float y, float width, float height) {
         super(x, y);
         this.parent = parent;
         this.width = width;

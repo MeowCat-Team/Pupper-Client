@@ -111,7 +111,7 @@ public class PupperClient implements IMinecraft {
         try {
             Files.createFile(configFile);
             var configContent = String.format(
-                "First launch: %d%nPupperClient Version: %s%n",
+                "First launch: %d%nPupper Client Version: %s%n",
                 launchTime, getVersion()
             );
             Files.writeString(configFile, configContent);
@@ -123,9 +123,9 @@ public class PupperClient implements IMinecraft {
 
     private void checkResources() {
         if (getClass().getClassLoader().getResource(ICON_PATH) == null) {
-            LOGGER.error("PupperClient icon not found in resources!");
+            LOGGER.error("Pupper Client icon not found in resources!");
         } else {
-            LOGGER.info("PupperClient icon found in resources");
+            LOGGER.info("Pupper Client icon found in resources");
         }
     }
 

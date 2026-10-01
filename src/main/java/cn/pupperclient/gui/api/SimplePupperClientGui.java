@@ -10,10 +10,10 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
- * Base class for all PupperClient GUIs.
+ * Base class for all Pupper Client GUIs.
  * Directly extends Minecraft's Screen to ensure better compatibility and standard lifecycle.
  */
-public abstract class SimpleSoarGui extends Screen {
+public abstract class SimplePupperClientGui extends Screen {
     public enum CoordinateSpace {
         FRAMEBUFFER,
         MINECRAFT_GUI
@@ -22,11 +22,11 @@ public abstract class SimpleSoarGui extends Screen {
     protected final Minecraft client = Minecraft.getInstance();
     private final CoordinateSpace coordinateSpace;
 
-    protected SimpleSoarGui() {
+    protected SimplePupperClientGui() {
         this(CoordinateSpace.FRAMEBUFFER);
     }
 
-    protected SimpleSoarGui(CoordinateSpace coordinateSpace) {
+    protected SimplePupperClientGui(CoordinateSpace coordinateSpace) {
         super(Component.empty());
         this.coordinateSpace = coordinateSpace;
     }

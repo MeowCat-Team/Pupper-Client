@@ -2,7 +2,7 @@ package cn.pupperclient.gui.modmenu.pages;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.animation.SimpleAnimation;
-import cn.pupperclient.gui.api.SoarGui;
+import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.Page;
 import cn.pupperclient.gui.api.page.impl.RightLeftTransition;
 import cn.pupperclient.management.cape.CapeManager;
@@ -56,7 +56,7 @@ public class CosmeticsPage extends Page {
         }
     }
 
-    public CosmeticsPage(SoarGui parent) {
+    public CosmeticsPage(PupperClientGui parent) {
         super(parent, "text.modmenu.cosmetics", Icon.SHOP, new RightLeftTransition(true));
     }
 

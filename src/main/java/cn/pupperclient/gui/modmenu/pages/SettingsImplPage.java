@@ -1,7 +1,7 @@
 package cn.pupperclient.gui.modmenu.pages;
 
 import cn.pupperclient.PupperClient;
-import cn.pupperclient.gui.api.SoarGui;
+import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.Page;
 import cn.pupperclient.gui.api.page.impl.RightTransition;
 import cn.pupperclient.gui.modmenu.component.SettingBar;
@@ -25,7 +25,7 @@ public class SettingsImplPage extends Page {
     private final Class<? extends Page> prevPage;
     private final Mod mod;
 
-    public SettingsImplPage(SoarGui parent, Class<? extends Page> prevPage, Mod mod) {
+    public SettingsImplPage(PupperClientGui parent, Class<? extends Page> prevPage, Mod mod) {
         super(parent, "text.mods", Icon.SETTINGS, new RightTransition(true));
         this.prevPage = prevPage;
         this.mod = mod;

@@ -8,7 +8,7 @@ import org.lwjgl.glfw.GLFW;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.animation.SimpleAnimation;
-import cn.pupperclient.gui.api.SoarGui;
+import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.Page;
 import cn.pupperclient.gui.api.page.impl.LeftRightTransition;
 import cn.pupperclient.gui.api.page.impl.RightLeftTransition;
@@ -30,7 +30,7 @@ public class ProfilePage extends Page {
 	private final List<Item> items = new ArrayList<>();
 	private IconButton addButton;
 
-	public ProfilePage(SoarGui parent) {
+	public ProfilePage(PupperClientGui parent) {
 		super(parent, "text.profile", Icon.DESCRIPTION, new RightLeftTransition(true));
 		addButton = new IconButton(Icon.ADD, 0, 0, IconButton.Size.LARGE, IconButton.Style.SECONDARY);
 	}

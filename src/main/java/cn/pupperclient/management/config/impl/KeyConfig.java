@@ -122,7 +122,7 @@ public class KeyConfig extends Config {
         if (modManager == null) return "ModManager not available";
 
         StringBuilder sb = new StringBuilder();
-        sb.append("=== SoarClient Keybind Configuration ===\n");
+        sb.append("=== Pupper Client Keybind Configuration ===\n");
         sb.append("Generated: ").append(new java.util.Date()).append("\n\n");
 
         // 模组按键

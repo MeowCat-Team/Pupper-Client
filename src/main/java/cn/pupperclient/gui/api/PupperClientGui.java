@@ -19,7 +19,7 @@ import cn.pupperclient.ui.theme.MaterialTheme;
 
 import net.minecraft.client.gui.screens.Screen;
 
-public abstract class SoarGui extends SimpleSoarGui {
+public abstract class PupperClientGui extends SimplePupperClientGui {
 	private static final float MIN_SCREEN_SCALE = 0.96F;
 	private static final int SCREEN_ANIMATION_DURATION = Duration.MEDIUM_1;
 	private static final float SCREEN_CORNER_RADIUS = MaterialTheme.SURFACE_RADIUS;
@@ -35,7 +35,7 @@ public abstract class SoarGui extends SimpleSoarGui {
 	private boolean closing;
 	private Screen nextScreen;
 
-	public SoarGui() {
+	public PupperClientGui() {
 		super();
 
 		this.pages = createPages();

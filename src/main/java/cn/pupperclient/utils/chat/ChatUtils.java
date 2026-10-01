@@ -7,11 +7,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
 public class ChatUtils {
-    private static final String PREFIX = "§7[§bPupper§7] ";
-    private static final String PREFIX_FORMATTED = ChatFormatting.GRAY + "[" + ChatFormatting.AQUA + "Pupper" + ChatFormatting.GRAY + "] ";
+    private static final String PREFIX = "§7[§bPupper Client§7] ";
+    private static final String PREFIX_FORMATTED = ChatFormatting.GRAY + "[" + ChatFormatting.AQUA + "Pupper Client" + ChatFormatting.GRAY + "] ";
     private static final Component PREFIX_TEXT = Component.literal("[")
         .withStyle(ChatFormatting.GRAY)
-        .append(Component.literal("PupperClient").withStyle(ChatFormatting.AQUA))
+        .append(Component.literal("Pupper Client").withStyle(ChatFormatting.AQUA))
         .append(Component.literal("] ").withStyle(ChatFormatting.GRAY));
 
 

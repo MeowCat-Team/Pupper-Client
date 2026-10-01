@@ -1,6 +1,6 @@
 # Material Glass UI
 
-Pupper's custom GUI and HUD share the current Material dynamic palette, with light/dark themes, rounded surfaces and restrained glass edges. Vanilla and third-party screens retain their own renderers.
+Pupper Client's custom GUI and HUD share the current Material dynamic palette, with light/dark themes, rounded surfaces and restrained glass edges. Vanilla and third-party screens retain their own renderers.
 
 ## Defaults and settings
 
@@ -14,7 +14,7 @@ Pupper's custom GUI and HUD share the current Material dynamic palette, with lig
 
 `ui/theme/MaterialTokens` holds the defaults and 28/20/12 GUI corner radii. `MaterialTheme.glassPanel` samples the scene behind a root window, with local softening and a small refraction at the rounded edges. `panel` adds a single tint gradient at the configured opacity, a shadow and a continuous specular rim. `card` draws a lighter nested tonal layer without repeatedly sampling the scene. `surface` applies the GUI opacity to individual surfaces. Text stays separate from the glass effect.
 
-`SimpleSoarGui` does not apply a fullscreen post-process. `SoarGui` scales its fixed layout to fit small windows and applies the same inverse transform to mouse input. `Page` keeps its search field fixed while child pages clip and scroll their lists.
+`SimplePupperClientGui` does not apply a fullscreen post-process. `PupperClientGui` scales its fixed layout to fit small windows and applies the same inverse transform to mouse input. `Page` keeps its search field fixed while child pages clip and scroll their lists.
 
 Glass captures the scene once before custom content, then uses a normalized nine-sample stencil only inside visible panels. Disabling GUI and HUD glass skips the snapshot. Entry/exit alpha layers are bounded to their window or HUD, and text shadows no longer create image-blur passes per line. Small nested cards use a simple outline instead of allocating a gradient shader per control.
 

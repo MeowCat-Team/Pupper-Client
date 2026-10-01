@@ -60,25 +60,25 @@ public abstract class MixinEntity implements IMixinCameraEntity {
 
 	@Override
 	@Unique
-	public float soarClient_CN$getCameraPitch() {
+	public float pupperClient$getCameraPitch() {
 		return this.cameraPitch;
 	}
 
 	@Override
 	@Unique
-	public float soarClient_CN$getCameraYaw() {
+	public float pupperClient$getCameraYaw() {
 		return this.cameraYaw;
 	}
 
 	@Override
 	@Unique
-	public void soarClient_CN$setCameraPitch(float pitch) {
+	public void pupperClient$setCameraPitch(float pitch) {
 		this.cameraPitch = pitch;
 	}
 
 	@Override
 	@Unique
-	public void soarClient_CN$setCameraYaw(float yaw) {
+	public void pupperClient$setCameraYaw(float yaw) {
 		this.cameraYaw = yaw;
 	}
 

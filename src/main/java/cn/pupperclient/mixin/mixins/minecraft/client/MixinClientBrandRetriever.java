@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 public class MixinClientBrandRetriever {
     /**
      * @author oneachina
-     * @reason Set Pupper Brand
+     * @reason Set Pupper Client Brand
      */
     @Overwrite
     public static String getClientModName() {

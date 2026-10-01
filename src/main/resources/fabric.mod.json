@@ -3,7 +3,7 @@
 	"id": "pupper",
 	"version": "${version}",
 	"accessWidener": "pupper.classtweaker",
-	"name": "PupperClient",
+	"name": "Pupper Client",
 	"icon": "assets/pupper/logo.png",
 	"description": "Better, Faster Minecraft Client",
 	"authors": [

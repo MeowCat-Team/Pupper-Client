@@ -10,8 +10,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
-import cn.pupperclient.management.websocket.client.SoarWebSocketClient;
-import cn.pupperclient.management.websocket.packet.SoarPacket;
+import cn.pupperclient.management.websocket.client.PupperClientWebSocketClient;
+import cn.pupperclient.management.websocket.packet.PupperClientPacket;
 import cn.pupperclient.utils.http.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ public class WebSocketManager {
     private final ScheduledExecutorService scheduler;
 
     private GameProfile currentGameProfile;
-    private SoarWebSocketClient webSocketClient;
+    private PupperClientWebSocketClient webSocketClient;
     private int retryCount = 0;
     private final boolean isShuttingDown = false;
 
@@ -155,12 +155,12 @@ public class WebSocketManager {
     }
 
 
-    private SoarWebSocketClient createWebSocketClient() throws URISyntaxException {
+    private PupperClientWebSocketClient createWebSocketClient() throws URISyntaxException {
         Map<String, String> headers = new HashMap<>();
         headers.put("name", currentGameProfile.name());
         headers.put("uuid", currentGameProfile.id().toString().replace("-", ""));
 
-        return new SoarWebSocketClient(headers, this::onConnectionFailure);
+        return new PupperClientWebSocketClient(headers, this::onConnectionFailure);
     }
 
     private void onConnectionFailure() {
@@ -168,7 +168,7 @@ public class WebSocketManager {
         //LOGGER.warn("WebSocket connection failure, retry count: {}", retryCount);
     }
 
-    public void send(SoarPacket packet) {
+    public void send(PupperClientPacket packet) {
         if (packet == null) {
             LOGGER.warn("Attempted to send null packet");
             return;

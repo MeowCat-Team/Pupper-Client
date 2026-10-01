@@ -10,7 +10,7 @@ import cn.pupperclient.utils.thread.Multithreading;
 import org.lwjgl.glfw.GLFW;
 
 import cn.pupperclient.animation.SimpleAnimation;
-import cn.pupperclient.gui.api.SoarGui;
+import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.Page;
 import cn.pupperclient.gui.api.page.impl.RightLeftTransition;
 import cn.pupperclient.gui.modmenu.component.MusicControlBar;
@@ -38,7 +38,7 @@ public class MusicPage extends Page {
     private final float refreshButtonSize = 32;
     private boolean isRefreshing = false;
 
-    public MusicPage(SoarGui parent) {
+    public MusicPage(PupperClientGui parent) {
         super(parent, "text.music", Icon.MUSIC_NOTE, new RightLeftTransition(true));
     }
 

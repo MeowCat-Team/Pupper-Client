@@ -15,13 +15,13 @@ import cn.pupperclient.management.websocket.handler.WebSocketHandler;
 import cn.pupperclient.management.websocket.handler.impl.HypixelStatsHandler;
 import cn.pupperclient.utils.misc.JsonUtils;
 
-public class SoarWebSocketClient extends WebSocketClient {
+public class PupperClientWebSocketClient extends WebSocketClient {
 
 	private final Map<String, WebSocketHandler> handlers = new HashMap<>();
 	private final Gson gson = new Gson();
 	private final Runnable closeTask;
 
-	public SoarWebSocketClient(Map<String, String> headers, Runnable closeTask) throws URISyntaxException {
+	public PupperClientWebSocketClient(Map<String, String> headers, Runnable closeTask) throws URISyntaxException {
 		super(new URI("ws://localhost:8080/websocket"), headers);
 		this.closeTask = closeTask;
 		initializeHandlers();

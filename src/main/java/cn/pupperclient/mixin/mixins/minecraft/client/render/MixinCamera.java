@@ -37,12 +37,12 @@ public abstract class MixinCamera {
 
         var cameraOverridden = (IMixinCameraEntity) entity;
         if (firstTime && Minecraft.getInstance().player != null) {
-            cameraOverridden.soarClient_CN$setCameraYaw(Minecraft.getInstance().player.getYRot());
-            cameraOverridden.soarClient_CN$setCameraPitch(Minecraft.getInstance().player.getXRot());
+            cameraOverridden.pupperClient$setCameraYaw(Minecraft.getInstance().player.getYRot());
+            cameraOverridden.pupperClient$setCameraPitch(Minecraft.getInstance().player.getXRot());
             firstTime = false;
         }
 
-        this.setRotation(cameraOverridden.soarClient_CN$getCameraYaw(), cameraOverridden.soarClient_CN$getCameraPitch());
+        this.setRotation(cameraOverridden.pupperClient$getCameraYaw(), cameraOverridden.pupperClient$getCameraPitch());
     }
 
     @Inject(method = "calculateFov", at = @At("RETURN"), cancellable = true)

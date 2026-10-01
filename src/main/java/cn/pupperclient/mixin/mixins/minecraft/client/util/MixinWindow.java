@@ -36,7 +36,7 @@ public class MixinWindow {
         try {
             try (InputStream is = getClass().getResourceAsStream("/assets/pupper/logo.png")) {
                 if (is == null) {
-                    System.err.println("PupperClient icon not found!");
+                    System.err.println("Pupper Client icon not found!");
                     return;
                 }
 
@@ -55,7 +55,7 @@ public class MixinWindow {
                     );
 
                     if (iconBuffer == null) {
-                        System.err.println("Failed to load PupperClient icon: " + STBImage.stbi_failure_reason());
+                        System.err.println("Failed to load Pupper Client icon: " + STBImage.stbi_failure_reason());
                         return;
                     }
 
@@ -68,11 +68,11 @@ public class MixinWindow {
                     GLFW.glfwSetWindowIcon(handle, images);
 
                     STBImage.stbi_image_free(iconBuffer);
-                    PupperClient.LOGGER.info("PupperClient icon loaded successfully!");
+                    PupperClient.LOGGER.info("Pupper Client icon loaded successfully!");
                 }
             }
         } catch (IOException e) {
-            PupperClient.LOGGER.error("Error loading PupperClient icon: {}", e.getMessage());
+            PupperClient.LOGGER.error("Error loading Pupper Client icon: {}", e.getMessage());
         }
     }
 
