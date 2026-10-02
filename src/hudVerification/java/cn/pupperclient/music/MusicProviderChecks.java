@@ -91,6 +91,13 @@ final class MusicProviderChecks {
             require(store.favorites("guest").size() == 2, "Favorite identities collide");
             store.replaceCloudLikes("guest", List.of());
             require(store.isLiked("guest", foreign, "") && !store.isLiked("guest", netease, ""), "NetEase sync deleted Audius favorite");
+            store.setLiked("guest", netease, "", true);
+            store.setLiked("netease:17", netease, "", true);
+            store.setLiked("netease:17", new MusicTrack(0, "Local", "", "", "", 0), "local.mp3", true);
+            store.setLiked("netease:other", new MusicTrack(999, "Other account", "", "", "", 0), "", true);
+            var combined = store.favorites(java.util.Map.of("netease", "netease:17", "audius", "guest", "local", "netease:17"));
+            require(combined.size() == 3 && combined.stream().map(f -> f.track().provider()).collect(java.util.stream.Collectors.toSet())
+                .equals(java.util.Set.of("netease", "audius", "local")), "Shared Favorites lost a source, duplicated guest songs or leaked another account");
             MusicProvider neteaseProvider = new NeteaseMusicProvider(new NeteaseMusicApi(URI.create(origin)));
             MusicProviders registry = new MusicProviders(store, neteaseProvider, audius);
             require(registry.selected().id().equals("netease"), "Legacy source changed");
@@ -122,7 +129,8 @@ final class MusicProviderChecks {
             var saved = downloader.download(foreign, "standard", null, null, _ -> { });
             require(saved.audio().getParent().equals(music) && store.downloaded(netease).getFileName().toString().equals("old.mp3"), "Audius download replaced NetEase track");
             require(new MusicLibraryStore(music).downloaded(foreign).equals(saved.audio()), "Audius metadata lost on restart");
-            require(store.favorites("guest").getFirst().filename().equals(saved.audio().getFileName().toString()), "Favorite did not resolve to saved track");
+            require(store.favorites("guest").stream().filter(f -> f.track().sameSong(foreign)).findFirst().orElseThrow()
+                .filename().equals(saved.audio().getFileName().toString()), "Favorite did not resolve to saved track");
             Path legacyLyrics = cache.resolve(netease.lyricsFilename());
             Files.writeString(legacyLyrics, "{\"original\":\"[00:01]NetEase line\",\"translated\":\"\"}");
             var lyrics = new LyricsManager(track -> audius.lyrics(track), cache, Runnable::run);

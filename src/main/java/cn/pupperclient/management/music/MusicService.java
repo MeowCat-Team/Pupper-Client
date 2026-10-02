@@ -83,10 +83,13 @@ public final class MusicService {
         acquire(track, quality, play, false, success, failure);
     }
     public void play(MusicTrack track, String quality, Consumer<Music> success, Consumer<MusicError> failure) {
+        manager.playFrom(List.of(new MusicQueue.Entry(track, "")), 0, quality, success, failure);
+    }
+    /** Playback buffers never publish a library entry; saving is an explicit download action. */
+    public void prepare(MusicTrack track, String quality, Consumer<Music> success, Consumer<MusicError> failure) {
         Music local = local(track);
-        if (local != null) { manager.play(local); success.accept(local); return; }
-        // Preserve the NetEase library workflow. Public Audius streams are temporary playback cache entries.
-        acquire(track, quality, true, !track.provider().equals("netease"), success, failure);
+        if (local != null) { success.accept(local); return; }
+        acquire(track, quality, false, true, success, failure);
     }
     private void acquire(MusicTrack track, String quality, boolean play, boolean temporary, Consumer<Music> success,
             Consumer<MusicError> failure) {
@@ -99,7 +102,7 @@ public final class MusicService {
         task(() -> {
             try {
                 MusicDownload.Result result = temporary
-                    ? download.playback(track, quality, playingFile, value -> progress.put(track.key(), value))
+                    ? download.playback(track, quality, account.cookie(), playingFile, value -> progress.put(track.key(), value))
                     : download.download(track, quality, account.cookie(), playingFile, value -> progress.put(track.key(), value));
                 if (temporary) return new Music(result.audio().toFile(), result.track().title(), result.track().artist(),
                     java.nio.file.Files.isRegularFile(download.cover(track)) ? download.cover(track).toFile() : null,
@@ -148,12 +151,14 @@ public final class MusicService {
         }, success, failure);
     }
 
-    public boolean loggedIn() { return provider().cloudLikes() && !account(provider().id()).owner().equals("guest"); }
+    public boolean loggedIn() { return loggedIn(provider().id()); }
+    public boolean loggedIn(String source) { return source.equals("netease") && !account(source).owner().equals("guest"); }
     public boolean isLiked(MusicTrack track, String filename) { return library.isLiked(account(track.provider()).owner(), track, filename); }
     public List<MusicLibraryStore.Favorite> favorites() {
-        MusicProvider selected = provider();
-        return library.favorites(account(selected.id()).owner()).stream()
-            .filter(f -> f.track().provider().equals(selected.id()) || !f.track().remote()).toList();
+        Map<String, String> owners = new java.util.LinkedHashMap<>();
+        for (MusicProvider source : providers.all()) owners.put(source.id(), account(source.id()).owner());
+        owners.put("local", account("local").owner());
+        return library.favorites(owners);
     }
     public boolean favoritesBusy() { return favoritesLoading.contains(account(provider().id()).owner()); }
     public boolean favoritesBusy(MusicTrack track) { return favoritesLoading.contains(account(track.provider()).owner()); }
@@ -172,7 +177,12 @@ public final class MusicService {
         }, success, failure);
     }
     public void syncLikes(Consumer<Integer> success, Consumer<MusicError> failure) {
-        MusicProvider selected = provider();
+        syncLikes(provider().id(), success, failure);
+    }
+    public void syncLikes(String source, Consumer<Integer> success, Consumer<MusicError> failure) {
+        MusicProvider selected;
+        try { selected = providers.get(source); }
+        catch (MusicError invalid) { failure.accept(invalid); return; }
         Account account = account(selected.id());
         if (!selected.cloudLikes() || account.owner().equals("guest")) { failure.accept(new MusicError("music.error.login")); return; }
         if (!favoritesLoading.add(account.owner())) { failure.accept(new MusicError("music.error.busy")); return; }

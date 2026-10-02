@@ -1,5 +1,7 @@
 package cn.pupperclient.music;
 
+import cn.pupperclient.gui.modmenu.component.MusicPlayerLayout;
+import cn.pupperclient.gui.modmenu.component.MusicPopupMenu;
 import cn.pupperclient.gui.modmenu.component.MusicUi;
 import cn.pupperclient.libraries.material3.hct.Hct;
 import cn.pupperclient.management.color.api.ColorPalette;
@@ -22,82 +24,91 @@ import io.github.humbleui.skija.Surface;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
-/** A layout specimen from production painters, with fixture tracks rather than a running Minecraft client. */
+/** Offscreen specimens share actual sidebar, song, queue, lyrics and popup painters and geometry. */
 public final class MusicPlayerPreview {
     public static void main(String[] args) throws Exception {
-        Path output = Path.of(args[0]).toAbsolutePath();
-        Files.createDirectories(output);
-        Field field = SkiaContext.class.getDeclaredField("surface");
-        field.setAccessible(true);
+        Path output = Path.of(args[0]).toAbsolutePath(); Files.createDirectories(output);
+        Field field = SkiaContext.class.getDeclaredField("surface"); field.setAccessible(true);
         Object previous = field.get(null);
         try {
             for (boolean dark : new boolean[] { false, true }) {
                 I18n.setLanguage(dark ? Language.CHINESE : Language.ENGLISH);
-                for (boolean lyricsView : new boolean[] { false, true }) {
-                for (boolean audius : new boolean[] { false, true }) {
-                if (lyricsView && audius) continue;
-                try (Surface surface = Surface.makeRasterN32Premul(1120, 720)) {
-                    field.set(null, surface);
-                    var canvas = surface.getCanvas();
-                    canvas.clear(dark ? 0xff252735 : 0xffe9edf4);
-                    ColorPalette palette = new ColorPalette(Hct.from(265, 42, 60), dark);
-                    int count = canvas.getSaveCount();
-                    MaterialTheme.panel(0, 0, 1120, 720, 28, palette);
-                    MusicUi.playerHeader(1120, palette);
-                    MusicUi.lyricsSwitch(1120, lyricsView, -1, -1, palette);
-                    MusicTrack track = new MusicTrack(3356975915L, lyricsView ? "Afterglow (fixture)" : "Montagem pitty",
-                        "DJ fixture · Sample artist", lyricsView ? "Generated lyric specimen" : "Montagem pitty", "", 137_000);
-                    if (audius) track = new MusicTrack(0, "Afterglow (fixture)", "Sample artist", "", "", 137_000,
-                        "audius", "fixture", true, false);
-                    MusicUi.nowPlaying(28, 108, 304, track, null, true, -1, -1, palette);
-                    Skia.drawLine(350, 116, 350, 594, 1, MaterialTheme.alpha(palette.getOutlineVariant(), .45f));
-                    if (!lyricsView) {
-                    String[] keys = { "music.tab.library", "music.tab.search", "music.tab.liked" };
-                    String[] icons = { Icon.LIBRARY_MUSIC, Icon.SEARCH, Icon.FAVORITE };
-                    float tabWidth = (724 - 248) / 3f;
-                    for (int i = 0; i < 3; i++) MusicUi.tab(368 + i * tabWidth, 108, tabWidth - 4,
-                        icons[i], MusicText.get(keys[i]), i == 1, false, palette);
-                    MusicUi.button(856, 108, 176, MusicText.get(audius ? "music.provider.audius" : "music.provider.netease"), false, false, palette);
-                    MusicUi.iconButton(1044, 108, Icon.REFRESH, false, true, false, palette);
-                    MaterialControls.textInput(368, 172, 608, 42, true, palette, MaterialTheme.opacity(), 0, 0,
-                        new MaterialControls.TextState(audius ? "Afterglow" : "MONTAGEM PITTY", 0, 0, 0, 0, "", 0));
-                    MusicUi.button(988, 170, 104, MusicText.get("music.action.search"), true, false, palette);
-                    Skia.drawText(MusicText.get(audius ? "music.results.query" : "music.results.for", audius ? "Afterglow" : "MONTAGEM PITTY", 6), 380, 234,
-                        palette.getOnSurfaceVariant(), Fonts.getMedium(13));
-                    canvas.save();
-                    try {
-                        Skia.clip(368, 258, 724, 296, 16);
-                        for (int i = 0; i < 6; i++) MusicUi.row(368, 258 + i * 76, 716, null,
-                            audius ? "Afterglow · Mix " + i : i == 0 ? "Montagem pitty" : i == 1 ? "Montagem pitty (Slowed)" : "Montagem pitty · Mix " + i,
-                            (dark ? "示例歌手 · " : "Sample artist · ") + (audius ? "Audius" : "NetEase Music"), i == 0 ? "2:17" : "2:42",
-                            i == 0, true, i == 0, !audius && i == 0, i == 2 ? 46 : -1, audius && i == 1, true,
-                            !audius || i != 1, !audius || i > 1, -1, -1, palette);
-                    } finally { canvas.restore(); }
-                    Skia.drawHeightCenteredText(MusicText.get(audius ? "music.results.loaded" : "music.status.downloaded", audius ? 6 : "Montagem pitty"), 376, 586,
-                        palette.getOnSurfaceVariant(), Fonts.getRegular(12));
-                    MusicUi.button(916, 562, 176, MusicText.get("music.quality.button", MusicText.get(audius ? "music.quality.standard" : "music.quality.exhigh")),
-                        false, false, palette);
-                    } else {
-                        var lyrics = SongLyrics.parse("[00:00.00]A quiet moment before the music\n[00:15.00]Soft light across the room\n"
-                            + "[00:30.00]Let the rhythm find its way\n[00:45.00]Every note has room to breathe\n[01:00.00]Stay here for a little while\n",
-                            "[00:00.00]音乐开始前的安静片刻\n[00:15.00]柔光洒满房间\n[00:30.00]让节奏找到自己的方向\n"
-                            + "[00:45.00]每个音符都能自由呼吸\n[01:00.00]在这里多停留一会儿\n");
-                        MusicUi.lyrics(368, 108, 724, 496, track.title(),
-                            new LyricsManager.Result(LyricsManager.State.READY, lyrics), 2, 2, -1, -1, palette);
+                for (String view : new String[] { "player", "audius", "lyrics", "queue", "menu", "quality" }) {
+                    try (Surface surface = Surface.makeRasterN32Premul(1120, 720)) {
+                        field.set(null, surface); var canvas = surface.getCanvas();
+                        canvas.clear(dark ? 0xff252735 : 0xffe9edf4);
+                        var palette = new ColorPalette(Hct.from(265, 42, 60), dark);
+                        int count = canvas.getSaveCount();
+                        var panel = view.equals("lyrics") ? MusicPlayerLayout.Panel.LYRICS
+                            : view.equals("queue") ? MusicPlayerLayout.Panel.QUEUE : MusicPlayerLayout.Panel.NONE;
+                        boolean audius = view.equals("audius");
+                        String source = audius ? "audius" : "netease";
+                        var track = new MusicTrack(3356975915L, audius ? "Afterglow" : "Montagem pitty",
+                            dark ? "示例歌手" : "Sample artist", "Evening Mix", "", 137000);
+                        MaterialTheme.panel(0, 0, 1120, 720, 28, palette);
+                        MusicUi.sidebar("search", source, audius ? "standard" : "exhigh", -1, -1, palette);
+                        MusicUi.browserHeader("search", MusicText.get("music.provider." + source), panel, -1, -1, palette);
+                        var body = MusicPlayerLayout.content(panel);
+                        MaterialControls.textInput(body.x(), body.y(), body.width() - 56, 42, true, palette, MaterialTheme.opacity(), 0, 0,
+                            new MaterialControls.TextState(audius ? "Afterglow" : "MONTAGEM PITTY", 0, 0, 0, 0, "", 0));
+                        MusicUi.iconButton(body.x() + body.width() - 48, body.y() - 3, Icon.SEARCH, false, true, false, palette);
+                        Skia.drawText(MusicText.get(audius ? "music.results.query" : "music.results.for",
+                            audius ? "Afterglow" : "MONTAGEM PITTY", 9), body.x() + 8, body.y() + 54,
+                            palette.getOnSurfaceVariant(), Fonts.getRegular(13));
+                        Skia.save();
+                        try {
+                            Skia.clip(body.x(), body.y() + 80, body.width(), body.height() - 132, 12);
+                            for (int i = 0; i < 9; i++) MusicUi.songRow(body.x(), body.y() + 80 + i * 64, body.width(), null,
+                                i == 0 ? track.title() : i == 1 ? track.title() + " (Slowed)" : track.title() + " · Mix " + i,
+                                track.artist() + " · Evening Mix", i == 0 ? "2:17" : "2:42", i == 1, i == 0, true, i == 0,
+                                !audius || i != 1, true, i == 2 ? 46 : -1, -1, -1, palette);
+                        } finally { Skia.restore(); }
+                        Skia.drawHeightCenteredText(Skia.getLimitText(MusicText.get("music.results.count", 9), Fonts.getRegular(12), body.width() - 16),
+                            body.x() + 8, body.y() + body.height() - 24, palette.getOnSurfaceVariant(), Fonts.getRegular(12));
+                        var side = MusicPlayerLayout.sidePanel();
+                        if (panel != MusicPlayerLayout.Panel.NONE) Skia.drawLine(786, 100, 786, 600, 1,
+                            MaterialTheme.alpha(palette.getOutlineVariant(), .4f));
+                        if (panel == MusicPlayerLayout.Panel.LYRICS) {
+                            var lyrics = SongLyrics.parse("[00:00]A quiet moment\n[00:15]Soft light in the room\n[00:30]Feel the rhythm\n[00:45]Every note can breathe\n[01:00]Stay a little while\n",
+                                "[00:00]安静片刻\n[00:15]柔光洒满房间\n[00:30]感受节奏\n[00:45]每个音符都能自由呼吸\n[01:00]在这里多停留一会儿\n");
+                            MusicUi.lyrics(side.x(), side.y(), side.width(), side.height(), track.title(),
+                                new LyricsManager.Result(LyricsManager.State.READY, lyrics), 2, 2, -1, -1, palette);
+                        } else if (panel == MusicPlayerLayout.Panel.QUEUE) {
+                            MusicUi.queueHeader(side.x(), side.y(), side.width(), track, null, 7, -1, -1, palette);
+                            Skia.save();
+                            try {
+                                Skia.clip(side.x(), side.y() + 180, side.width(), side.height() - 220, 12);
+                                for (int i = 0; i < 7; i++) MusicUi.queueRow(side.x(), side.y() + 180 + i * 64, side.width(),
+                                    new MusicTrack(i + 1, "Evening Mix " + (i + 1), track.artist(), "", "", 150000), null, i == 1, -1, -1, palette);
+                            } finally { Skia.restore(); }
+                            Skia.drawText(Skia.getLimitText(MusicText.get("music.queue.drag"), Fonts.getRegular(12), side.width() - 24),
+                                side.x() + 12, side.y() + side.height() - 26, palette.getOnSurfaceVariant(), Fonts.getRegular(12));
+                        }
+                        MusicUi.playback(16, 616, 1088, new MusicUi.Playback(track.title(), track.artist(), null,
+                            true, false, false, true, .65f, 37, 137, true), -1, -1, palette);
+                        if (view.equals("menu") || view.equals("quality")) {
+                            MusicPopupMenu menu = new MusicPopupMenu();
+                            if (view.equals("menu")) menu.open(1080, 490, List.of(
+                                item("music.action.play", Icon.PLAY_ARROW, true), item("music.action.playnext", Icon.PLAYLIST_PLAY, true),
+                                item("music.action.playlast", Icon.PLAYLIST_ADD, true), item("music.action.unlike", Icon.FAVORITE, true),
+                                item("music.action.saved", Icon.DOWNLOAD, false)));
+                            else menu.open(16, 568, cn.pupperclient.management.music.MusicService.QUALITIES.stream().map(q ->
+                                new MusicPopupMenu.Item(MusicText.get("music.quality." + q), Icon.GRAPHIC_EQ, true, q.equals("exhigh"), () -> { })).toList());
+                            menu.draw(-1, -1, palette);
+                        }
+                        if (canvas.getSaveCount() != count) throw new AssertionError("Player painters leaked canvas state");
+                        try (Image image = surface.makeImageSnapshot(); Data data = image.encodeToData(EncodedImageFormat.PNG)) {
+                            Path file = output.resolve(view + "-" + (dark ? "cn-dark.png" : "en-light.png"));
+                            Files.write(file, data.getBytes()); System.out.println("Player production-painter preview: " + file);
+                        }
                     }
-                    MusicUi.playback(28, 616, 1064, new MusicUi.Playback(track.title(), "Sample artist", null,
-                        true, false, false, true, .65f, 37, 137, true), -1, -1, palette);
-                    if (canvas.getSaveCount() != count) throw new AssertionError("Player painters leaked canvas state");
-                    try (Image image = surface.makeImageSnapshot(); Data data = image.encodeToData(EncodedImageFormat.PNG)) {
-                        Path file = output.resolve((lyricsView ? "lyrics-" : audius ? "audius-" : "player-") + (dark ? "cn-dark.png" : "en-light.png"));
-                        Files.write(file, data.getBytes());
-                        System.out.println("Player production-painter preview: " + file);
-                    }
-                }
-                }
                 }
             }
         } finally { field.set(null, previous); }
+    }
+    private static MusicPopupMenu.Item item(String key, String icon, boolean enabled) {
+        return new MusicPopupMenu.Item(MusicText.get(key), icon, enabled, false, () -> { });
     }
 }

@@ -148,4 +148,6 @@ public class SearchBar extends Component {
 	public boolean isFocused() {
 		return input.isFocused();
 	}
+
+	public void setWidth(float width) { this.width = width; }
 }

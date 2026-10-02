@@ -24,7 +24,6 @@ import cn.pupperclient.libraries.flac.metadata.Metadata;
 import cn.pupperclient.libraries.flac.metadata.Picture;
 import cn.pupperclient.libraries.flac.metadata.VorbisComment;
 import cn.pupperclient.utils.render.ImageUtils;
-import cn.pupperclient.utils.math.MathUtils;
 import cn.pupperclient.utils.file.FileLocation;
 import cn.pupperclient.utils.file.FileUtils;
 
@@ -43,6 +42,9 @@ public class MusicManager {
     private final Thread playerThread;
     private final MediaSession mediaSession;
     private volatile boolean shuttingDown;
+    private final MusicQueue queue = new MusicQueue();
+    private boolean queueLoading;
+    private final java.util.Map<String, String> playbackQualities = new java.util.HashMap<>();
 
     public MusicManager() {
 
@@ -61,22 +63,13 @@ public class MusicManager {
 
         this.musicPlayer = new MusicPlayer(() -> {
             long completedSession = musicPlayer.getGeneration();
+            long completedQueue = queue.snapshot().generation();
             Multithreading.runMainThread(() -> {
-                if (musicPlayer.getGeneration() != completedSession || musicPlayer.isPlaying()) return;
-                List<Music> snapshot = musics;
-                Music nextMusic;
-
-                if (repeat) {
-                    nextMusic = currentMusic;
-                } else if (shuffle && !snapshot.isEmpty()) {
-                    nextMusic = snapshot.get(MathUtils.getRandomInt(0, snapshot.size() - 1));
-                } else {
-                    nextMusic = null;
-                }
-
-                setCurrentMusic(nextMusic);
-                if (currentMusic != null) play();
-                else musicPlayer.setPlaying(false);
+                if (musicPlayer.getGeneration() != completedSession || !queue.current(completedQueue)
+                    || musicPlayer.isPlaying() || queueLoading || shuttingDown) return;
+                if (repeat) { play(); return; }
+                if (queue.advance(shuffle) != null) prepareQueued(null, _ -> { }, this::queueError);
+                else { setCurrentMusic(null); musicPlayer.setPlaying(false); }
             });
         });
         this.shuffle = false;
@@ -234,9 +227,48 @@ public class MusicManager {
 
     public void play(Music music) {
         if (music == null) return;
+        List<MusicQueue.Entry> entries = musics.stream().map(MusicQueue.Entry::of).toList();
+        int index = -1;
+        for (int i = 0; i < entries.size(); i++) if (entries.get(i).key().equals(MusicQueue.Entry.of(music).key())) { index = i; break; }
+        queue.start(index < 0 ? List.of(MusicQueue.Entry.of(music)) : entries, Math.max(0, index));
+        queueLoading = false;
         setCurrentMusic(music);
         play();
     }
+
+    public MusicQueue getQueue() { return queue; }
+    public boolean isQueueLoading() { return queueLoading; }
+    public void playFrom(List<MusicQueue.Entry> entries, int index, String quality,
+            java.util.function.Consumer<Music> ready, java.util.function.Consumer<MusicError> failure) {
+        queue.start(entries, index);
+        if (quality != null) playbackQualities.put(entries.get(index).track().provider(), quality);
+        prepareQueued(quality, ready, failure);
+    }
+    private void prepareQueued(String quality, java.util.function.Consumer<Music> ready,
+            java.util.function.Consumer<MusicError> failure) {
+        var snapshot = queue.snapshot();
+        var entry = snapshot.current();
+        if (entry == null || shuttingDown) return;
+        queueLoading = true;
+        musicPlayer.setPlaying(false);
+        Music local = musics.stream().filter(m -> entry.track().remote() ? m.getTrack().sameSong(entry.track())
+            : m.getAudio().getName().equals(entry.filename())).findFirst().orElse(null);
+        java.util.function.Consumer<Music> complete = music -> {
+            if (!queue.current(snapshot.generation()) || shuttingDown) return;
+            queueLoading = false; setCurrentMusic(music); play(); ready.accept(music);
+        };
+        if (local != null) complete.accept(local);
+        else if (!entry.track().remote()) { queueLoading = false; failure.accept(new MusicError("music.error.file")); }
+        else service.prepare(entry.track(), quality == null ? playbackQualities.getOrDefault(entry.track().provider(),
+            service.defaultQuality(entry.track())) : quality, complete, error -> {
+            if (!queue.current(snapshot.generation()) || shuttingDown) return;
+            queueLoading = false; failure.accept(error);
+        });
+    }
+    public void jumpQueue(int index, long revision) {
+        if (queue.jump(index, revision) != null) prepareQueued(null, _ -> { }, this::queueError);
+    }
+    private void queueError(MusicError error) { cn.pupperclient.utils.chat.ChatUtils.error(MusicText.get(error.key())); }
 
     public void shutdown() {
         shuttingDown = true;
@@ -262,7 +294,7 @@ public class MusicManager {
         MusicTrack track = music.getTrack();
         String artwork = music.getAlbum() != null && music.getAlbum().isFile() ? music.getAlbum().toURI().toString() : "";
         return new WindowsSmtc.Snapshot(music.getAudio().getAbsolutePath(), track.title(), track.artist(), track.album(),
-            artwork, isPlaying(), true, musics.size() > 1, getCurrentTime(), getEndTime());
+            artwork, isPlaying(), true, queue.canSwitch(), getCurrentTime(), getEndTime());
     }
 
     public float getVolume() {
@@ -273,30 +305,34 @@ public class MusicManager {
         musicPlayer.setVolume(volume);
     }
 
-    public void next() { move(1); }
+    public void next() {
+        if (queue.advance(shuffle) != null) { prepareQueued(null, _ -> { }, this::queueError); return; }
+        stop(); setCurrentMusic(null);
+    }
 
-    public void back() { move(-1); }
-
-    private void move(int direction) {
-        Music current = currentMusic;
-        List<Music> snapshot = musics;
-        if (current == null || snapshot.isEmpty()) return;
-        int index = direction > 0 ? -1 : 0;
-        for (int i = 0; i < snapshot.size(); i++)
-            if (snapshot.get(i).getAudio().equals(current.getAudio())) { index = i; break; }
-        play(snapshot.get(Math.floorMod(index + direction, snapshot.size())));
+    public void back() {
+        if (!queueLoading && currentMusic != null && getCurrentTime() > 3) { play(); return; }
+        if (queue.previous() != null) { prepareQueued(null, _ -> { }, this::queueError); return; }
+        if (!queueLoading && currentMusic != null) play();
     }
 
     public void switchPlayBack() {
+        var waiting = queue.snapshot().current();
+        if (queueLoading) { stop(); return; }
+        if (waiting != null && (currentMusic == null || !waiting.key().equals(MusicQueue.Entry.of(currentMusic).key()))) {
+            prepareQueued(null, _ -> { }, this::queueError); return;
+        }
         if (currentMusic == null) {
+            if (!queue.snapshot().upcoming().isEmpty()) { next(); return; }
             List<Music> snapshot = musics;
             if (!snapshot.isEmpty()) play(snapshot.getFirst());
             return;
         }
-        musicPlayer.setPlaying(!musicPlayer.isPlaying());
+        if (musicPlayer.isPlaying()) stop(); else musicPlayer.setPlaying(true);
     }
 
     public void stop() {
+        queue.cancelPending(); queueLoading = false;
         musicPlayer.setPlaying(false);
     }
 

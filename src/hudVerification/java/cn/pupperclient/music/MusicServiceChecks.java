@@ -25,7 +25,7 @@ public final class MusicServiceChecks {
     private static int checks;
     private static volatile boolean detailsFail, cloudFail, badAudio, unavailable, flac;
     private static volatile int mediaRequests;
-    private static volatile Map<String, String> lastSearch = Map.of(), lastLike = Map.of();
+    private static volatile Map<String, String> lastSearch = Map.of(), lastLike = Map.of(), lastAudio = Map.of();
     private static String origin;
     private static final String COOKIE = "test-session=fixture; os=pc";
 
@@ -61,6 +61,15 @@ public final class MusicServiceChecks {
             require(store.metadata(downloaded.audio().getFileName().toString()).title().equals(track.title()),
                 "Provider title not persisted");
             require(new MusicLibraryStore(libraryDir).downloaded(track.id()).equals(downloaded.audio()), "Restart lost download index");
+            MusicTrack previewTrack = new MusicTrack(77, "Listen before saving", "Artist", "", "", 137000);
+            var preview = downloader.playback(previewTrack, "standard", COOKIE, null, _ -> { });
+            require(preview.audio().getParent().equals(cache) && store.downloaded(previewTrack) == null,
+                "NetEase listening added an unsolicited library download");
+            require(COOKIE.equals(lastAudio.get("cookie")) && "standard".equals(lastAudio.get("level")),
+                "NetEase temporary playback lost authentication or selected quality");
+            var higherPreview = downloader.playback(previewTrack, "exhigh", COOKIE, preview.audio(), _ -> { });
+            require(!higherPreview.audio().equals(preview.audio()) && Files.exists(preview.audio()),
+                "A quality change reused different-quality audio or removed playing audio");
             int before = mediaRequests;
             downloader.download(track, "exhigh", null, null, _ -> { });
             require(mediaRequests == before, "Downloaded track fetched twice");
@@ -130,6 +139,7 @@ public final class MusicServiceChecks {
             MusicPlaybackChecks.run();
             MusicLyricsChecks.run();
             MusicProviderChecks.run();
+            MusicInteractionChecks.run();
         } finally {
             server.stop(0);
             try (var files = Files.walk(root)) {
@@ -159,8 +169,8 @@ public final class MusicServiceChecks {
                 if (detailsFail) { status = 503; bytes = "{}".getBytes(StandardCharsets.UTF_8); }
                 else bytes = ("{\"code\":200,\"songs\":[" + track + "]}").getBytes(StandardCharsets.UTF_8);
             }
-            case "/song/url/v1" -> bytes = ("{\"code\":200,\"data\":[{\"url\":" + (unavailable ? "null" : "\"" + origin + "/media\"")
-                + ",\"type\":\"" + (flac ? "flac" : "mp3") + "\"}]}").getBytes(StandardCharsets.UTF_8);
+            case "/song/url/v1" -> { lastAudio = params; bytes = ("{\"code\":200,\"data\":[{\"url\":" + (unavailable ? "null" : "\"" + origin + "/media\"")
+                + ",\"type\":\"" + (flac ? "flac" : "mp3") + "\"}]}").getBytes(StandardCharsets.UTF_8); }
             case "/lyric" -> bytes = "{\"code\":200,\"lrc\":{\"lyric\":\"[00:01.00]Fixture lyric\"},\"tlyric\":{\"lyric\":\"[00:01.00]测试歌词\"}}".getBytes(StandardCharsets.UTF_8);
             case "/media" -> { mediaRequests++; bytes = (badAudio ? "<html>not audio" : flac ? "fLaCfixture" : "ID3fixture").getBytes(StandardCharsets.UTF_8); }
             case "/like", "/likelist" -> {

@@ -92,10 +92,14 @@ public final class MusicDownload {
 
     /** Temporary playback files never become library downloads or grant offline-download permission. */
     public Result playback(MusicTrack track, String quality, Path playing, IntConsumer progress) throws MusicError, IOException {
+        return playback(track, quality, null, playing, progress);
+    }
+    public Result playback(MusicTrack track, String quality, String cookie, Path playing, IntConsumer progress) throws MusicError, IOException {
         if (!track.playable()) throw new MusicError("music.error.playrestricted");
-        MusicProvider.AudioSource source = api.audio(track, quality, null, false);
+        MusicProvider.AudioSource source = api.audio(track, quality, cookie, false);
         Files.createDirectories(cache);
-        Path output = cache.resolve("music-preview-" + track.cacheId() + source.extension());
+        String qualityKey = java.util.HexFormat.of().formatHex(quality.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        Path output = cache.resolve("music-preview-" + track.cacheId() + "-" + qualityKey + source.extension());
         // Revalidate access before reusing a cached track, even when its bytes are already present.
         if (!Files.isRegularFile(output)) {
             Path partial = Files.createTempFile(cache, ".music-preview-", ".part");

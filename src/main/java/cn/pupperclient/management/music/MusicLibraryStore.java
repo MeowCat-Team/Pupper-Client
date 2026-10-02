@@ -99,6 +99,12 @@ public final class MusicLibraryStore {
         return List.copyOf(state.favorites.getOrDefault(owner, Map.of()).values());
     }
 
+    /** A shared Favorites page retains each source's own account, including local-file ownership. */
+    public synchronized List<Favorite> favorites(Map<String, String> sourceOwners) {
+        return sourceOwners.entrySet().stream().flatMap(source -> favorites(source.getValue()).stream()
+            .filter(f -> f.track().provider().equals(source.getKey()))).toList();
+    }
+
     public synchronized void setLiked(String owner, MusicTrack track, String filename, boolean liked) throws IOException {
         change(next -> {
             Map<String, Favorite> favorites = next.favorites.computeIfAbsent(owner, _ -> new LinkedHashMap<>());
