@@ -199,7 +199,7 @@ public class MusicManager {
             color = ImageUtils.calculateAverageColor(ImageIO.read(album));
         }
 
-        File providerCover = metadata == null ? null : new File(FileLocation.CACHE_DIR, "ncm-cover-" + metadata.id() + ".jpg");
+        File providerCover = metadata == null ? null : new File(FileLocation.CACHE_DIR, metadata.coverFilename());
         if (providerCover != null && providerCover.isFile()) album = providerCover;
         String fallback = f.getName().substring(0, f.getName().lastIndexOf('.'));
         return new Music(f, title == null || title.isBlank() ? fallback : title,

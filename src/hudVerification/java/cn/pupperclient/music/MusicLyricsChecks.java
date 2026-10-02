@@ -2,7 +2,7 @@ package cn.pupperclient.music;
 
 import cn.pupperclient.management.music.Music;
 import cn.pupperclient.management.music.MusicTrack;
-import cn.pupperclient.management.music.NeteaseMusicApi;
+import cn.pupperclient.management.music.MusicProvider;
 import cn.pupperclient.management.music.lyric.LyricsManager;
 import cn.pupperclient.management.music.lyric.SongLyrics;
 import java.awt.Color;
@@ -37,7 +37,7 @@ final class MusicLyricsChecks {
             Music song = new Music(audio.toFile(), metadata.title(), metadata.artist(), null, Color.BLACK, metadata);
             List<Runnable> queue = new ArrayList<>();
             AtomicInteger requests = new AtomicInteger();
-            var raw = new NeteaseMusicApi.Lyrics("[00:01.000]Generated fixture line", "[00:01.000]测试歌词");
+            var raw = new MusicProvider.Lyrics("[00:01.000]Generated fixture line", "[00:01.000]测试歌词");
             LyricsManager manager = new LyricsManager(_ -> { requests.incrementAndGet(); return raw; }, root.resolve("cache"), queue::add);
             require(manager.get(song).state() == LyricsManager.State.LOADING && queue.size() == 1, "Lyric read blocks caller");
             manager.get(song); require(queue.size() == 1, "Duplicate requests scheduled on every frame");
@@ -57,7 +57,7 @@ final class MusicLyricsChecks {
             queue.removeFirst().run();
             require(manager.get(song).state() == LyricsManager.State.READY, "Refreshed request not delivered");
             Files.delete(root.resolve("fixture.lrc"));
-            LyricsManager empty = new LyricsManager(_ -> new NeteaseMusicApi.Lyrics("", ""), root.resolve("empty"), Runnable::run);
+            LyricsManager empty = new LyricsManager(_ -> new MusicProvider.Lyrics("", ""), root.resolve("empty"), Runnable::run);
             require(empty.get(song).state() == LyricsManager.State.EMPTY, "No-lyric song not distinguished");
             LyricsManager failed = new LyricsManager(_ -> { throw new Exception("Expected outage"); }, root.resolve("failed"), Runnable::run);
             require(failed.get(song).state() == LyricsManager.State.ERROR, "Network outage confused with no lyrics");

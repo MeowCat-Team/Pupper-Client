@@ -129,6 +129,7 @@ public final class MusicServiceChecks {
                 + "title persistence, legacy repair, MP3/FLAC, partial cleanup and account-isolated favorites.");
             MusicPlaybackChecks.run();
             MusicLyricsChecks.run();
+            MusicProviderChecks.run();
         } finally {
             server.stop(0);
             try (var files = Files.walk(root)) {

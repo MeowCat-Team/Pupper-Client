@@ -166,13 +166,21 @@ public final class MusicUi {
     public static void row(float x, float y, float width, File cover, String title, String subtitle,
             String duration, boolean active, boolean playing, boolean liked, boolean saved, int progress,
             boolean hovered, boolean likesEnabled, double mouseX, double mouseY, ColorPalette palette) {
+        row(x, y, width, cover, title, subtitle, duration, active, playing, liked, saved, progress,
+            hovered, likesEnabled, true, true, mouseX, mouseY, palette);
+    }
+
+    public static void row(float x, float y, float width, File cover, String title, String subtitle,
+            String duration, boolean active, boolean playing, boolean liked, boolean saved, int progress,
+            boolean hovered, boolean likesEnabled, boolean playable, boolean downloadable,
+            double mouseX, double mouseY, ColorPalette palette) {
         if (active || hovered) Skia.drawRoundedRect(x, y, width, 72, 16,
             MaterialTheme.alpha(active ? palette.getSecondaryContainer() : palette.getOnSurface(), active ? .5f : .06f));
         artwork(cover, x + 12, y + 12, 48, palette);
         if (hovered || active) {
             Skia.drawRoundedRect(x + 12, y + 12, 48, 48, 10, MaterialTheme.alpha(palette.getSurface(), .72f));
             Skia.drawFullCenteredText(playing && active ? Icon.PAUSE : Icon.PLAY_ARROW, x + 36, y + 36,
-                palette.getPrimary(), Fonts.getIconFill(26));
+                playable ? palette.getPrimary() : MaterialTheme.alpha(palette.getOnSurface(), .38f), Fonts.getIconFill(26));
         }
         float textWidth = Math.max(24, width - 256);
         Skia.drawText(Skia.getLimitText(title, Fonts.getMedium(16), textWidth), x + 76, y + 16,
@@ -186,7 +194,7 @@ public final class MusicUi {
             Skia.drawFullCenteredText(progress + "%", downloadX + 24, y + 36,
                 palette.getPrimary(), Fonts.getMedium(12));
         } else iconButton(downloadX, y + 12, saved ? Icon.DOWNLOAD_DONE : Icon.DOWNLOAD,
-            saved, !saved, inside(mouseX, mouseY, downloadX, y + 12, 48, 48), palette);
+            saved, !saved && downloadable, inside(mouseX, mouseY, downloadX, y + 12, 48, 48), palette);
         iconButton(x + width - 56, y + 12, Icon.FAVORITE, liked, likesEnabled,
             inside(mouseX, mouseY, x + width - 56, y + 12, 48, 48), palette);
     }

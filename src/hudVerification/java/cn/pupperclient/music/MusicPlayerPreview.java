@@ -35,6 +35,8 @@ public final class MusicPlayerPreview {
             for (boolean dark : new boolean[] { false, true }) {
                 I18n.setLanguage(dark ? Language.CHINESE : Language.ENGLISH);
                 for (boolean lyricsView : new boolean[] { false, true }) {
+                for (boolean audius : new boolean[] { false, true }) {
+                if (lyricsView && audius) continue;
                 try (Surface surface = Surface.makeRasterN32Premul(1120, 720)) {
                     field.set(null, surface);
                     var canvas = surface.getCanvas();
@@ -46,31 +48,35 @@ public final class MusicPlayerPreview {
                     MusicUi.lyricsSwitch(1120, lyricsView, -1, -1, palette);
                     MusicTrack track = new MusicTrack(3356975915L, lyricsView ? "Afterglow (fixture)" : "Montagem pitty",
                         "DJ fixture · Sample artist", lyricsView ? "Generated lyric specimen" : "Montagem pitty", "", 137_000);
+                    if (audius) track = new MusicTrack(0, "Afterglow (fixture)", "Sample artist", "", "", 137_000,
+                        "audius", "fixture", true, false);
                     MusicUi.nowPlaying(28, 108, 304, track, null, true, -1, -1, palette);
                     Skia.drawLine(350, 116, 350, 594, 1, MaterialTheme.alpha(palette.getOutlineVariant(), .45f));
                     if (!lyricsView) {
                     String[] keys = { "music.tab.library", "music.tab.search", "music.tab.liked" };
                     String[] icons = { Icon.LIBRARY_MUSIC, Icon.SEARCH, Icon.FAVORITE };
-                    float tabWidth = (724 - 60) / 3f;
+                    float tabWidth = (724 - 248) / 3f;
                     for (int i = 0; i < 3; i++) MusicUi.tab(368 + i * tabWidth, 108, tabWidth - 4,
                         icons[i], MusicText.get(keys[i]), i == 1, false, palette);
+                    MusicUi.button(856, 108, 176, MusicText.get(audius ? "music.provider.audius" : "music.provider.netease"), false, false, palette);
                     MusicUi.iconButton(1044, 108, Icon.REFRESH, false, true, false, palette);
                     MaterialControls.textInput(368, 172, 608, 42, true, palette, MaterialTheme.opacity(), 0, 0,
-                        new MaterialControls.TextState("MONTAGEM PITTY", 0, 0, 0, 0, "", 0));
+                        new MaterialControls.TextState(audius ? "Afterglow" : "MONTAGEM PITTY", 0, 0, 0, 0, "", 0));
                     MusicUi.button(988, 170, 104, MusicText.get("music.action.search"), true, false, palette);
-                    Skia.drawText(MusicText.get("music.results.for", "MONTAGEM PITTY", 6), 380, 234,
+                    Skia.drawText(MusicText.get(audius ? "music.results.query" : "music.results.for", audius ? "Afterglow" : "MONTAGEM PITTY", 6), 380, 234,
                         palette.getOnSurfaceVariant(), Fonts.getMedium(13));
                     canvas.save();
                     try {
                         Skia.clip(368, 258, 724, 296, 16);
                         for (int i = 0; i < 6; i++) MusicUi.row(368, 258 + i * 76, 716, null,
-                            i == 0 ? "Montagem pitty" : i == 1 ? "Montagem pitty (Slowed)" : "Montagem pitty · Mix " + i,
-                            dark ? "示例歌手 · Montagem pitty" : "Sample artist · Montagem pitty", i == 0 ? "2:17" : "2:42",
-                            i == 0, true, i == 0, i == 0, i == 2 ? 46 : -1, false, true, -1, -1, palette);
+                            audius ? "Afterglow · Mix " + i : i == 0 ? "Montagem pitty" : i == 1 ? "Montagem pitty (Slowed)" : "Montagem pitty · Mix " + i,
+                            (dark ? "示例歌手 · " : "Sample artist · ") + (audius ? "Audius" : "NetEase Music"), i == 0 ? "2:17" : "2:42",
+                            i == 0, true, i == 0, !audius && i == 0, i == 2 ? 46 : -1, audius && i == 1, true,
+                            !audius || i != 1, !audius || i > 1, -1, -1, palette);
                     } finally { canvas.restore(); }
-                    Skia.drawHeightCenteredText(MusicText.get("music.status.downloaded", "Montagem pitty"), 376, 586,
+                    Skia.drawHeightCenteredText(MusicText.get(audius ? "music.results.loaded" : "music.status.downloaded", audius ? 6 : "Montagem pitty"), 376, 586,
                         palette.getOnSurfaceVariant(), Fonts.getRegular(12));
-                    MusicUi.button(952, 562, 140, MusicText.get("music.quality.button", MusicText.get("music.quality.exhigh")),
+                    MusicUi.button(916, 562, 176, MusicText.get("music.quality.button", MusicText.get(audius ? "music.quality.standard" : "music.quality.exhigh")),
                         false, false, palette);
                     } else {
                         var lyrics = SongLyrics.parse("[00:00.00]A quiet moment before the music\n[00:15.00]Soft light across the room\n"
@@ -84,10 +90,11 @@ public final class MusicPlayerPreview {
                         true, false, false, true, .65f, 37, 137, true), -1, -1, palette);
                     if (canvas.getSaveCount() != count) throw new AssertionError("Player painters leaked canvas state");
                     try (Image image = surface.makeImageSnapshot(); Data data = image.encodeToData(EncodedImageFormat.PNG)) {
-                        Path file = output.resolve((lyricsView ? "lyrics-" : "player-") + (dark ? "cn-dark.png" : "en-light.png"));
+                        Path file = output.resolve((lyricsView ? "lyrics-" : audius ? "audius-" : "player-") + (dark ? "cn-dark.png" : "en-light.png"));
                         Files.write(file, data.getBytes());
                         System.out.println("Player production-painter preview: " + file);
                     }
+                }
                 }
                 }
             }

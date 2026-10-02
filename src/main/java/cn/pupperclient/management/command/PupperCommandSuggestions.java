@@ -18,7 +18,7 @@ public final class PupperCommandSuggestions {
         "help", "list", "l", "toggle", "t", "bind", "b", "music", "m", "163", "login"
     );
     private static final List<String> BIND_SUBCOMMANDS = List.of("list", "clear", "reset");
-    private static final List<String> MUSIC_SUBCOMMANDS = List.of("search", "download", "quick", "list", "help");
+    private static final List<String> MUSIC_SUBCOMMANDS = List.of("provider", "search", "play", "download", "quick", "list", "help");
     private static final List<String> LOGIN_SUBCOMMANDS = List.of(
         "send", "phone", "qr", "status", "logout", "refresh", "help"
     );
@@ -98,7 +98,12 @@ public final class PupperCommandSuggestions {
         if (firstSpace < 0) {
             return suggestWords(input, start, MUSIC_SUBCOMMANDS, arguments);
         }
-        if (!arguments.substring(0, firstSpace).equalsIgnoreCase("download")) {
+        String action = arguments.substring(0, firstSpace);
+        if (action.equalsIgnoreCase("provider")) {
+            int sourceStart = skipSpaces(input, start + firstSpace + 1);
+            return suggestWords(input, sourceStart, MusicCommand.getProviders(), input.substring(sourceStart));
+        }
+        if (!action.equalsIgnoreCase("download") && !action.equalsIgnoreCase("play")) {
             return new SuggestionsBuilder(input, start).build();
         }
 
@@ -107,7 +112,7 @@ public final class PupperCommandSuggestions {
         if (qualitySpace < 0 || songIdStart == qualitySpace) {
             return new SuggestionsBuilder(input, start).build();
         }
-        return suggestWords(input, skipSpaces(input, qualitySpace + 1), MusicCommand.getQualityLevels(),
+        return suggestWords(input, skipSpaces(input, qualitySpace + 1), MusicCommand.getQualityLevels(input.substring(songIdStart, qualitySpace)),
             input.substring(skipSpaces(input, qualitySpace + 1)));
     }
 

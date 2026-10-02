@@ -17,7 +17,9 @@ import net.minecraft.network.chat.HoverEvent;
 
 /** Commands use the same metadata, download directory and authenticated API as the player. */
 public class MusicCommand {
-    public static List<String> getQualityLevels() { return MusicService.QUALITIES; }
+    public static List<String> getQualityLevels() { return service().qualities(); }
+    public static List<String> getQualityLevels(String reference) { return service().qualities(reference); }
+    public static List<String> getProviders() { return service().providers().stream().map(p -> p.id()).toList(); }
     private static MusicService service() { return PupperClient.getInstance().getMusicManager().getService(); }
 
     public static void handleCommand(String[] args) {
@@ -26,6 +28,18 @@ public class MusicCommand {
         switch (action) {
             case "help" -> help();
             case "list" -> list();
+            case "provider" -> {
+                if (args.length < 3) {
+                    for (var provider : service().providers()) ChatUtils.addChatMessage("§b" + provider.id() + " §7· "
+                        + MusicText.get(provider.nameKey()) + (provider == service().provider() ? " ✓" : ""));
+                    return;
+                }
+                try {
+                    service().selectProvider(args[2]);
+                    ChatUtils.addChatMessage("§a" + MusicText.get("music.provider.selected", MusicText.get(service().provider().nameKey())));
+                } catch (MusicError failure) { error(failure); }
+                catch (java.io.IOException failure) { error(new MusicError("music.error.file")); }
+            }
             case "search", "quick" -> {
                 if (args.length < 3) { usage(action); return; }
                 int end = args.length;
@@ -36,16 +50,20 @@ public class MusicCommand {
                 }
                 search(String.join(" ", Arrays.copyOfRange(args, 2, end)), limit, action.equals("quick"));
             }
-            case "download" -> {
-                if (args.length < 3 || !args[2].matches("\\d+")) { usage(action); return; }
-                String quality = args.length > 3 ? quality(args[3]) : "exhigh";
-                if (quality == null) { usage(action); return; }
-                try {
-                    long id = Long.parseLong(args[2]);
-                    if (id <= 0) { usage(action); return; }
-                    ChatUtils.addChatMessage("§6" + MusicText.get("music.status.downloading"));
-                    service().download(id, quality, false, MusicCommand::downloaded, MusicCommand::error);
-                } catch (NumberFormatException invalid) { usage(action); }
+            case "download", "play" -> {
+                if (args.length < 3 || !args[2].matches("(?:[a-zA-Z]+:)?[a-zA-Z0-9_-]{1,80}")) { usage(action); return; }
+                String requestedQuality = args.length > 3 ? quality(args[3]) : null;
+                if (args.length > 3 && (requestedQuality == null || !getQualityLevels(args[2]).contains(requestedQuality))) {
+                    usage(action); return;
+                }
+                boolean play = action.equals("play");
+                ChatUtils.addChatMessage("§6" + MusicText.get(play ? "music.status.loading" : "music.status.downloading"));
+                service().resolve(args[2], track -> {
+                    String quality = requestedQuality == null ? service().defaultQuality(track) : requestedQuality;
+                    if (play) service().play(track, quality, music -> ChatUtils.addChatMessage("§a"
+                        + MusicText.get("music.status.playing", music.getTitle())), MusicCommand::error);
+                    else service().download(track, quality, false, MusicCommand::downloaded, MusicCommand::error);
+                }, MusicCommand::error);
             }
             default -> search(String.join(" ", Arrays.copyOfRange(args, 1, args.length)), 10, false);
         }
@@ -67,19 +85,25 @@ public class MusicCommand {
             if (quick) {
                 // Preserve the already known title even if /song/detail is temporarily unavailable.
                 MusicTrack first = result.tracks().getFirst();
-                ChatUtils.addChatMessage("§6" + MusicText.get("music.status.downloadtrack", first.title()));
-                service().download(first, "exhigh", false, MusicCommand::downloaded, MusicCommand::error);
+                ChatUtils.addChatMessage("§6" + MusicText.get(first.provider().equals("netease")
+                    ? "music.status.downloadtrack" : "music.status.loadingtrack", first.title()));
+                if (first.provider().equals("netease")) service().download(first, "exhigh", false,
+                    MusicCommand::downloaded, MusicCommand::error);
+                else service().play(first, "standard", music -> ChatUtils.addChatMessage("§a"
+                    + MusicText.get("music.status.playing", music.getTitle())), MusicCommand::error);
                 return;
             }
-            ChatUtils.addChatMessage("§6" + MusicText.get("music.results.count", result.total()));
+            ChatUtils.addChatMessage("§6" + MusicText.get(result.total() < 0 ? "music.results.loaded" : "music.results.count",
+                result.total() < 0 ? result.tracks().size() : result.total()));
             for (int i = 0; i < result.tracks().size(); i++) {
                 MusicTrack track = result.tracks().get(i);
-                String command = ".music download " + track.id();
+                String command = ".music " + (track.provider().equals("netease") ? "download " : "play ") + track.key();
                 Component row = Component.literal((i + 1) + ". " + track.title() + " — " + track.artist())
                     .withStyle(ChatFormatting.AQUA)
                     .withStyle(style -> style.withClickEvent(new ClickEvent.SuggestCommand(command))
                         .withHoverEvent(new HoverEvent.ShowText(Component.literal(
-                            MusicText.get("music.action.download") + " · " + track.album()))));
+                            MusicText.get(track.provider().equals("netease") ? "music.action.download" : "music.action.play")
+                                + " · " + MusicText.get("music.provider." + track.provider())))));
                 ChatUtils.addChatMessage(row);
             }
         }, MusicCommand::error);
@@ -102,7 +126,7 @@ public class MusicCommand {
 
     private static void help() {
         ChatUtils.addChatMessage("§6" + MusicText.get("music.command.title"));
-        for (String action : List.of("search", "download", "quick", "list", "help"))
+        for (String action : List.of("provider", "search", "play", "download", "quick", "list", "help"))
             ChatUtils.addChatMessage("§b" + MusicText.get("music.command." + action));
     }
 

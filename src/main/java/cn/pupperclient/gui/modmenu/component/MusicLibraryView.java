@@ -38,13 +38,14 @@ public final class MusicLibraryView extends Component {
     private final List<MusicTrack> results = new ArrayList<>();
     private Tab tab;
     private Press pressed;
-    private int requestGeneration, total;
+    private int requestGeneration, total, nextOffset;
     private boolean searching, refreshing, disposed;
     private String submittedQuery = "", previousFilter = "";
     private final String[] queries = { "", "", "" };
     private String statusKey = "music.status.ready";
     private Object[] statusArguments = new Object[0];
-    private String quality = "exhigh";
+    private String quality = service.provider().defaultQuality();
+    private String previousProvider = service.provider().id();
     private String hoveredHint;
 
     public MusicLibraryView(float x, float y, float width, float height, Tab initial) {
@@ -57,9 +58,10 @@ public final class MusicLibraryView extends Component {
     }
 
     @Override public void draw(double mouseX, double mouseY) {
+        if (!previousProvider.equals(service.provider().id())) providerChanged();
         ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
         hoveredHint = null;
-        float tabWidth = (width - 60) / 3;
+        float tabWidth = (width - 248) / 3;
         String[] keys = { "music.tab.library", "music.tab.search", "music.tab.liked" };
         String[] icons = { Icon.LIBRARY_MUSIC, Icon.SEARCH, Icon.FAVORITE };
         for (int i = 0; i < 3; i++) {
@@ -67,6 +69,9 @@ public final class MusicLibraryView extends Component {
             MusicUi.tab(x + i * tabWidth, y, tabWidth - 4, icons[i], MusicText.get(keys[i]),
                 tab.ordinal() == i, hover, palette);
         }
+        MusicUi.button(x + width - 236, y, 176, MusicText.get(service.provider().nameKey()), false,
+            inside(mouseX, mouseY, x + width - 236, y, 176, 48), palette);
+        if (inside(mouseX, mouseY, x + width - 236, y, 176, 48)) hoveredHint = MusicText.get("music.provider.change");
         boolean sync = tab == Tab.LIKED && service.loggedIn();
         boolean toolbarBusy = sync ? service.favoritesBusy() : refreshing;
         MusicUi.iconButton(x + width - 48, y, sync ? Icon.CLOUD_SYNC : Icon.REFRESH, false, !toolbarBusy,
@@ -94,7 +99,7 @@ public final class MusicLibraryView extends Component {
         scroll.setMaxScroll(rows.size() * ROW_HEIGHT, listHeight);
         scroll.onUpdate();
         String heading = tab == Tab.SEARCH ? (submittedQuery.isBlank() ? MusicText.get("music.discover")
-            : MusicText.get("music.results.for", submittedQuery, total))
+            : MusicText.get(total < 0 ? "music.results.query" : "music.results.for", submittedQuery, total))
             : MusicText.get(tab == Tab.LIKED ? "music.liked.heading" : "music.library.heading");
         Skia.drawText(Skia.getLimitText(heading, Fonts.getMedium(13), width), x + 12, y + 126,
             palette.getOnSurfaceVariant(), Fonts.getMedium(13));
@@ -109,24 +114,27 @@ public final class MusicLibraryView extends Component {
                     Row row = rows.get(i);
                     float rowY = listY + i * ROW_HEIGHT + scroll.getValue();
                     Music playing = manager.getCurrentMusic();
-                    boolean active = row.local() != null && playing != null
-                        && row.local().getAudio().equals(playing.getAudio());
+                    boolean active = playing != null && (row.track().sameSong(playing.getTrack())
+                        || (row.local() != null && row.local().getAudio().equals(playing.getAudio())));
                     File cover = row.local() != null && row.local().getAlbum() != null
                         ? row.local().getAlbum() : service.cover(row.track());
                     boolean hover = inside(mouseX, mouseY, x, rowY, width, 72)
                         && inside(mouseX, mouseY, x, listY, width, listHeight);
                     String subtitle = row.track().artist().isBlank() ? MusicText.get("music.artist.unknown") : row.track().artist();
                     if (!row.track().album().isBlank()) subtitle += " · " + row.track().album();
+                    if (row.track().remote()) subtitle += " · " + MusicText.get("music.provider." + row.track().provider());
                     MusicUi.row(x, rowY, width - 8, cover, row.track().title(), subtitle,
                         row.track().durationMillis() > 0 ? MusicText.time(row.track().durationMillis() / 1000f) : "—",
                         active, manager.isPlaying(), service.isLiked(row.track(), row.filename()), row.local() != null,
-                        service.downloadProgress(row.track().id()), hover, !service.favoritesBusy(), mouseX, mouseY, palette);
+                        service.downloadProgress(row.track()), hover, !service.favoritesBusy(row.track()),
+                        row.local() != null || row.track().playable(), row.track().downloadable(), mouseX, mouseY, palette);
                     if (hover) {
                         if (mouseX >= x + width - 64) hoveredHint = MusicText.get(service.isLiked(row.track(), row.filename())
                             ? "music.action.unlike" : "music.action.like");
-                        else if (mouseX >= x + width - 116) hoveredHint = MusicText.get(row.local() == null
-                            ? "music.action.download" : "music.action.saved");
-                        else hoveredHint = MusicText.get(row.local() == null ? "music.action.downloadplay" : "music.action.play");
+                        else if (mouseX >= x + width - 116) hoveredHint = MusicText.get(row.local() != null ? "music.action.saved"
+                            : row.track().downloadable() ? "music.action.download" : "music.error.downloadrestricted");
+                        else hoveredHint = MusicText.get(row.local() != null || row.track().playable()
+                            ? "music.action.play" : "music.error.playrestricted");
                     }
                 }
                 if (rows.size() * ROW_HEIGHT > listHeight) {
@@ -138,20 +146,21 @@ public final class MusicLibraryView extends Component {
             } finally { Skia.restore(); }
         }
         float footerY = y + height - 42;
-        boolean hasMore = tab == Tab.SEARCH && results.size() < total && !results.isEmpty();
+        boolean hasMore = hasMore();
         if (hasMore) {
-            MusicUi.button(x + width - 276, footerY, 128, MusicText.get(searching ? "music.action.searching" : "music.action.more"),
-                false, inside(mouseX, mouseY, x + width - 276, footerY, 128, 48), palette);
+            MusicUi.button(x + width - 312, footerY, 128, MusicText.get(searching ? "music.action.searching" : "music.action.more"),
+                false, inside(mouseX, mouseY, x + width - 312, footerY, 128, 48), palette);
         }
         String status = tab == Tab.LIKED && statusKey.equals("music.status.ready")
-            ? MusicText.get(service.loggedIn() ? "music.favorite.cloud" : "music.favorite.guest")
+            ? MusicText.get(favoriteStatus())
             : MusicText.get(statusKey, statusArguments);
-        Skia.drawHeightCenteredText(Skia.getLimitText(status, Fonts.getRegular(12), width - (hasMore ? 294 : 150)),
+        Skia.drawHeightCenteredText(Skia.getLimitText(status, Fonts.getRegular(12), width - (hasMore ? 330 : 186)),
             x + 8, footerY + 24, statusKey.startsWith("music.error") ? palette.getError() : palette.getOnSurfaceVariant(),
             Fonts.getRegular(12));
-        MusicUi.button(x + width - 140, footerY, 140, MusicText.get("music.quality.button", MusicText.get("music.quality." + quality)),
-            false, inside(mouseX, mouseY, x + width - 140, footerY, 140, 48), palette);
-        if (inside(mouseX, mouseY, x + width - 140, footerY, 140, 48)) hoveredHint = MusicText.get("music.quality.change");
+        MusicUi.button(x + width - 176, footerY, 176, MusicText.get("music.quality.button", MusicText.get("music.quality." + quality)),
+            false, inside(mouseX, mouseY, x + width - 176, footerY, 176, 48), palette);
+        if (inside(mouseX, mouseY, x + width - 176, footerY, 176, 48)) hoveredHint = MusicText.get(service.qualities().size() > 1
+            ? "music.quality.change" : "music.quality.fixed");
         if (hoveredHint != null) MusicUi.tooltip(hoveredHint, mouseX, mouseY, x + width, palette);
     }
 
@@ -166,25 +175,25 @@ public final class MusicLibraryView extends Component {
         Skia.drawCenteredText(MusicText.get(key), x + width / 2, centerY + 16,
             palette.getOnSurface(), Fonts.getMedium(16));
         Skia.drawCenteredText(Skia.getLimitText(MusicText.get(tab == Tab.LIKED
-            ? (service.loggedIn() ? "music.favorite.cloud" : "music.favorite.guest")
+            ? favoriteStatus()
             : "music.empty.hint"), Fonts.getRegular(12), width - 32), x + width / 2, centerY + 46,
             palette.getOnSurfaceVariant(), Fonts.getRegular(12));
     }
 
     private List<Row> rows() {
-        Map<Long, Music> downloaded = new HashMap<>();
+        Map<String, Music> downloaded = new HashMap<>();
         Map<String, Music> localFiles = new HashMap<>();
         for (Music music : manager.getMusics()) {
-            if (music.getTrack().id() > 0) downloaded.put(music.getTrack().id(), music);
+            if (music.getTrack().remote()) downloaded.put(music.getTrack().key(), music);
             localFiles.put(music.getAudio().getName(), music);
         }
         List<Row> rows;
         if (tab == Tab.SEARCH) rows = results.stream().map(t -> {
-            Music local = downloaded.get(t.id());
+            Music local = downloaded.get(t.key());
             return new Row(t, local, local == null ? "" : local.getAudio().getName());
         }).toList();
         else if (tab == Tab.LIKED) rows = service.favorites().stream().map(f -> {
-            Music local = f.track().id() > 0 ? downloaded.get(f.track().id()) : localFiles.get(f.filename());
+            Music local = f.track().remote() ? downloaded.get(f.track().key()) : localFiles.get(f.filename());
             return new Row(f.track(), local, local == null ? f.filename() : local.getAudio().getName());
         }).toList();
         else rows = manager.getMusics().stream().map(m -> new Row(m.getTrack(), m, m.getAudio().getName())).toList();
@@ -206,7 +215,7 @@ public final class MusicLibraryView extends Component {
     }
 
     private Press actionAt(double mx, double my) {
-        float tabWidth = (width - 60) / 3;
+        float tabWidth = (width - 248) / 3;
         for (Tab next : Tab.values()) {
             Press action = new Press(x + next.ordinal() * tabWidth, y, tabWidth - 4, 48, () -> {
                 if (tab == next) return;
@@ -216,18 +225,20 @@ public final class MusicLibraryView extends Component {
             });
             if (action.contains(mx, my)) return action;
         }
+        Press source = new Press(x + width - 236, y, 176, 48, this::switchProvider);
+        if (source.contains(mx, my)) return source;
         Press toolbar = new Press(x + width - 48, y, 48, 48,
             () -> { if (tab == Tab.LIKED && service.loggedIn()) syncLikes(); else refresh(); });
         if (toolbar.contains(mx, my)) return toolbar;
         Press submit = new Press(x + width - 104, y + 62, 104, 48, () -> search(false));
         if (tab == Tab.SEARCH && submit.contains(mx, my)) return submit;
-        Press qualityButton = new Press(x + width - 140, y + height - 42, 140, 48, () -> {
-            int index = MusicService.QUALITIES.indexOf(quality);
-            quality = MusicService.QUALITIES.get((index + 1) % MusicService.QUALITIES.size());
+        Press qualityButton = new Press(x + width - 176, y + height - 42, 176, 48, () -> {
+            int index = service.qualities().indexOf(quality);
+            quality = service.qualities().get((index + 1) % service.qualities().size());
         });
         if (qualityButton.contains(mx, my)) return qualityButton;
-        Press more = new Press(x + width - 276, y + height - 42, 128, 48, () -> search(true));
-        if (tab == Tab.SEARCH && results.size() < total && !results.isEmpty() && more.contains(mx, my)) return more;
+        Press more = new Press(x + width - 312, y + height - 42, 128, 48, () -> search(true));
+        if (hasMore() && more.contains(mx, my)) return more;
         if (!inside(mx, my, x, y + 150, width, height - 200)) return null;
         List<Row> rows = rows();
         for (int i = 0; i < rows.size(); i++) {
@@ -239,9 +250,13 @@ public final class MusicLibraryView extends Component {
                     if (!disposed) status(liked ? "music.status.liked" : "music.status.unliked", row.track().title());
                 }, this::error));
             if (mx >= x + width - 116) return new Press(x + width - 116, rowY + 12, 48, 48,
-                () -> { if (row.local() == null && row.track().id() > 0) download(row, false); });
+                () -> { if (row.local() == null && row.track().remote() && row.track().downloadable()) download(row, false); });
             return new Press(x, rowY, width - 180, 72, () -> {
-                if (row.local() == null) { if (row.track().id() > 0) download(row, true); }
+                if (row.local() == null) {
+                    Music current = manager.getCurrentMusic();
+                    if (current != null && row.track().sameSong(current.getTrack())) manager.switchPlayBack();
+                    else if (row.track().remote() && row.track().playable()) download(row, true);
+                }
                 else if (manager.getCurrentMusic() != null && manager.getCurrentMusic().getAudio().equals(row.local().getAudio()))
                     manager.switchPlayBack();
                 else manager.play(row.local());
@@ -254,24 +269,47 @@ public final class MusicLibraryView extends Component {
         String query = more ? submittedQuery : search.getText().strip();
         if (query.isEmpty() || (more && searching)) return;
         int generation = ++requestGeneration;
-        int offset = more ? results.size() : 0;
-        if (!more) { results.clear(); total = 0; submittedQuery = query; scroll.reset(); }
+        int offset = more ? nextOffset : 0;
+        if (!more) { results.clear(); total = 0; nextOffset = 0; submittedQuery = query; scroll.reset(); }
         searching = true;
         status("music.status.searching");
         service.search(query, offset, result -> {
             if (disposed || generation != requestGeneration) return;
             searching = false;
             results.addAll(result.tracks());
+            nextOffset = result.nextOffset();
             total = result.tracks().isEmpty() ? results.size() : result.total();
-            if (tab == Tab.SEARCH) status("music.results.count", total);
+            if (tab == Tab.SEARCH) status(total < 0 ? "music.results.loaded" : "music.results.count", total < 0 ? results.size() : total);
         }, failure -> { if (!disposed && generation == requestGeneration) { searching = false; error(failure); } });
     }
 
     private void download(Row row, boolean play) {
-        status("music.status.downloadtrack", row.track().title());
-        service.download(row.track(), quality, play, music -> {
-            if (!disposed) status("music.status.downloaded", music.getTitle());
-        }, this::error);
+        status(play ? "music.status.loadingtrack" : "music.status.downloadtrack", row.track().title());
+        java.util.function.Consumer<Music> ready = music -> {
+            if (!disposed) status(play ? "music.status.playing" : "music.status.downloaded", music.getTitle());
+        };
+        if (play) service.play(row.track(), quality, ready, this::error);
+        else service.download(row.track(), quality, false, ready, this::error);
+    }
+
+    private boolean hasMore() { return tab == Tab.SEARCH && !results.isEmpty() && (total < 0 || results.size() < total); }
+    private String favoriteStatus() {
+        return service.loggedIn() ? "music.favorite.cloud" : service.provider().cloudLikes()
+            ? "music.favorite.guest" : "music.favorite.local";
+    }
+    private void switchProvider() {
+        var sources = service.providers();
+        int index = sources.indexOf(service.provider());
+        try { service.selectProvider(sources.get((index + 1) % sources.size()).id()); providerChanged(); }
+        catch (MusicError failure) { error(failure); }
+        catch (java.io.IOException failure) { error(new MusicError("music.error.file")); }
+    }
+    private void providerChanged() {
+        previousProvider = service.provider().id();
+        requestGeneration++; searching = false; results.clear(); total = 0; nextOffset = 0; submittedQuery = ""; scroll.reset();
+        quality = service.provider().defaultQuality();
+        status("music.provider.selected", MusicText.get(service.provider().nameKey()));
+        if (tab == Tab.SEARCH && !search.getText().isBlank()) search(false);
     }
 
     private void refresh() {

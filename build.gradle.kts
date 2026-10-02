@@ -211,7 +211,7 @@ tasks.check { dependsOn(verifyItemVertices) }
 
 val verifyMusicService = tasks.register<JavaExec>("verifyMusicService") {
     group = "verification"
-    description = "Checks music downloads, metadata repair and authenticated favorites using local HTTP fixtures."
+    description = "Checks NetEase/Audius access, metadata migration, downloads, playback and isolated favorites using local HTTP fixtures."
     dependsOn(hudVerification.classesTaskName)
     classpath = hudVerification.runtimeClasspath
     mainClass.set("cn.pupperclient.music.MusicServiceChecks")
