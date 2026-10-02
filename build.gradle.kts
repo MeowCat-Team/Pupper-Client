@@ -208,6 +208,15 @@ val verifyItemVertices = tasks.register<JavaExec>("verifyItemVertices") {
 }
 tasks.check { dependsOn(verifyItemVertices) }
 
+val verifyMusicService = tasks.register<JavaExec>("verifyMusicService") {
+    group = "verification"
+    description = "Checks music downloads, metadata repair and authenticated favorites using local HTTP fixtures."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.music.MusicServiceChecks")
+}
+tasks.check { dependsOn(verifyMusicService) }
+
 tasks.register<JavaExec>("benchmarkItemVertices") {
     group = "verification"
     description = "Measures dropped-item encoding and native staging CPU cost, excluding game/GPU work."

@@ -61,6 +61,7 @@ public class PupperClient implements IMinecraft {
     }
 
     public void onShutdown() {
+        if (musicManager != null) musicManager.shutdown();
         if (keybindManager != null) {
             keybindManager.cleanup();
         }

@@ -19,13 +19,14 @@ import org.jspecify.annotations.NonNull;
 public class LoginCommand {
 
     private static final String BASE_API = "https://zm.wwoyun.cn/";
-    private static String currentCookie = null;
-    private static String currentUserId = null;
+    private static volatile String currentCookie = null;
+    private static volatile String currentUserId = null;
+    private static boolean loginStatusLoaded;
     private static String currentNickname = null;
     private static String currentPhone = null; // 保存当前登录的手机号
 
     // 保存登录状态的文件
-    private static final File LOGIN_FILE = new File("pupper/login_status.json");
+    private static final File LOGIN_FILE = new File(cn.pupperclient.utils.file.FileLocation.MAIN_DIR, "login_status.json");
 
     public static void handleCommand(String[] args) {
         if (args.length == 1) {
@@ -553,15 +554,21 @@ public class LoginCommand {
         return connection;
     }
 
-    public static String getCurrentCookie() {
-        if (currentCookie == null) {
+    public static synchronized String getCurrentCookie() {
+        if (currentCookie == null && !loginStatusLoaded) {
             loadLoginStatus();
+            loginStatusLoaded = true;
         }
         return currentCookie;
     }
 
     public static String getCurrentUserId() {
+        getCurrentCookie();
         return currentUserId;
+    }
+
+    public static String getApiBase() {
+        return BASE_API;
     }
 
     public static String getCurrentNickname() {

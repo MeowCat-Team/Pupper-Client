@@ -5,7 +5,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import cn.pupperclient.utils.thread.Multithreading;
 
 import javax.imageio.ImageIO;
 
@@ -22,15 +27,27 @@ import cn.pupperclient.utils.file.FileLocation;
 import cn.pupperclient.utils.file.FileUtils;
 
 public class MusicManager {
+    private static final AtomicReferenceFieldUpdater<MusicManager, Music> CURRENT =
+        AtomicReferenceFieldUpdater.newUpdater(MusicManager.class, Music.class, "currentMusic");
 
-    private List<Music> musics = new CopyOnWriteArrayList<>();
+    private volatile List<Music> musics = List.of();
     private volatile boolean isLoading = false;
-    private Music currentMusic;
+    private volatile Music currentMusic;
     private MusicPlayer musicPlayer;
-    private boolean shuffle;
-    private boolean repeat;
+    private volatile boolean shuffle;
+    private volatile boolean repeat;
+    private final MusicLibraryStore library;
+    private final MusicService service;
+    private final Thread playerThread;
 
     public MusicManager() {
+
+        try {
+            library = new MusicLibraryStore(FileLocation.MUSIC_DIR.toPath());
+        } catch (java.io.IOException failure) {
+            throw new IllegalStateException("Could not open the music library", failure);
+        }
+        service = new MusicService(this, library);
 
         try {
             load();
@@ -39,31 +56,29 @@ public class MusicManager {
         }
 
         this.musicPlayer = new MusicPlayer(() -> {
+            long completedSession = musicPlayer.getGeneration();
+            Multithreading.runMainThread(() -> {
+                if (musicPlayer.getGeneration() != completedSession || musicPlayer.isPlaying()) return;
+                List<Music> snapshot = musics;
+                Music nextMusic;
 
-            Music nextMusic;
+                if (repeat) {
+                    nextMusic = currentMusic;
+                } else if (shuffle && !snapshot.isEmpty()) {
+                    nextMusic = snapshot.get(MathUtils.getRandomInt(0, snapshot.size() - 1));
+                } else {
+                    nextMusic = null;
+                }
 
-            if (repeat) {
-                nextMusic = currentMusic;
-            } else if (shuffle) {
-                nextMusic = musics.get(MathUtils.getRandomInt(0, musics.size() - 1));
-            } else {
-                nextMusic = null;
-            }
-
-            setCurrentMusic(nextMusic);
-
-            if (currentMusic != null) {
-                play();
-            } else {
-                musicPlayer.setPlaying(false);
-            }
+                setCurrentMusic(nextMusic);
+                if (currentMusic != null) play();
+                else musicPlayer.setPlaying(false);
+            });
         });
         this.shuffle = false;
         this.repeat = false;
-        new Thread("Music Thread") {
-            @Override
-            public void run() {
-                while (true) {
+        playerThread = Thread.ofPlatform().daemon().name("Pupper Client music").start(() -> {
+                while (!Thread.currentThread().isInterrupted()) {
                     try {
                         Thread.sleep(10);
                     } catch (InterruptedException e) {
@@ -72,11 +87,10 @@ public class MusicManager {
                     }
                     musicPlayer.run();
                 }
-            }
-        }.start();
+        });
     }
 
-    public void load() throws Exception {
+    public synchronized void load() throws Exception {
         if (isLoading) {
             return; // if is loading return
         }
@@ -89,31 +103,39 @@ public class MusicManager {
         }
 
         try {
-            musics.clear();
+            List<Music> loaded = new ArrayList<>();
 
             File musicDir = FileLocation.MUSIC_DIR;
 
-            if (musicDir.listFiles() == null) {
+            File[] files = musicDir.listFiles();
+            if (files == null) {
                 return;
             }
-
-            for (File f : musicDir.listFiles()) {
-                String name = f.getName().toLowerCase();
-
-                if (name.endsWith(".flac")) {
-                    loadFlacFile(f);
-                } else if (name.endsWith(".mp3")) {
-                    loadMp3File(f);
+            Arrays.sort(files, Comparator.comparing(File::getName, String.CASE_INSENSITIVE_ORDER));
+            for (File f : files) {
+                String name = f.getName().toLowerCase(Locale.ROOT);
+                try {
+                    if (name.endsWith(".flac")) loaded.add(loadFlacFile(f));
+                    else if (name.endsWith(".mp3")) loaded.add(loadMp3File(f));
+                } catch (Exception invalid) {
+                    cn.pupperclient.PupperLogger.error("MusicManager", "Could not load " + f.getName(), invalid);
                 }
             }
+            // Publish one complete snapshot; refreshes must not briefly empty a playing library.
+            musics = List.copyOf(loaded);
+            Music current = currentMusic;
+            if (current != null) CURRENT.compareAndSet(this, current,
+                loaded.stream().filter(m -> m.getAudio().equals(current.getAudio())).findFirst().orElse(current));
         } finally {
             isLoading = false;
         }
     }
 
-    private void loadFlacFile(File f) throws Exception {
-        FLACDecoder decoder = new FLACDecoder(new FileInputStream(f));
-        Metadata[] metadata = decoder.readMetadata();
+    private Music loadFlacFile(File f) throws Exception {
+        Metadata[] metadata;
+        try (FileInputStream input = new FileInputStream(f)) {
+            metadata = new FLACDecoder(input).readMetadata();
+        }
         String title = null;
         String artist = null;
         byte[] imageData = null;
@@ -138,7 +160,16 @@ public class MusicManager {
             }
         }
 
-        String fileHash = FileUtils.getMd5Checksum(f);
+        return createMusic(f, title, artist, imageData);
+    }
+
+    private Music createMusic(File f, String title, String artist, byte[] imageData) throws Exception {
+        MusicTrack metadata = library.metadata(f.getName());
+        if (metadata != null) {
+            title = metadata.title();
+            artist = metadata.artist();
+        }
+        String fileHash = imageData == null ? "unused" : FileUtils.getMd5Checksum(f);
         File album = new File(FileLocation.CACHE_DIR, fileHash);
         Color color = Color.BLACK;
 
@@ -152,11 +183,14 @@ public class MusicManager {
             color = ImageUtils.calculateAverageColor(ImageIO.read(album));
         }
 
-        musics.add(new Music(f, title == null ? f.getName().replace(".flac", "") : title,
-            artist == null ? "" : artist, album.exists() ? album : null, color));
+        File providerCover = metadata == null ? null : new File(FileLocation.CACHE_DIR, "ncm-cover-" + metadata.id() + ".jpg");
+        if (providerCover != null && providerCover.isFile()) album = providerCover;
+        String fallback = f.getName().substring(0, f.getName().lastIndexOf('.'));
+        return new Music(f, title == null || title.isBlank() ? fallback : title,
+            artist == null ? "" : artist, album.exists() ? album : null, color, metadata);
     }
 
-    private void loadMp3File(File f) throws Exception {
+    private Music loadMp3File(File f) throws Exception {
         String title = null;
         String artist = null;
         byte[] imageData = null;
@@ -177,22 +211,20 @@ public class MusicManager {
             cn.pupperclient.PupperLogger.error("MusicManager", "Failed to load MP3 tags", e);
         }
 
-        String fileHash = FileUtils.getMd5Checksum(f);
-        File album = new File(FileLocation.CACHE_DIR, fileHash);
-        Color color = Color.BLACK;
+        return createMusic(f, title, artist, imageData);
+    }
 
-        if (imageData != null && !album.exists()) {
-            FileOutputStream fos = new FileOutputStream(album);
-            fos.write(imageData);
-            fos.close();
-        }
+    public MusicService getService() { return service; }
 
-        if (imageData != null && album.exists()) {
-            color = ImageUtils.calculateAverageColor(ImageIO.read(album));
-        }
+    public void play(Music music) {
+        if (music == null) return;
+        setCurrentMusic(music);
+        play();
+    }
 
-        musics.add(new Music(f, title == null ? f.getName().replace(".mp3", "") : title,
-            artist == null ? "" : artist, album.exists() ? album : null, color));
+    public void shutdown() {
+        playerThread.interrupt();
+        musicPlayer.shutdown();
     }
 
     public void play() {
@@ -213,45 +245,26 @@ public class MusicManager {
         musicPlayer.setVolume(volume);
     }
 
-    public void next() {
+    public void next() { move(1); }
 
-        if (currentMusic == null) {
-            return;
-        }
+    public void back() { move(-1); }
 
-        int max = musics.size();
-        int index = musics.indexOf(currentMusic);
-
-        if (index < max - 1) {
-            index++;
-        } else {
-            index = 0;
-        }
-
-        currentMusic = musics.get(index);
-        play();
-    }
-
-    public void back() {
-
-        if (currentMusic == null) {
-            return;
-        }
-
-        int max = musics.size();
-        int index = musics.indexOf(currentMusic);
-
-        if (index > 0) {
-            index--;
-        } else {
-            index = max - 1;
-        }
-
-        currentMusic = musics.get(index);
-        play();
+    private void move(int direction) {
+        Music current = currentMusic;
+        List<Music> snapshot = musics;
+        if (current == null || snapshot.isEmpty()) return;
+        int index = direction > 0 ? -1 : 0;
+        for (int i = 0; i < snapshot.size(); i++)
+            if (snapshot.get(i).getAudio().equals(current.getAudio())) { index = i; break; }
+        play(snapshot.get(Math.floorMod(index + direction, snapshot.size())));
     }
 
     public void switchPlayBack() {
+        if (currentMusic == null) {
+            List<Music> snapshot = musics;
+            if (!snapshot.isEmpty()) play(snapshot.getFirst());
+            return;
+        }
         musicPlayer.setPlaying(!musicPlayer.isPlaying());
     }
 

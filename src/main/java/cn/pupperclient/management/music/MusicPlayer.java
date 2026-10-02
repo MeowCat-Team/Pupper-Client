@@ -44,25 +44,23 @@ public class MusicPlayer implements Runnable {
 
     // FLAC
     private FLACDecoder decoder;
-    private StreamInfo streamInfo;
+    private volatile StreamInfo streamInfo;
 
     // MP3
     private Bitstream bitstream;
     private Decoder mp3Decoder;
     private Header mp3Header;
 
-    private AudioFormat audioFormat;
-    private DataLine.Info info;
-    private SourceDataLine sourceDataLine;
+    private volatile AudioFormat audioFormat;
+    private volatile SourceDataLine sourceDataLine;
 
-    private Music currentMusic;
-    private boolean playing;
-    private float volume;
+    private volatile Music currentMusic;
+    private volatile boolean playing;
+    private volatile float volume;
+    private volatile long generation;
 
-    private float lastCurrentTime;
-    private long totalFrames;
-    private long currentFrame;
-    private float mp3Duration = 0;
+    private volatile float lastCurrentTime;
+    private volatile float mp3Duration = 0;
 
     public MusicPlayer(Runnable runnable) {
         this.runnable = runnable;
@@ -72,83 +70,100 @@ public class MusicPlayer implements Runnable {
 
     @Override
     public void run() {
-        if (currentMusic != null && playing) {
-            String fileName = currentMusic.getAudio().getName().toLowerCase();
+        long session = generation;
+        Music track = currentMusic;
+        if (track != null && playing) {
+            String fileName = track.getAudio().getName().toLowerCase(java.util.Locale.ROOT);
 
             if (fileName.endsWith(".flac")) {
-                playFlacFile();
+                playFlacFile(track, session);
             } else if (fileName.endsWith(".mp3")) {
-                playMp3File();
+                playMp3File(track, session);
             }
         }
     }
 
-    private void playFlacFile() {
-        try (FileInputStream fis = new FileInputStream(currentMusic.getAudio())) {
+    private void playFlacFile(Music track, long session) {
+        if (track == null || !playing || session != generation || track != currentMusic) return;
+        SourceDataLine line = null;
+        try (FileInputStream fis = new FileInputStream(track.getAudio())) {
             decoder = new FLACDecoder(fis);
             streamInfo = decoder.readStreamInfo();
             audioFormat = new AudioFormat(streamInfo.getSampleRate(),
                 streamInfo.getBitsPerSample() == 24 ? 16 : streamInfo.getBitsPerSample(),
                 streamInfo.getChannels(), (streamInfo.getBitsPerSample() <= 8) ? false : true, false);
-            info = new DataLine.Info(SourceDataLine.class, audioFormat);
-
-            sourceDataLine = (SourceDataLine) AudioSystem.getLine(info);
-            sourceDataLine.open(audioFormat);
-            setVolume(volume);
-            sourceDataLine.start();
+            line = createLine(audioFormat);
+            line.open(audioFormat);
+            synchronized (this) {
+                if (session != generation || Thread.currentThread().isInterrupted()) return;
+                sourceDataLine = line;
+                setVolume(volume);
+                line.start();
+            }
 
             Frame frame;
             ByteData byteData = new ByteData(FFT_SIZE * 4);
 
-            while ((frame = decoder.readNextFrame()) != null) {
+            while (session == generation && !Thread.currentThread().isInterrupted()
+                    && (frame = decoder.readNextFrame()) != null) {
 
-                while (!playing) {
+                while (!playing && session == generation) {
                     Thread.sleep(10);
                 }
+                if (session != generation || Thread.currentThread().isInterrupted()) return;
 
                 ByteData pcm = decoder.decodeFrame(frame, byteData);
                 updateSpectrum(pcm.getData(), pcm.getLen());
-                sourceDataLine.write(pcm.getData(), 0, pcm.getLen());
+                line.write(pcm.getData(), 0, pcm.getLen());
             }
 
-            if ((int) getCurrentTime() >= (int) getEndTime()) {
-                runnable.run();
+            if (session == generation && !Thread.currentThread().isInterrupted()) {
+                line.drain();
+                complete(session);
             }
-
-            sourceDataLine.drain();
-            sourceDataLine.close();
         } catch (Exception e) {
-            cn.pupperclient.PupperLogger.error("MusicPlayer", "Failed to play FLAC file", e);
+            if (session == generation && !(e instanceof InterruptedException)) {
+                playing = false;
+                cn.pupperclient.PupperLogger.error("MusicPlayer", "Failed to play FLAC file", e);
+            }
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+        } finally {
+            if (line != null) { line.close(); if (sourceDataLine == line) sourceDataLine = null; }
         }
     }
 
-    private void playMp3File() {
-        try (FileInputStream fis = new FileInputStream(currentMusic.getAudio());
+    private void playMp3File(Music track, long session) {
+        if (track == null || !playing || session != generation || track != currentMusic) return;
+        SourceDataLine line = null;
+        try (FileInputStream fis = new FileInputStream(track.getAudio());
              BufferedInputStream bis = new BufferedInputStream(fis)) {
 
-            calculateMp3Duration(currentMusic.getAudio());
+            calculateMp3Duration(track.getAudio());
 
             bitstream = new Bitstream(bis);
             mp3Decoder = new Decoder();
 
             mp3Header = bitstream.readFrame();
-            if (mp3Header == null) return;
+            if (mp3Header == null) { playing = false; return; }
 
             int sampleRate = mp3Header.frequency();
             int channels = mp3Header.mode() == Header.SINGLE_CHANNEL ? 1 : 2;
 
             audioFormat = new AudioFormat(sampleRate, 16, channels, true, false);
-            info = new DataLine.Info(SourceDataLine.class, audioFormat);
-
-            sourceDataLine = (SourceDataLine) AudioSystem.getLine(info);
-            sourceDataLine.open(audioFormat);
-            setVolume(volume);
-            sourceDataLine.start();
+            line = createLine(audioFormat);
+            line.open(audioFormat);
+            synchronized (this) {
+                if (session != generation || Thread.currentThread().isInterrupted()) return;
+                sourceDataLine = line;
+                setVolume(volume);
+                line.start();
+            }
 
             do {
-                while (!playing) {
+                while (!playing && session == generation) {
                     Thread.sleep(10);
                 }
+                if (session != generation || Thread.currentThread().isInterrupted()) return;
 
                 SampleBuffer output = (SampleBuffer) mp3Decoder.decodeFrame(mp3Header, bitstream);
                 if (output != null) {
@@ -156,24 +171,28 @@ public class MusicPlayer implements Runnable {
                     ensureMp3Buffer(length * 2);
                     fillMp3Buffer(output.getBuffer(), length);
                     updateSpectrum(mp3Buffer, length * 2);
-                    sourceDataLine.write(mp3Buffer, 0, length * 2);
+                    line.write(mp3Buffer, 0, length * 2);
                 }
 
                 bitstream.closeFrame();
                 mp3Header = bitstream.readFrame();
 
-            } while (mp3Header != null && playing);
+            } while (mp3Header != null && session == generation);
 
-            if (mp3Header == null) {
-                runnable.run();
+            if (mp3Header == null && session == generation) {
+                line.drain();
+                complete(session);
             }
-
-            sourceDataLine.drain();
-            sourceDataLine.close();
             bitstream.close();
 
         } catch (Exception e) {
-            cn.pupperclient.PupperLogger.error("MusicPlayer", "Failed to play MP3 file", e);
+            if (session == generation && !(e instanceof InterruptedException)) {
+                playing = false;
+                cn.pupperclient.PupperLogger.error("MusicPlayer", "Failed to play MP3 file", e);
+            }
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+        } finally {
+            if (line != null) { line.close(); if (sourceDataLine == line) sourceDataLine = null; }
         }
     }
 
@@ -230,18 +249,40 @@ public class MusicPlayer implements Runnable {
         }
     }
 
-    public void setCurrentMusic(Music currentMusic) {
+    public synchronized void setCurrentMusic(Music currentMusic) {
 
         playing = false;
+        generation++;
 
         if (sourceDataLine != null) {
             sourceDataLine.stop();
-            sourceDataLine.drain();
+            sourceDataLine.flush();
             sourceDataLine.close();
         }
 
         this.currentMusic = currentMusic;
-        playing = true;
+        lastCurrentTime = 0;
+        mp3Duration = 0;
+        streamInfo = null;
+        playing = currentMusic != null;
+    }
+
+    private synchronized void complete(long session) {
+        if (session != generation || Thread.currentThread().isInterrupted()) return;
+        playing = false;
+        runnable.run();
+    }
+
+    protected SourceDataLine createLine(AudioFormat format) throws javax.sound.sampled.LineUnavailableException {
+        return (SourceDataLine) AudioSystem.getLine(new DataLine.Info(SourceDataLine.class, format));
+    }
+
+    public long getGeneration() { return generation; }
+
+    public synchronized void shutdown() {
+        generation++;
+        playing = false;
+        if (sourceDataLine != null) { sourceDataLine.stop(); sourceDataLine.flush(); sourceDataLine.close(); }
     }
 
     public boolean isPlaying() {
@@ -253,8 +294,8 @@ public class MusicPlayer implements Runnable {
     }
 
     public float getCurrentTime() {
-
-        if (sourceDataLine == null || audioFormat == null) {
+        SourceDataLine line = sourceDataLine;
+        if (line == null || audioFormat == null) {
             return 0;
         }
 
@@ -262,20 +303,22 @@ public class MusicPlayer implements Runnable {
             return lastCurrentTime;
         }
 
-        lastCurrentTime = (float) (sourceDataLine.getMicrosecondPosition() / 1000000.0);
+        lastCurrentTime = (float) (line.getMicrosecondPosition() / 1000000.0);
         return lastCurrentTime;
     }
 
     public float getEndTime() {
-        String fileName = currentMusic != null ? currentMusic.getAudio().getName().toLowerCase() : "";
+        Music track = currentMusic;
+        String fileName = track != null ? track.getAudio().getName().toLowerCase(java.util.Locale.ROOT) : "";
 
         if (fileName.endsWith(".flac")) {
-            if (streamInfo == null) {
+            StreamInfo metadata = streamInfo;
+            if (metadata == null) {
                 return 0;
             }
 
-            long totalSamples = streamInfo.getTotalSamples();
-            int sampleRate = streamInfo.getSampleRate();
+            long totalSamples = metadata.getTotalSamples();
+            int sampleRate = metadata.getSampleRate();
 
             if (totalSamples > 0 && sampleRate > 0) {
                 return (float) totalSamples / sampleRate;
@@ -297,8 +340,8 @@ public class MusicPlayer implements Runnable {
             if (sourceDataLine != null) {
                 try {
                     FloatControl gainControl = (FloatControl) sourceDataLine.getControl(FloatControl.Type.MASTER_GAIN);
-                    float gain = (float) (Math.log(volume) / Math.log(10.0) * 20.0);
-                    gainControl.setValue(gain);
+                    float gain = volume <= 0 ? gainControl.getMinimum() : (float) (Math.log10(volume) * 20.0);
+                    gainControl.setValue(Math.clamp(gain, gainControl.getMinimum(), gainControl.getMaximum()));
                 } catch (Exception e) {
                 }
             }
