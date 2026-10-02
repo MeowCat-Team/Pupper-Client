@@ -10,11 +10,13 @@ import org.lwjgl.glfw.GLFW;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.animation.SimpleAnimation;
+import cn.pupperclient.gui.MusicPlayGui;
 import cn.pupperclient.gui.api.PupperClientGui;
 import cn.pupperclient.gui.api.page.SimplePage;
 import cn.pupperclient.gui.api.page.impl.RightLeftTransition;
 import cn.pupperclient.gui.modmenu.GuiModMenu;
 import cn.pupperclient.management.color.api.ColorPalette;
+import cn.pupperclient.management.music.MusicText;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
@@ -34,7 +36,7 @@ public class HomePage extends SimplePage {
     private final List<QuickAction> quickActions = List.of(
         new QuickAction(Icon.INVENTORY_2, "Mod Manager", "Tune combat, HUD and visuals", ModsPage.class),
         new QuickAction(Icon.DESCRIPTION, "Profiles", "Save and switch your setup", ProfilePage.class),
-        new QuickAction(Icon.MUSIC_NOTE, "Music Player", "Your local soundtrack", MusicPage.class)
+        new QuickAction(Icon.MUSIC_NOTE, "music.home.title", "music.home.description", null)
     );
 
     private String currentTime;
@@ -140,9 +142,9 @@ public class HomePage extends SimplePage {
         Skia.drawFullCenteredText(Icon.CHEVRON_RIGHT, action.x + action.width - 30, visualY + 30,
             accent, Fonts.getIconFill(19));
 
-        Skia.drawText(action.title, action.x + 18, visualY + 88,
+        Skia.drawText(action.target == null ? MusicText.get(action.title) : action.title, action.x + 18, visualY + 88,
             palette.getOnSurface(), Fonts.getMedium(20));
-        Skia.drawText(action.description, action.x + 18, visualY + 118,
+        Skia.drawText(action.target == null ? MusicText.get(action.description) : action.description, action.x + 18, visualY + 118,
             palette.getOnSurfaceVariant(), Fonts.getRegular(13));
 
         Skia.drawLine(action.x + 18, visualY + 148, action.x + action.width - 18, visualY + 148, 1,
@@ -163,7 +165,7 @@ public class HomePage extends SimplePage {
             return profiles + (profiles == 1 ? " profile" : " profiles");
         }
         int tracks = client.getMusicManager().getMusics().size();
-        return tracks + (tracks == 1 ? " track" : " tracks");
+        return MusicText.get("music.tracks", tracks);
     }
 
     private void drawOverview(ColorPalette palette) {
@@ -225,7 +227,9 @@ public class HomePage extends SimplePage {
     @Override
     public void mouseReleased(double mouseX, double mouseY, int button) {
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && pressedAction != null && pressedAction.contains(mouseX, mouseY)) {
-            if (parent instanceof GuiModMenu menu) {
+            if (pressedAction.target == null) {
+                net.minecraft.client.Minecraft.getInstance().gui.setScreen(new MusicPlayGui());
+            } else if (parent instanceof GuiModMenu menu) {
                 menu.navigateTo(pressedAction.target);
             } else {
                 parent.setCurrentPage(pressedAction.target);

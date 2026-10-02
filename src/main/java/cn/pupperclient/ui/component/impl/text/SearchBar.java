@@ -142,6 +142,7 @@ public class SearchBar extends Component {
 
 	public void setText(String text) {
 		input.setText(text);
+		if (hintTextAnimation != null) hintTextAnimation = new DummyAnimation(text.isBlank() && !isFocused() ? 1 : 0);
 	}
 
 	public boolean isFocused() {

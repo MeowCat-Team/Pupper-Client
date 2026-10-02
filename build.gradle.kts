@@ -217,6 +217,15 @@ val verifyMusicService = tasks.register<JavaExec>("verifyMusicService") {
 }
 tasks.check { dependsOn(verifyMusicService) }
 
+tasks.register<JavaExec>("previewMusicPlayer") {
+    group = "verification"
+    description = "Renders English/light and Chinese/dark player layouts with the production MD3 painters."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.music.MusicPlayerPreview")
+    args(layout.buildDirectory.dir("reports/music").get().asFile.absolutePath)
+}
+
 tasks.register<JavaExec>("benchmarkItemVertices") {
     group = "verification"
     description = "Measures dropped-item encoding and native staging CPU cost, excluding game/GPU work."

@@ -46,7 +46,6 @@ public class GuiModMenu extends PupperClientGui {
 
 		pages.add(new HomePage(this));
 		pages.add(new ModsPage(this));
-		pages.add(new MusicPage(this));
         pages.add(new CosmeticsPage(this));
 		pages.add(new ProfilePage(this));
 		pages.add(new SettingsPage(this));

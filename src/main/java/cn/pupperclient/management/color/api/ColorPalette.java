@@ -110,6 +110,14 @@ public class ColorPalette {
 		return argbToColor(colors.onSurface().getArgb(scheme));
 	}
 
+	public Color getInverseSurface() {
+		return argbToColor(colors.inverseSurface().getArgb(scheme));
+	}
+
+	public Color getInverseOnSurface() {
+		return argbToColor(colors.inverseOnSurface().getArgb(scheme));
+	}
+
 	public Color getSurfaceContainer() {
 		return argbToColor(colors.surfaceContainer().getArgb(scheme));
 	}
