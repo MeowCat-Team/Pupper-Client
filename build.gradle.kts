@@ -218,6 +218,15 @@ val verifyMusicService = tasks.register<JavaExec>("verifyMusicService") {
 }
 tasks.check { dependsOn(verifyMusicService) }
 
+val verifyChatCompletion = tasks.register<JavaExec>("verifyChatCompletion") {
+    group = "verification"
+    description = "Checks MiniMessage tag completion, replacement ranges and Minecraft chat hook compatibility."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.chat.MiniMessageCompletionChecks")
+}
+tasks.check { dependsOn(verifyChatCompletion) }
+
 tasks.register<JavaExec>("verifyWindowsSmtc") {
     group = "verification"
     description = "Checks real Windows WinRT SMTC metadata, timeline and FFM callbacks with a hidden window."

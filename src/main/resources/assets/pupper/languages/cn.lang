@@ -697,3 +697,5 @@ music.command.download=.music download <歌曲ID> [音质] — 下载歌曲
 music.command.quick=.music quick <关键词> — 搜索并下载第一首
 music.command.list=.music list — 查看已下载歌曲
 music.command.help=.music help — 查看音乐命令帮助
+mod.minimessage.name=MiniMessage 补全
+mod.minimessage.description=在聊天输入中用 Tab 补全 MiniMessage 标签和参数。标签显示效果需要服务器支持。

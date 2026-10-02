@@ -695,3 +695,6 @@ music.command.download=.music download <song ID> [quality] — Download
 music.command.quick=.music quick <keywords> — Download the first result
 music.command.list=.music list — Show downloaded songs
 music.command.help=.music help — Show music commands
+
+mod.minimessage.name=MiniMessage Completion
+mod.minimessage.description=Suggest MiniMessage tags and arguments in chat with Tab. Requires server support to render them.

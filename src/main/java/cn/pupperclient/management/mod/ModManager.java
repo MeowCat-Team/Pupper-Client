@@ -109,6 +109,7 @@ public class ModManager {
     private void initMiscMods() {
         mods.add(new DiscordRPCMod());
         mods.add(new HypixelMod());
+        mods.add(new MiniMessageCompletionMod());
         mods.add(new TimeChangerMod());
         mods.add(new WeatherChangerMod());
     }
