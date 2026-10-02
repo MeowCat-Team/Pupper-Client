@@ -235,6 +235,7 @@ public class MusicManager {
 
         setVolume(getVolume());
         musicPlayer.setCurrentMusic(currentMusic);
+        service.lyrics().get(currentMusic);
     }
 
     public float getVolume() {

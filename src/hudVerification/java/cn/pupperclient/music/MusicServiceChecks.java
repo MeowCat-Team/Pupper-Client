@@ -37,6 +37,7 @@ public final class MusicServiceChecks {
         server.start();
         try {
             NeteaseMusicApi api = new NeteaseMusicApi(URI.create(origin));
+            require(api.lyrics(3356975915L).original().contains("Fixture lyric"), "Provider lyric schema unsupported");
             Path libraryDir = root.resolve("music"), cache = root.resolve("cache");
             MusicLibraryStore store = new MusicLibraryStore(libraryDir);
             MusicDownload downloader = new MusicDownload(api, store, libraryDir, cache);
@@ -127,6 +128,7 @@ public final class MusicServiceChecks {
             System.out.println("Music HTTP/filesystem checks passed: " + checks + " assertions; search fallback, Unicode queries, "
                 + "title persistence, legacy repair, MP3/FLAC, partial cleanup and account-isolated favorites.");
             MusicPlaybackChecks.run();
+            MusicLyricsChecks.run();
         } finally {
             server.stop(0);
             try (var files = Files.walk(root)) {
@@ -158,6 +160,7 @@ public final class MusicServiceChecks {
             }
             case "/song/url/v1" -> bytes = ("{\"code\":200,\"data\":[{\"url\":" + (unavailable ? "null" : "\"" + origin + "/media\"")
                 + ",\"type\":\"" + (flac ? "flac" : "mp3") + "\"}]}").getBytes(StandardCharsets.UTF_8);
+            case "/lyric" -> bytes = "{\"code\":200,\"lrc\":{\"lyric\":\"[00:01.00]Fixture lyric\"},\"tlyric\":{\"lyric\":\"[00:01.00]测试歌词\"}}".getBytes(StandardCharsets.UTF_8);
             case "/media" -> { mediaRequests++; bytes = (badAudio ? "<html>not audio" : flac ? "fLaCfixture" : "ID3fixture").getBytes(StandardCharsets.UTF_8); }
             case "/like", "/likelist" -> {
                 if (!exchange.getRequestMethod().equals("POST") || exchange.getRequestURI().getRawQuery() != null)

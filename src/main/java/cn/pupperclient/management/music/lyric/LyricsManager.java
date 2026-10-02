@@ -1,173 +1,115 @@
 package cn.pupperclient.management.music.lyric;
 
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.tag.Tag;
-import org.jaudiotagger.tag.FieldKey;
 import cn.pupperclient.management.music.Music;
-
-import java.io.File;
-import java.util.*;
+import cn.pupperclient.management.music.NeteaseMusicApi;
+import cn.pupperclient.libraries.flac.FLACDecoder;
+import cn.pupperclient.libraries.flac.metadata.VorbisComment;
+import com.mpatric.mp3agic.Mp3File;
+import com.google.gson.Gson;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.Executor;
 
-public class LyricsManager {
-    private static final Logger LOGGER = Logger.getLogger(LyricsManager.class.getName());
-    private final Map<String, List<LyricLine>> lyricsCache = new ConcurrentHashMap<>();
+/** Network/tag reads run outside rendering and ticks. One cache serves the player and HUD. */
+public final class LyricsManager {
+    public enum State { LOADING, READY, EMPTY, ERROR }
+    public record Result(State state, SongLyrics lyrics) { }
+    @FunctionalInterface public interface Source { NeteaseMusicApi.Lyrics load(long id) throws Exception; }
+    private static final class Entry { volatile Result result = new Result(State.LOADING, SongLyrics.EMPTY); }
+    private static final Gson GSON = new Gson();
+    private final Map<String, Entry> entries = new ConcurrentHashMap<>();
+    private final Source source;
+    private final Path cache;
+    private final Executor executor;
 
-    static {
-        Logger.getLogger("org.jaudiotagger").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.audio").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.audio.AudioFileIO").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.audio.AudioFile").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.audio.mp3").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.audio.mp3.MP3File").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.tag").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.tag.id3").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.tag.id3.AbstractID3v2Tag").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.tag.id3.ID3v23Tag").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.tag.id3.ID3v24Tag").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.tag.id3.framebody").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.tag.id3.framebody.AbstractID3v2FrameBody").setLevel(Level.OFF);
-        Logger.getLogger("org.jaudiotagger.tag.datatype").setLevel(Level.OFF);
-
-        Logger rootLogger = Logger.getLogger("");
-        rootLogger.setLevel(Level.WARNING);
+    public LyricsManager(Source source, Path cache, Executor executor) {
+        this.source = source; this.cache = cache; this.executor = executor;
     }
 
-    public List<LyricLine> getLyrics(Music music) {
-        if (music == null || music.getAudio() == null) {
-            return Collections.emptyList();
+    public Result get(Music music) {
+        if (music == null) return new Result(State.EMPTY, SongLyrics.EMPTY);
+        String key = key(music);
+        Entry pending = new Entry();
+        Entry entry = entries.putIfAbsent(key, pending);
+        if (entry == null) {
+            executor.execute(() -> pending.result = load(music));
+            entry = pending;
         }
-
-        String cacheKey = music.getAudio().getAbsolutePath();
-        return lyricsCache.computeIfAbsent(cacheKey, k -> loadLyrics(music));
+        return entry.result;
     }
 
+    public List<LyricLine> getLyrics(Music music) { return get(music).lyrics().lines(); }
     public String getCurrentLyric(Music music, float currentTime) {
-        List<LyricLine> lyrics = getLyrics(music);
-        if (lyrics.isEmpty()) {
-            return null;
-        }
+        SongLyrics lyrics = get(music).lyrics();
+        int index = lyrics.currentIndex(currentTime);
+        return index < 0 ? "" : lyrics.lines().get(index).getText();
+    }
+    public void retry(Music music) { if (music != null) entries.remove(key(music)); }
+    public void clearCache() { entries.clear(); }
 
-        LyricLine currentLine = null;
-        for (LyricLine line : lyrics) {
-            if (line.getTime() <= currentTime) {
-                currentLine = line;
-            } else {
-                break;
-            }
-        }
-
-        return currentLine != null ? currentLine.getText() : null;
+    private String key(Music music) {
+        return music.getTrack().id() > 0 ? "netease:" + music.getTrack().id() : music.getAudio().getAbsolutePath();
     }
 
-    private List<LyricLine> loadLyrics(Music music) {
-        File audioFile = music.getAudio();
-        String fileName = audioFile.getName().toLowerCase();
-
+    private Result load(Music music) {
+        long id = music.getTrack().id();
+        SongLyrics local = local(music.getAudio().toPath());
+        if (!local.isEmpty()) return new Result(State.READY, local);
+        if (id <= 0) return new Result(State.EMPTY, SongLyrics.EMPTY);
+        Path file = cache.resolve("ncm-lyrics-" + id + ".json");
         try {
-            if (fileName.endsWith(".flac") || fileName.endsWith(".mp3")) {
-                return loadAudioLyrics(audioFile);
+            if (Files.isRegularFile(file)) {
+                var cached = GSON.fromJson(Files.readString(file), NeteaseMusicApi.Lyrics.class);
+                if (cached != null) {
+                    SongLyrics lyrics = SongLyrics.parse(cached.original(), cached.translated());
+                    if (!lyrics.isEmpty()) return new Result(State.READY, lyrics);
+                }
             }
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Failed to load lyrics for: " + audioFile.getName(), e);
-        }
-
-        return Collections.emptyList();
-    }
-
-    private List<LyricLine> loadAudioLyrics(File file) throws Exception {
-        AudioFile audioFile = AudioFileIO.read(file);
-        Tag tag = audioFile.getTag();
-
-        if (tag != null) {
-            String lyrics = tag.getFirst(FieldKey.LYRICS);
-            if (lyrics != null && !lyrics.isEmpty()) {
-                return parseLrcLyrics(lyrics);
-            }
-        }
-        return Collections.emptyList();
-    }
-
-    private List<LyricLine> parseLrcLyrics(String lrcContent) {
-        List<LyricLine> lines = new ArrayList<>();
-        String[] lrcLines = lrcContent.split("\\n");
-
-        for (String line : lrcLines) {
-            line = line.trim();
-            if (line.isEmpty()) continue;
-
-            if (line.startsWith("[") && !isTimeTag(line)) {
-                continue;
-            }
-
-            LyricLine lyricLine = parseTimeLine(line);
-            if (lyricLine != null) {
-                lines.add(lyricLine);
-            }
-        }
-
-        lines.sort(Comparator.comparing(LyricLine::getTime));
-        return lines;
-    }
-
-    private boolean isTimeTag(String line) {
-        int colonIndex = line.indexOf(':');
-        int dotIndex = line.indexOf('.');
-        int closeIndex = line.indexOf(']');
-
-        return colonIndex > 1 && dotIndex > colonIndex && closeIndex > dotIndex;
-    }
-
-    private LyricLine parseTimeLine(String line) {
-        if (!line.startsWith("[")) {
-            return null;
-        }
-
-        int closeIndex = line.indexOf(']');
-        if (closeIndex == -1) {
-            return null;
-        }
-
-        String timeStr = line.substring(1, closeIndex);
-        String text = line.substring(closeIndex + 1).trim();
-
-        if (text.contains("[")) {
-            int nextBracket = text.indexOf('[');
-            text = text.substring(0, nextBracket).trim();
-        }
-
-        if (text.isEmpty()) {
-            return null;
-        }
-
+        } catch (Exception invalidCache) { /* Retry the provider after a corrupt cache. */ }
         try {
-            float time = parseTime(timeStr);
-            return new LyricLine(time, text);
-        } catch (Exception e) {
-            LOGGER.log(Level.FINE, "Failed to parse time: " + timeStr, e);
-            return null;
-        }
+            var raw = source.load(id);
+            SongLyrics lyrics = SongLyrics.parse(raw.original(), raw.translated());
+            if (!lyrics.isEmpty()) save(file, raw);
+            return new Result(lyrics.isEmpty() ? State.EMPTY : State.READY, lyrics);
+        } catch (Exception unavailable) { return new Result(State.ERROR, SongLyrics.EMPTY); }
     }
 
-    private float parseTime(String timeStr) {
-        int colonIndex = timeStr.indexOf(':');
-        if (colonIndex == -1) {
-            throw new IllegalArgumentException("Invalid time format: " + timeStr);
-        }
-
-        String minuteStr = timeStr.substring(0, colonIndex);
-        String secondStr = timeStr.substring(colonIndex + 1);
-
-        int minutes = Integer.parseInt(minuteStr);
-        float seconds = Float.parseFloat(secondStr);
-
-        return minutes * 60 + seconds;
+    private static SongLyrics local(Path audio) {
+        String name = audio.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        Path sidecar = audio.resolveSibling((dot < 0 ? name : name.substring(0, dot)) + ".lrc");
+        try { if (Files.isRegularFile(sidecar)) return SongLyrics.parse(Files.readString(sidecar), ""); }
+        catch (Exception ignored) { }
+        try {
+            if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".mp3")) {
+                var file = new Mp3File(audio.toFile());
+                if (file.hasId3v2Tag()) return SongLyrics.parse(file.getId3v2Tag().getLyrics(), "");
+            } else if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".flac")) {
+                try (var input = Files.newInputStream(audio)) {
+                    for (var metadata : new FLACDecoder(input).readMetadata()) if (metadata instanceof VorbisComment comments) {
+                        for (String key : List.of("LYRICS", "UNSYNCEDLYRICS")) {
+                            String[] values = comments.getCommentByName(key);
+                            if (values != null && values.length > 0) return SongLyrics.parse(String.join("\n", values), "");
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) { }
+        return SongLyrics.EMPTY;
     }
 
-    public void clearCache() {
-        lyricsCache.clear();
+    private void save(Path file, NeteaseMusicApi.Lyrics lyrics) {
+        Path partial = null;
+        try {
+            Files.createDirectories(cache);
+            partial = Files.createTempFile(cache, ".lyrics-", ".tmp");
+            Files.writeString(partial, GSON.toJson(lyrics));
+            Files.move(partial, file, StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception ignored) { /* Successfully fetched lyrics remain available in memory. */ }
+        finally { if (partial != null) try { Files.deleteIfExists(partial); } catch (Exception ignored) { } }
     }
 }

@@ -3,6 +3,7 @@ package cn.pupperclient.gui.modmenu.component;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.music.MusicText;
 import cn.pupperclient.management.music.MusicTrack;
+import cn.pupperclient.management.music.lyric.LyricsManager;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
@@ -75,6 +76,56 @@ public final class MusicUi {
             false, true, inside(mouseX, mouseY, x + width - 164, y + 12, 48, 48), palette);
         MaterialControls.slider(x + width - 108, y + 18, 84, palette, MaterialTheme.opacity(), state.volume(),
             inside(mouseX, mouseY, x + width - 116, y + 8, 104, 60) ? 1 : 0, Math.round(state.volume() * 100) + "%");
+    }
+
+    public static void lyricsSwitch(float width, boolean selected, double mx, double my, ColorPalette palette) {
+        tab(width - 364, 28, 180, Icon.LYRICS, MusicText.get(selected ? "music.lyrics.library" : "music.lyrics.show"),
+            selected, inside(mx, my, width - 364, 28, 180, 48), palette);
+    }
+
+    public static void lyrics(float x, float y, float width, float height, String title, LyricsManager.Result result,
+            int active, float focus, double mx, double my, ColorPalette palette) {
+        Skia.drawText(MusicText.get("music.lyrics.title"), x + 12, y + 12, palette.getOnSurface(), Fonts.getMedium(22));
+        iconButton(x + width - 48, y, Icon.REFRESH, false, title != null,
+            inside(mx, my, x + width - 48, y, 48, 48), palette);
+        float top = y + 64, bodyHeight = height - 108;
+        var document = result.lyrics();
+        if (title == null || document.isEmpty()) {
+            String key = title == null ? "music.lyrics.choose" : switch (result.state()) {
+                case LOADING -> "music.lyrics.loading";
+                case ERROR -> "music.lyrics.error";
+                default -> "music.lyrics.empty";
+            };
+            Skia.drawFullCenteredText(Icon.LYRICS, x + width / 2, top + bodyHeight / 2 - 28,
+                palette.getPrimary(), Fonts.getIcon(36));
+            Skia.drawCenteredText(MusicText.get(key), x + width / 2, top + bodyHeight / 2 + 30,
+                palette.getOnSurfaceVariant(), Fonts.getRegular(16));
+        } else {
+            int count = document.synced() ? document.lines().size() : document.plainText().size();
+            float rowHeight = 80;
+            Skia.save();
+            try {
+                Skia.clip(x, top, width, bodyHeight, 16);
+                int first = Math.max(0, (int) Math.floor(focus - bodyHeight / rowHeight / 2) - 1);
+                int last = Math.min(count, (int) Math.ceil(focus + bodyHeight / rowHeight / 2) + 2);
+                for (int i = first; i < last; i++) {
+                    float lineY = top + bodyHeight / 2 + (i - focus) * rowHeight - 28;
+                    boolean selected = document.synced() && i == active;
+                    if (selected) Skia.drawRoundedRect(x + 4, lineY - 8, width - 8, 72, 16,
+                        MaterialTheme.alpha(palette.getSecondaryContainer(), .5f));
+                    String text = document.synced() ? document.lines().get(i).getText() : document.plainText().get(i);
+                    var font = selected ? Fonts.getMedium(24) : Fonts.getRegular(20);
+                    Skia.drawText(Skia.getLimitText(text.isBlank() ? "♪" : text, font, width - 48), x + 24, lineY,
+                        selected ? palette.getPrimary() : palette.getOnSurfaceVariant(), font);
+                    if (document.synced() && !document.lines().get(i).getTranslation().isBlank())
+                        Skia.drawText(Skia.getLimitText(document.lines().get(i).getTranslation(), Fonts.getRegular(14), width - 48),
+                            x + 24, lineY + 34, palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+                }
+            } finally { Skia.restore(); }
+        }
+        if (!document.isEmpty()) Skia.drawHeightCenteredText(MusicText.get(document.synced()
+            ? "music.lyrics.follow" : "music.lyrics.unsynced"), x + 12, y + height - 22,
+            palette.getOnSurfaceVariant(), Fonts.getRegular(12));
     }
 
     public static void iconButton(float x, float y, String icon, boolean selected, boolean enabled,

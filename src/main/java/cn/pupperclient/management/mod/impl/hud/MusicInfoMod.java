@@ -15,7 +15,6 @@ import cn.pupperclient.management.mod.settings.impl.ComboSetting;
 import cn.pupperclient.management.music.Music;
 import cn.pupperclient.management.music.MusicManager;
 import cn.pupperclient.management.music.MusicPlayer;
-import cn.pupperclient.management.music.lyric.LyricsManager;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;
@@ -26,14 +25,13 @@ public class MusicInfoMod extends SimpleHUDMod {
     private final ComboSetting typeSetting = new ComboSetting("setting.type", "setting.type.description",
         Icon.FORMAT_LIST_BULLETED, this, Arrays.asList("setting.simple", "setting.normal", "setting.cover"), "setting.simple");
     private final BooleanSetting lyricsDisplaySetting = new BooleanSetting("setting.lyrics.display.name",
-        "setting.lyrics.display.description", Icon.TEXT_FIELDS, this, false) {
+        "setting.lyrics.display.description", Icon.TEXT_FIELDS, this, true) {
         @Override public boolean isVisible() { return !typeSetting.getOption().equals("setting.simple"); }
     };
     private final BooleanSetting coverAnimationSetting = new BooleanSetting("setting.cover.animation.name",
         "setting.cover.animation.description", Icon.MOVIE, this, true) {
         @Override public boolean isVisible() { return !typeSetting.getOption().equals("setting.simple"); }
     };
-    private final LyricsManager lyricsManager = new LyricsManager();
     private final HUDMotion motion = new HUDMotion();
     private final HUDMotion.Spring reveal = new HUDMotion.Spring(0);
     private final HUDMotion.Spring widthMotion = new HUDMotion.Spring(200);
@@ -50,7 +48,7 @@ public class MusicInfoMod extends SimpleHUDMod {
         MusicManager manager = PupperClient.getInstance().getMusicManager();
         Music music = manager.getCurrentMusic();
         lyric = music != null && lyricsDisplaySetting.isEnabled()
-            ? lyricsManager.getCurrentLyric(music, manager.getCurrentTime()) : "";
+            ? manager.getService().lyrics().getCurrentLyric(music, manager.getCurrentTime()) : "";
         if (lyric == null) lyric = "";
     };
 

@@ -3,6 +3,7 @@ package cn.pupperclient.management.music;
 import cn.pupperclient.management.command.impl.LoginCommand;
 import cn.pupperclient.utils.file.FileLocation;
 import cn.pupperclient.utils.thread.Multithreading;
+import cn.pupperclient.management.music.lyric.LyricsManager;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -26,6 +27,7 @@ public final class MusicService {
     private final MusicLibraryStore library;
     private final NeteaseMusicApi api;
     private final MusicDownload downloads;
+    private final LyricsManager lyrics;
     private final Map<Long, Integer> progress = new ConcurrentHashMap<>();
     private final Set<Long> coversLoading = ConcurrentHashMap.newKeySet();
     private final Set<String> favoritesLoading = ConcurrentHashMap.newKeySet();
@@ -34,8 +36,11 @@ public final class MusicService {
         this.manager = manager;
         this.library = library;
         api = new NeteaseMusicApi(URI.create(LoginCommand.getApiBase()));
+        lyrics = new LyricsManager(api::lyrics, FileLocation.CACHE_DIR.toPath(), Multithreading::runAsync);
         downloads = new MusicDownload(api, library, FileLocation.MUSIC_DIR.toPath(), FileLocation.CACHE_DIR.toPath());
     }
+
+    public LyricsManager lyrics() { return lyrics; }
 
     public void search(String keyword, int offset, Consumer<NeteaseMusicApi.SearchResult> success,
             Consumer<MusicError> failure) {
@@ -97,6 +102,7 @@ public final class MusicService {
 
     public void refresh(Consumer<Integer> success, Consumer<MusicError> failure) {
         coversLoading.clear();
+        lyrics.clearCache();
         task(() -> {
             manager.load();
             List<Music> legacy = manager.getMusics().stream().filter(m -> m.getTrack().id() == 0

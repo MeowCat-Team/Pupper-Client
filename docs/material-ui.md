@@ -30,6 +30,8 @@ The player and `.music` commands share the NetEase API origin used by `.login`. 
 
 Guest likes are saved on the device. Logged-in likes use the account's `/like` and `/likelist` endpoints and remain isolated from guest favorites and other accounts. Synchronization refreshes the account's liked list. Public search and download remain available without a login when the provider permits the requested song and quality.
 
+**Lyrics:** the header button switches the right pane between the library and lyrics. LRC lines follow the decoded audio clock, preserve blank/instrumental intervals and display provider translations when timestamps match. Scroll browses other lines, returning to playback after five seconds. Untimed lyrics remain a browsable text list. A shared asynchronous cache serves the player and Music Info HUD: sibling `.lrc` and embedded MP3/FLAC lyrics take precedence, followed by cached NetEase `/lyric` results and the network. Network failures and songs without lyrics have separate translated states. Refresh retries failed requests. Newly configured non-simple Music Info HUDs show lyrics by default; existing saved preferences still apply.
+
 ## Verification
 
 ```powershell
@@ -42,6 +44,8 @@ Guest likes are saved on the device. Logged-in likes use the account's `/like` a
 `previewMaterialTheme` uses the same control drawing functions as the actual settings components, at their real sizes and states. It also verifies panel alpha and canvas state balance. Output: `build/reports/ui/material-preview.png`. `previewHudTheme` produces `build/reports/hud/theme-preview.png`. These are component specimens, not screenshots of a running client or a proposed settings-page layout.
 
 `verifyMusicService` uses a local HTTP server and temporary files to cover both search schemas, metadata outages, legacy name repair, MP3/FLAC extensions, partial-file cleanup and account-specific favorite persistence. Generated two-second silence fixtures exercise the real MP3/FLAC decoders, pause/resume, switching, mute and shutdown against an instrumented audio line without opening audio hardware. It runs with `check` and does not download public audio or modify a live account. `previewMusicPlayer` renders the production music painters with fixture tracks in light/English and dark/Chinese layouts under `build/reports/music/`; it verifies balanced canvas state, and is an offscreen specimen rather than an in-game interaction test.
+
+Music checks also cover LRC precision, multiple timestamps, translation matching, async request deduplication, stale-request isolation and local/offline lyric persistence.
 
 `verifyGlassGpu` uses a hidden GLFW OpenGL context to exercise the actual Minecraft/Skia framebuffer boundary with known RGB values, including a framebuffer with zero alpha. It checks that glass does not raise brightness, that pixels outside the panel are untouched, and that GL state is restored. This requires a working GPU driver and supplements, rather than replaces, in-game verification.
 

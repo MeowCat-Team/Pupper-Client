@@ -5,6 +5,8 @@ import cn.pupperclient.libraries.material3.hct.Hct;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.music.MusicText;
 import cn.pupperclient.management.music.MusicTrack;
+import cn.pupperclient.management.music.lyric.LyricsManager;
+import cn.pupperclient.management.music.lyric.SongLyrics;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.context.SkiaContext;
 import cn.pupperclient.skia.font.Fonts;
@@ -32,6 +34,7 @@ public final class MusicPlayerPreview {
         try {
             for (boolean dark : new boolean[] { false, true }) {
                 I18n.setLanguage(dark ? Language.CHINESE : Language.ENGLISH);
+                for (boolean lyricsView : new boolean[] { false, true }) {
                 try (Surface surface = Surface.makeRasterN32Premul(1120, 720)) {
                     field.set(null, surface);
                     var canvas = surface.getCanvas();
@@ -40,10 +43,12 @@ public final class MusicPlayerPreview {
                     int count = canvas.getSaveCount();
                     MaterialTheme.panel(0, 0, 1120, 720, 28, palette);
                     MusicUi.playerHeader(1120, palette);
-                    MusicTrack track = new MusicTrack(3356975915L, "Montagem pitty",
-                        "DJ fixture · Sample artist", "Montagem pitty", "", 137_000);
+                    MusicUi.lyricsSwitch(1120, lyricsView, -1, -1, palette);
+                    MusicTrack track = new MusicTrack(3356975915L, lyricsView ? "Afterglow (fixture)" : "Montagem pitty",
+                        "DJ fixture · Sample artist", lyricsView ? "Generated lyric specimen" : "Montagem pitty", "", 137_000);
                     MusicUi.nowPlaying(28, 108, 304, track, null, true, -1, -1, palette);
                     Skia.drawLine(350, 116, 350, 594, 1, MaterialTheme.alpha(palette.getOutlineVariant(), .45f));
+                    if (!lyricsView) {
                     String[] keys = { "music.tab.library", "music.tab.search", "music.tab.liked" };
                     String[] icons = { Icon.LIBRARY_MUSIC, Icon.SEARCH, Icon.FAVORITE };
                     float tabWidth = (724 - 60) / 3f;
@@ -67,14 +72,23 @@ public final class MusicPlayerPreview {
                         palette.getOnSurfaceVariant(), Fonts.getRegular(12));
                     MusicUi.button(952, 562, 140, MusicText.get("music.quality.button", MusicText.get("music.quality.exhigh")),
                         false, false, palette);
+                    } else {
+                        var lyrics = SongLyrics.parse("[00:00.00]A quiet moment before the music\n[00:15.00]Soft light across the room\n"
+                            + "[00:30.00]Let the rhythm find its way\n[00:45.00]Every note has room to breathe\n[01:00.00]Stay here for a little while\n",
+                            "[00:00.00]音乐开始前的安静片刻\n[00:15.00]柔光洒满房间\n[00:30.00]让节奏找到自己的方向\n"
+                            + "[00:45.00]每个音符都能自由呼吸\n[01:00.00]在这里多停留一会儿\n");
+                        MusicUi.lyrics(368, 108, 724, 496, track.title(),
+                            new LyricsManager.Result(LyricsManager.State.READY, lyrics), 2, 2, -1, -1, palette);
+                    }
                     MusicUi.playback(28, 616, 1064, new MusicUi.Playback(track.title(), "Sample artist", null,
                         true, false, false, true, .65f, 37, 137, true), -1, -1, palette);
                     if (canvas.getSaveCount() != count) throw new AssertionError("Player painters leaked canvas state");
                     try (Image image = surface.makeImageSnapshot(); Data data = image.encodeToData(EncodedImageFormat.PNG)) {
-                        Path file = output.resolve("player-" + (dark ? "cn-dark.png" : "en-light.png"));
+                        Path file = output.resolve((lyricsView ? "lyrics-" : "player-") + (dark ? "cn-dark.png" : "en-light.png"));
                         Files.write(file, data.getBytes());
                         System.out.println("Player production-painter preview: " + file);
                     }
+                }
                 }
             }
         } finally { field.set(null, previous); }

@@ -20,6 +20,7 @@ import java.util.Map;
 public final class NeteaseMusicApi {
     public record SearchResult(List<MusicTrack> tracks, int total, int offset) { }
     public record AudioSource(URI uri, String extension) { }
+    public record Lyrics(String original, String translated) { }
     private final URI base;
 
     public NeteaseMusicApi(URI base) {
@@ -70,6 +71,11 @@ public final class NeteaseMusicApi {
         if (cookie == null || cookie.isBlank() || userId == null) throw new MusicError("music.error.login");
         return array(request("likelist", Map.of("uid", userId), cookie), "ids")
             .asList().stream().map(JsonElement::getAsLong).toList();
+    }
+
+    public Lyrics lyrics(long id) throws MusicError {
+        JsonObject response = request("lyric", Map.of("id", String.valueOf(id)), null);
+        return new Lyrics(string(object(response, "lrc"), "lyric"), string(object(response, "tlyric"), "lyric"));
     }
 
     public void like(long id, boolean liked, String cookie) throws MusicError {
