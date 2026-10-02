@@ -338,5 +338,6 @@ public class MusicManager {
 
     public void setRepeat(boolean repeat) {
         this.repeat = repeat;
+        musicPlayer.setRepeat(repeat);
     }
 }

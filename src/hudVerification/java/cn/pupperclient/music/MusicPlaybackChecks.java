@@ -74,8 +74,10 @@ final class MusicPlaybackChecks {
                 worker.interrupt();
                 worker.join(2_000);
             }
+            checkRepeat(mp3);
+            checkRepeat(flac);
             System.out.println("Music playback checks passed: " + checks
-                + " assertions; real MP3/FLAC decoding, pause/resume, switch, mute and shutdown without audio hardware.");
+                + " assertions; real MP3/FLAC decoding, repeat on/off, pause/resume, switch, mute and shutdown without audio hardware.");
         } finally {
             try (var files = Files.walk(root)) {
                 for (Path path : files.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
@@ -90,6 +92,27 @@ final class MusicPlaybackChecks {
             Files.copy(source, path);
         }
         return new Music(path.toFile(), "Generated silence", "", null, Color.BLACK);
+    }
+
+    private static void checkRepeat(Music track) throws Exception {
+        AtomicInteger completions = new AtomicInteger();
+        TestPlayer player = new TestPlayer(completions);
+        player.setRepeat(true);
+        player.setCurrentMusic(track);
+        Thread worker = worker(player);
+        try {
+            await(() -> player.lines.size() >= 3 && player.lines.get(0).closed && player.lines.get(1).closed);
+            require(completions.get() == 0 && player.isPlaying(), "Repeat depended on the UI completion callback");
+            require(player.lines.get(0).bytes == player.lines.get(1).bytes, "Repeated decoder lost or duplicated PCM");
+            require(player.getGeneration() >= 3, "Repeat did not open fresh decoder sessions");
+            player.setRepeat(false);
+            await(() -> completions.get() == 1 && !player.isPlaying() && player.lines.getLast().closed);
+            int count = player.lines.size();
+            Thread.sleep(40);
+            require(player.lines.size() == count && completions.get() == 1, "Disabling repeat continued looping");
+        } finally {
+            player.shutdown(); worker.interrupt(); worker.join(2_000);
+        }
     }
 
     private static Thread worker(MusicPlayer player) {

@@ -56,6 +56,7 @@ public class MusicPlayer implements Runnable {
 
     private volatile Music currentMusic;
     private volatile boolean playing;
+    private volatile boolean repeat;
     private volatile float volume;
     private volatile long generation;
 
@@ -269,9 +270,20 @@ public class MusicPlayer implements Runnable {
 
     private synchronized void complete(long session) {
         if (session != generation || Thread.currentThread().isInterrupted()) return;
-        playing = false;
-        runnable.run();
+        if (repeat) {
+            // Reopen the decoder on the next worker iteration after this session's line has closed.
+            // Keep the current pause state, and never depend on a queued UI callback to restart a loop.
+            generation++;
+            lastCurrentTime = 0;
+            mp3Duration = 0;
+            streamInfo = null;
+        } else {
+            playing = false;
+            runnable.run();
+        }
     }
+
+    public void setRepeat(boolean repeat) { this.repeat = repeat; }
 
     protected SourceDataLine createLine(AudioFormat format) throws javax.sound.sampled.LineUnavailableException {
         return (SourceDataLine) AudioSystem.getLine(new DataLine.Info(SourceDataLine.class, format));

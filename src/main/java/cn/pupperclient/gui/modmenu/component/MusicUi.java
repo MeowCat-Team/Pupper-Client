@@ -54,7 +54,7 @@ public final class MusicUi {
         iconButton(x + 64 + titleWidth, y + 12, Icon.FAVORITE, state.liked(), state.enabled(),
             inside(mouseX, mouseY, x + 64 + titleWidth, y + 12, 48, 48), palette);
         float center = x + width / 2;
-        String[] icons = { Icon.REPEAT, Icon.SKIP_PREVIOUS, state.playing() ? Icon.PAUSE : Icon.PLAY_ARROW,
+        String[] icons = { state.repeat() ? Icon.REPEAT_ONE : Icon.REPEAT, Icon.SKIP_PREVIOUS, state.playing() ? Icon.PAUSE : Icon.PLAY_ARROW,
             Icon.SKIP_NEXT, Icon.SHUFFLE };
         for (int i = 0; i < icons.length; i++) {
             boolean selected = i == 0 && state.repeat() || i == 4 && state.shuffle() || i == 2;
