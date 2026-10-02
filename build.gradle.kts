@@ -25,7 +25,8 @@ loom {
                 listOf(
                     "-Xms512M",
                     "-Xmx4G",
-                    "-XX:HeapBaseMinAddress=34g"
+                    "-XX:HeapBaseMinAddress=34g",
+                    "--enable-native-access=ALL-UNNAMED"
                 )
             )
         }
@@ -216,6 +217,15 @@ val verifyMusicService = tasks.register<JavaExec>("verifyMusicService") {
     mainClass.set("cn.pupperclient.music.MusicServiceChecks")
 }
 tasks.check { dependsOn(verifyMusicService) }
+
+tasks.register<JavaExec>("verifyWindowsSmtc") {
+    group = "verification"
+    description = "Checks real Windows WinRT SMTC metadata, timeline and FFM callbacks with a hidden window."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.management.music.media.WindowsSmtcChecks")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}
 
 tasks.register<JavaExec>("previewMusicPlayer") {
     group = "verification"

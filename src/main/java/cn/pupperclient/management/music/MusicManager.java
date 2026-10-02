@@ -11,6 +11,8 @@ import java.util.Comparator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import cn.pupperclient.utils.thread.Multithreading;
+import cn.pupperclient.management.music.media.MediaSession;
+import cn.pupperclient.management.music.media.WindowsSmtc;
 
 import javax.imageio.ImageIO;
 
@@ -39,6 +41,8 @@ public class MusicManager {
     private final MusicLibraryStore library;
     private final MusicService service;
     private final Thread playerThread;
+    private final MediaSession mediaSession;
+    private volatile boolean shuttingDown;
 
     public MusicManager() {
 
@@ -88,6 +92,18 @@ public class MusicManager {
                     musicPlayer.run();
                 }
         });
+        long window = MediaSession.supported() ? org.lwjgl.glfw.GLFWNativeWin32.glfwGetWin32Window(
+            net.minecraft.client.Minecraft.getInstance().getWindow().handle()) : 0;
+        mediaSession = new MediaSession(window, this::mediaSnapshot, button -> Multithreading.runMainThread(() -> {
+            if (shuttingDown) return;
+            switch (button) {
+                case 0 -> { if (!isPlaying()) switchPlayBack(); }
+                case 1, 2 -> stop();
+                case 6 -> next();
+                case 7 -> back();
+                default -> { }
+            }
+        }));
     }
 
     public synchronized void load() throws Exception {
@@ -223,6 +239,8 @@ public class MusicManager {
     }
 
     public void shutdown() {
+        shuttingDown = true;
+        mediaSession.close();
         playerThread.interrupt();
         musicPlayer.shutdown();
     }
@@ -236,6 +254,15 @@ public class MusicManager {
         setVolume(getVolume());
         musicPlayer.setCurrentMusic(currentMusic);
         service.lyrics().get(currentMusic);
+    }
+
+    private WindowsSmtc.Snapshot mediaSnapshot() {
+        Music music = currentMusic;
+        if (music == null) return WindowsSmtc.Snapshot.EMPTY;
+        MusicTrack track = music.getTrack();
+        String artwork = music.getAlbum() != null && music.getAlbum().isFile() ? music.getAlbum().toURI().toString() : "";
+        return new WindowsSmtc.Snapshot(music.getAudio().getAbsolutePath(), track.title(), track.artist(), track.album(),
+            artwork, isPlaying(), true, musics.size() > 1, getCurrentTime(), getEndTime());
     }
 
     public float getVolume() {

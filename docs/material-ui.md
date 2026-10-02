@@ -32,6 +32,10 @@ Guest likes are saved on the device. Logged-in likes use the account's `/like` a
 
 **Lyrics:** the header button switches the right pane between the library and lyrics. LRC lines follow the decoded audio clock, preserve blank/instrumental intervals and display provider translations when timestamps match. Scroll browses other lines, returning to playback after five seconds. Untimed lyrics remain a browsable text list. A shared asynchronous cache serves the player and Music Info HUD: sibling `.lrc` and embedded MP3/FLAC lyrics take precedence, followed by cached NetEase `/lyric` results and the network. Network failures and songs without lyrics have separate translated states. Refresh retries failed requests. Newly configured non-simple Music Info HUDs show lyrics by default; existing saved preferences still apply.
 
+**Windows media controls:** Windows 10/11 SMTC uses Java 25's final FFM API and the actual GLFW HWND. No helper executable, JNI DLL or new JNA dependency is required. A single platform/MTA daemon publishes title, artist, album, cached cover, playback state and timeline every 250 ms. System Play, Pause, Stop, Previous and Next events dispatch to the game thread. Seeking is not advertised because these decoders do not yet support arbitrary seek. Closing the client disables SMTC, unregisters callbacks and releases COM references. Other hosts skip SMTC; native-access denial/API failure leaves ordinary playback available and logs one diagnostic.
+
+The Gradle client run enables `--enable-native-access=ALL-UNNAMED`. Add the same JVM option in a launcher to explicitly enable FFM native access; this uses the finalized API and needs no preview flag.
+
 ## Verification
 
 ```powershell
@@ -39,13 +43,14 @@ Guest likes are saved on the device. Logged-in likes use the account's `/like` a
 .\gradlew.bat verifyGlassGpu --offline --console=plain
 .\gradlew.bat benchmarkGlassGpu --offline --console=plain
 .\gradlew.bat verifyMusicService previewMusicPlayer --offline --console=plain
+.\gradlew.bat verifyWindowsSmtc --offline --console=plain
 ```
 
 `previewMaterialTheme` uses the same control drawing functions as the actual settings components, at their real sizes and states. It also verifies panel alpha and canvas state balance. Output: `build/reports/ui/material-preview.png`. `previewHudTheme` produces `build/reports/hud/theme-preview.png`. These are component specimens, not screenshots of a running client or a proposed settings-page layout.
 
 `verifyMusicService` uses a local HTTP server and temporary files to cover both search schemas, metadata outages, legacy name repair, MP3/FLAC extensions, partial-file cleanup and account-specific favorite persistence. Generated two-second silence fixtures exercise the real MP3/FLAC decoders, pause/resume, switching, mute and shutdown against an instrumented audio line without opening audio hardware. It runs with `check` and does not download public audio or modify a live account. `previewMusicPlayer` renders the production music painters with fixture tracks in light/English and dark/Chinese layouts under `build/reports/music/`; it verifies balanced canvas state, and is an offscreen specimen rather than an in-game interaction test.
 
-Music checks also cover LRC precision, multiple timestamps, translation matching, async request deduplication, stale-request isolation and local/offline lyric persistence.
+Music checks also cover LRC precision, multiple timestamps, translation matching, async request deduplication, stale-request isolation and local/offline lyric persistence. `verifyWindowsSmtc` creates a hidden top-level test HWND on Windows, checks actual WinRT metadata and timeline round trips, opens a cached image through the thumbnail stream, and exercises native-to-Java button upcalls. It does not play audio, and skips on other hosts. These checks supplement in-game/media-panel interaction testing.
 
 `verifyGlassGpu` uses a hidden GLFW OpenGL context to exercise the actual Minecraft/Skia framebuffer boundary with known RGB values, including a framebuffer with zero alpha. It checks that glass does not raise brightness, that pixels outside the panel are untouched, and that GL state is restored. This requires a working GPU driver and supplements, rather than replaces, in-game verification.
 
