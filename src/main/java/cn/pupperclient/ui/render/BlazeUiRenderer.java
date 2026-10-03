@@ -81,7 +81,7 @@ public final class BlazeUiRenderer implements AutoCloseable {
                 if (w <= 0 || h <= 0 || child.alpha <= 0) continue;
                 UiTexture layer = acquireLayer(w, h);
                 render(child, layer, 0);
-                draw = new BlazeUiCanvas.Draw(BlazeUiCanvas.IMAGE, layer.view, List.of(), Rect.makeWH(0, 0), new float[4], new float[4], new float[4], new int[]{-1, -1, -1}, new float[]{0, 1, 1});
+                draw = new BlazeUiCanvas.Draw(BlazeUiCanvas.IMAGE, layer.view, List.of(), Rect.makeWH(0, 0), new float[4], new float[]{0, 0, 0, 1}, new float[4], new int[]{-1, -1, -1}, new float[]{0, 1, 1});
                 int color = (Math.round(child.alpha * 255) << 24) | 0xFFFFFF;
                 float u = (float) w / layer.texture.getWidth(0), v = 1 - (float) h / layer.texture.getHeight(0);
                 Rect uv = Rect.makeLTRB(0, v, u, 1);
@@ -106,7 +106,9 @@ public final class BlazeUiRenderer implements AutoCloseable {
             var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
             pass.bindTexture("Scene", sceneReady ? scene.view : white.view, sampler);
             for (var draw : prepared) {
-                pass.bindTexture("UiImage", draw.draw.texture == null ? white.view : draw.draw.texture, sampler);
+                var imageSampler = RenderSystem.getSamplerCache().getClampToEdge(
+                        draw.draw.style[3] == 1 ? FilterMode.NEAREST : FilterMode.LINEAR);
+                pass.bindTexture("UiImage", draw.draw.texture == null ? white.view : draw.draw.texture, imageSampler);
                 pass.setUniform("UiData", draw.uniforms); pass.setVertexBuffer(0, draw.vertices);
                 pass.draw(draw.draw.size / BlazeUiCanvas.VERTEX_FLOATS, 1, 0, 0);
             }

@@ -364,8 +364,8 @@ public class Skia {
 
                 save();
                 getCanvas().clipPath(path, ClipMode.INTERSECT, true);
-                getCanvas().drawImageRect(imageHelper.get(file.getName()), srcRect, dstRect, null, false);
-                getCanvas().drawImageRect(imageHelper.get(file.getName()), srcRect1, dstRect, null, false);
+                getCanvas().drawImageRect(imageHelper.get(file.getName()), srcRect, dstRect, null, false, UiCanvas.ImageSampling.PIXEL);
+                getCanvas().drawImageRect(imageHelper.get(file.getName()), srcRect1, dstRect, null, false, UiCanvas.ImageSampling.PIXEL);
                 restore();
             }
         }
@@ -397,45 +397,45 @@ public class Skia {
             save();
             scale(x, y, scale);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), head,
-                Rect.makeXYWH(x + leftArm.getWidth(), y, head.getWidth(), head.getHeight()), null, false);
+                Rect.makeXYWH(x + leftArm.getWidth(), y, head.getWidth(), head.getHeight()), null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), headLayer,
-                Rect.makeXYWH(x + leftArm.getWidth(), y, headLayer.getWidth(), headLayer.getHeight()), null, false);
+                Rect.makeXYWH(x + leftArm.getWidth(), y, headLayer.getWidth(), headLayer.getHeight()), null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), body,
                 Rect.makeXYWH(x + leftArm.getWidth(), y + head.getHeight(), body.getWidth(), body.getHeight()),
-                null, false);
+                null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), bodyLayer, Rect.makeXYWH(x + leftArm.getWidth(),
-                y + headLayer.getHeight(), bodyLayer.getWidth(), bodyLayer.getHeight()), null, false);
+                y + headLayer.getHeight(), bodyLayer.getWidth(), bodyLayer.getHeight()), null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), leftArm,
-                Rect.makeXYWH(x, y + head.getHeight(), leftArm.getWidth(), leftArm.getHeight()), null, false);
+                Rect.makeXYWH(x, y + head.getHeight(), leftArm.getWidth(), leftArm.getHeight()), null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), leftArmLayer,
                 Rect.makeXYWH(x, y + headLayer.getHeight(), leftArmLayer.getWidth(), leftArmLayer.getHeight()),
-                null, false);
+                null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), rightArm,
                 Rect.makeXYWH(x + leftArm.getWidth() + body.getWidth(), y + head.getHeight(), rightArm.getWidth(),
                     rightArm.getHeight()),
-                null, false);
+                null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), rightArmLayer,
                 Rect.makeXYWH(x + leftArmLayer.getWidth() + bodyLayer.getWidth(), y + headLayer.getHeight(),
                     rightArmLayer.getWidth(), rightArmLayer.getHeight()),
-                null, false);
+                null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(
                 imageHelper.get(file.getName()), leftLeg, Rect.makeXYWH(x + leftArm.getWidth(),
                     y + head.getHeight() + body.getHeight(), leftLeg.getWidth(), leftLeg.getHeight()),
-                null, false);
+                null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), leftLegLayer,
                 Rect.makeXYWH(x + leftArmLayer.getWidth(), y + headLayer.getHeight() + bodyLayer.getHeight(),
                     leftLegLayer.getWidth(), leftLegLayer.getHeight()),
-                null, false);
+                null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas()
                 .drawImageRect(imageHelper.get(file.getName()), rightLeg,
                     Rect.makeXYWH(x + leftArm.getWidth() + leftLeg.getWidth(),
                         y + head.getHeight() + body.getHeight(), rightLeg.getWidth(), rightLeg.getHeight()),
-                    null, false);
+                    null, false, UiCanvas.ImageSampling.PIXEL);
             getCanvas().drawImageRect(imageHelper.get(file.getName()), rightLegLayer,
                 Rect.makeXYWH(x + leftArmLayer.getWidth() + leftLegLayer.getWidth(),
                     y + headLayer.getHeight() + bodyLayer.getHeight(), rightLegLayer.getWidth(),
                     rightLegLayer.getHeight()),
-                null, false);
+                null, false, UiCanvas.ImageSampling.PIXEL);
 
             restore();
         }

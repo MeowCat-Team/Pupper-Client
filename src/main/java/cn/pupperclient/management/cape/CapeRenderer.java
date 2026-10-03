@@ -2,6 +2,7 @@ package cn.pupperclient.management.cape;
 
 import cn.pupperclient.PupperLogger;
 import cn.pupperclient.skia.Skia;
+import cn.pupperclient.ui.render.UiCanvas.ImageSampling;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import io.github.humbleui.skija.ClipMode;
 import io.github.humbleui.skija.Path;
@@ -46,6 +47,7 @@ public final class CapeRenderer {
     private static void draw(GpuTextureView view, int sourceX, Rect destination) {
         // Canonical cape coordinates are 64 x 32; resource packs may supply larger images.
         float sx = view.getWidth(0) / 64f, sy = view.getHeight(0) / 32f;
-        Skia.getCanvas().drawTexture(view, Rect.makeXYWH(sourceX * sx, sy, 10 * sx, 16 * sy), destination, 1);
+        Skia.getCanvas().drawTexture(view, Rect.makeXYWH(sourceX * sx, sy, 10 * sx, 16 * sy), destination, 1,
+                ImageSampling.PIXEL);
     }
 }

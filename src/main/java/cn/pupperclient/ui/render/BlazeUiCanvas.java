@@ -9,6 +9,7 @@ import java.util.*;
 public final class BlazeUiCanvas implements UiCanvas {
     static final int MAX_CLIPS = 16;
     static final int VERTEX_FLOATS = 14;
+    private static final float[] IDENTITY = {1, 0, 0, 1, 0, 0};
     static final int SHAPE = 0, IMAGE = 1, GLASS = 2, SHADOW = 3, LINEAR = 4, RADIAL = 5, ARC = 6;
     record Clip(float[] inverse, Rect bounds, float[] radii, boolean difference) {}
     static final class Group {
@@ -150,34 +151,54 @@ public final class BlazeUiCanvas implements UiCanvas {
     @Override public void drawString(String text, float x, float baseline, Font font, Paint paint) {
         if (text.isEmpty() || paint.getAlpha() == 0) return;
         short[] ids = font.getStringGlyphs(text); float[] advances = font.getWidths(ids);
-        int scale = Math.max(1, Math.min(8, (int) Math.ceil(Math.hypot(state.matrix[0], state.matrix[2]))));
+        var m = state.matrix;
+        boolean upright = Math.abs(m[1]) < 1e-6f && Math.abs(m[2]) < 1e-6f
+                && m[0] > 0 && Math.abs(m[0] - m[3]) < 1e-6f;
+        float scale = upright ? m[0] : Math.max(1, Math.min(8,
+                (float) Math.ceil(Math.max(Math.hypot(m[0], m[2]), Math.hypot(m[1], m[3])))));
         for (int i = 0; i < ids.length; i++) {
             var sprite = assets.glyph(font, ids[i], scale);
             if (sprite != null) {
-                Rect b = sprite.bounds(); Rect dst = Rect.makeXYWH(x + b.getLeft(), baseline + b.getTop(), b.getWidth(), b.getHeight());
-                image(sprite.texture().view, dst, sprite.uv(), paint.getColor(), 0, false);
+                Rect b = sprite.bounds();
+                if (upright) {
+                    // One atlas texel per screen pixel; retain glyph antialiasing without a
+                    // second bilinear filter at fractional baselines, advances or GUI scales.
+                    Rect dst = Rect.makeXYWH(Math.round(m[0] * x + m[4]) + b.getLeft(),
+                            Math.round(m[3] * baseline + m[5]) + b.getTop(), b.getWidth(), b.getHeight());
+                    Draw draw = imageDraw(sprite.texture().view, 0, false, ImageSampling.PIXEL);
+                    quad(draw, dst, sprite.uv(), paint.getColor(), IDENTITY);
+                } else {
+                    Rect dst = Rect.makeXYWH(x + b.getLeft() / scale, baseline + b.getTop() / scale,
+                            b.getWidth() / scale, b.getHeight() / scale);
+                    image(sprite.texture().view, dst, sprite.uv(), paint.getColor(), 0, false);
+                }
             }
             x += advances[i];
         }
     }
-    @Override public void drawImageRect(Image image, Rect src, Rect dst, Paint paint, boolean strict) {
+    @Override public void drawImageRect(Image image, Rect src, Rect dst, Paint paint, boolean strict, ImageSampling sampling) {
         var sprite = assets.image(image); Rect uv = sprite.uv();
         float w = image.getWidth(), h = image.getHeight();
         Rect crop = Rect.makeLTRB(uv.getLeft() + src.getLeft() / w * uv.getWidth(), uv.getTop() + src.getTop() / h * uv.getHeight(),
                 uv.getLeft() + src.getRight() / w * uv.getWidth(), uv.getTop() + src.getBottom() / h * uv.getHeight());
-        image(sprite.texture().view, dst, crop, paint == null ? -1 : (paint.getAlpha() << 24) | 0xFFFFFF, 0, false);
+        quad(imageDraw(sprite.texture().view, 0, false, sampling), dst, crop,
+                paint == null ? -1 : (paint.getAlpha() << 24) | 0xFFFFFF);
     }
-    @Override public void drawTexture(GpuTextureView texture, Rect src, Rect dst, float alpha) {
+    @Override public void drawTexture(GpuTextureView texture, Rect src, Rect dst, float alpha, ImageSampling sampling) {
         float w = texture.getWidth(0), h = texture.getHeight(0);
-        image(texture, dst, Rect.makeLTRB(src.getLeft() / w, src.getTop() / h, src.getRight() / w, src.getBottom() / h),
-                (Math.round(Math.max(0, Math.min(1, alpha)) * 255) << 24) | 0xFFFFFF, 0, true);
+        quad(imageDraw(texture, 0, true, sampling), dst,
+                Rect.makeLTRB(src.getLeft() / w, src.getTop() / h, src.getRight() / w, src.getBottom() / h),
+                (Math.round(Math.max(0, Math.min(1, alpha)) * 255) << 24) | 0xFFFFFF);
     }
     @Override public void drawBlurredImage(Image image, Rect dst, float radius) {
         var sprite = assets.image(image); image(sprite.texture().view, dst, sprite.uv(), -1, radius, false);
     }
     private void image(GpuTextureView texture, Rect dst, Rect uv, int color, float blur, boolean straight) {
-        Draw draw = draw(IMAGE, texture, Rect.makeWH(0, 0), new float[4], new float[]{0, blur, straight ? 1 : 0, 0}, null, null, null);
-        quad(draw, dst, uv, color);
+        quad(imageDraw(texture, blur, straight, ImageSampling.SMOOTH), dst, uv, color);
+    }
+    private Draw imageDraw(GpuTextureView texture, float blur, boolean straight, ImageSampling sampling) {
+        return draw(IMAGE, texture, Rect.makeWH(0, 0), new float[4],
+                new float[]{0, blur, straight ? 1 : 0, sampling == ImageSampling.PIXEL ? 1 : 0}, null, null, null);
     }
     @Override public void drawGradient(RRect rect, Point start, Point end, int[] colors, float[] stops, float stroke) {
         if (colors.length < 2 || colors.length > 3) throw new IllegalArgumentException("UI gradient requires two or three stops");
@@ -214,9 +235,12 @@ public final class BlazeUiCanvas implements UiCanvas {
         commands.add(draw); return draw;
     }
     private void quad(Draw draw, Rect rect, Rect uv, int color) {
+        quad(draw, rect, uv, color, state.matrix);
+    }
+    private void quad(Draw draw, Rect rect, Rect uv, int color, float[] matrix) {
         if (!Float.isFinite(rect.getLeft()) || !Float.isFinite(rect.getTop()) || rect.getWidth() <= 0 || rect.getHeight() <= 0) return;
         int[] corners = {0, 1, 2, 0, 2, 3};
-        for (int c : corners) draw.vertex(state.matrix, c == 0 || c == 3 ? rect.getLeft() : rect.getRight(), c < 2 ? rect.getTop() : rect.getBottom(),
+        for (int c : corners) draw.vertex(matrix, c == 0 || c == 3 ? rect.getLeft() : rect.getRight(), c < 2 ? rect.getTop() : rect.getBottom(),
                 c == 0 || c == 3 ? uv.getLeft() : uv.getRight(), c < 2 ? uv.getTop() : uv.getBottom(), color, uv);
     }
     static float[] radii(RRect rect) {

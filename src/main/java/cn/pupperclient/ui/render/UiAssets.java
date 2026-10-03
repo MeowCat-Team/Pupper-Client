@@ -13,7 +13,7 @@ import org.lwjgl.system.MemoryUtil;
 /** CPU glyph rasterization once per size, with a GPU atlas. No framebuffer readback. */
 final class UiAssets implements AutoCloseable {
     record Sprite(UiTexture texture, Rect uv, Rect bounds) {}
-    private record Glyph(Font font, short id, int scale) {}
+    private record Glyph(Font font, short id, float size) {}
     private final Map<Glyph, Sprite> glyphs = new HashMap<>();
     private final Map<Image, Sprite> images = new IdentityHashMap<>();
     private final List<Page> pages = new ArrayList<>();
@@ -21,17 +21,22 @@ final class UiAssets implements AutoCloseable {
     private int rasterizations;
     private static final int ATLAS_SIZE = 1024, MAX_PAGES = 16;
 
-    Sprite glyph(Font font, short id, int scale) {
-        return glyphs.computeIfAbsent(new Glyph(font, id, scale), key -> {
-            Rect b = font.getBounds(new short[]{id})[0];
-            if (b.isEmpty()) return null;
-            int left = (int) Math.floor(b.getLeft() * scale) - 2, top = (int) Math.floor(b.getTop() * scale) - 2;
-            int width = (int) Math.ceil(b.getRight() * scale) - left + 2, height = (int) Math.ceil(b.getBottom() * scale) - top + 2;
-            return raster(width, height, Rect.makeXYWH((float) left / scale, (float) top / scale, (float) width / scale, (float) height / scale), canvas -> {
-                canvas.translate(-left, -top); canvas.scale(scale, scale);
-                try (var blob = TextBlob.makeFromPos(new short[]{id}, new Point[]{new Point(0, 0)}, font);
-                     var paint = new Paint().setColor(0xFFFFFFFF).setAntiAlias(true)) { canvas.drawTextBlob(blob, 0, 0, paint); }
-            }, true);
+    Sprite glyph(Font font, short id, float scale) {
+        // Size quantization bounds animation cache growth without changing a visible pixel.
+        float size = Math.max(1 / 64f, Math.round(font.getSize() * scale * 64) / 64f);
+        return glyphs.computeIfAbsent(new Glyph(font, id, size), key -> {
+            // Hint at the actual device size. Scaling a logical-size bitmap blurs small text.
+            try (var rasterFont = font.makeWithSize(size).setEdging(FontEdging.ANTI_ALIAS).setSubpixel(false)) {
+                Rect b = rasterFont.getBounds(new short[]{id})[0];
+                if (b.isEmpty()) return null;
+                int left = (int) Math.floor(b.getLeft()) - 2, top = (int) Math.floor(b.getTop()) - 2;
+                int width = (int) Math.ceil(b.getRight()) - left + 2, height = (int) Math.ceil(b.getBottom()) - top + 2;
+                return raster(width, height, Rect.makeXYWH(left, top, width, height), canvas -> {
+                    canvas.translate(-left, -top);
+                    try (var blob = TextBlob.makeFromPos(new short[]{id}, new Point[]{new Point(0, 0)}, rasterFont);
+                         var paint = new Paint().setColor(0xFFFFFFFF).setAntiAlias(true)) { canvas.drawTextBlob(blob, 0, 0, paint); }
+                }, true);
+            }
         });
     }
 

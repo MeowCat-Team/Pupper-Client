@@ -29,8 +29,10 @@ public final class RasterUiCanvas implements UiCanvas {
     @Override public void drawArc(float l, float t, float r, float b, float start, float sweep, boolean center, Paint paint) { canvas.drawArc(l, t, r, b, start, sweep, center, paint); }
     @Override public void drawPath(Path path, Paint paint) { canvas.drawPath(path, paint); }
     @Override public void drawString(String text, float x, float baseline, Font font, Paint paint) { canvas.drawString(text, x, baseline, font, paint); }
-    @Override public void drawImageRect(Image image, Rect src, Rect dst, Paint paint, boolean strict) { canvas.drawImageRect(image, src, dst, paint, strict); }
-    @Override public void drawTexture(GpuTextureView texture, Rect src, Rect dst, float alpha) {
+    @Override public void drawImageRect(Image image, Rect src, Rect dst, Paint paint, boolean strict, ImageSampling sampling) {
+        canvas.drawImageRect(image, src, dst, sampling == ImageSampling.PIXEL ? SamplingMode.DEFAULT : SamplingMode.LINEAR, paint, strict);
+    }
+    @Override public void drawTexture(GpuTextureView texture, Rect src, Rect dst, float alpha, ImageSampling sampling) {
         throw new UnsupportedOperationException("A CPU preview cannot read a GPU-owned texture");
     }
     @Override public void drawGradient(RRect rect, Point start, Point end, int[] colors, float[] stops, float stroke) {
