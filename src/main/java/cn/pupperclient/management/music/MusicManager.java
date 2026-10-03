@@ -36,7 +36,7 @@ public class MusicManager {
     private volatile Music currentMusic;
     private MusicPlayer musicPlayer;
     private volatile boolean shuffle;
-    private volatile boolean repeat;
+    private volatile MusicRepeatMode repeatMode;
     private final MusicLibraryStore library;
     private final MusicService service;
     private final Thread playerThread;
@@ -67,13 +67,14 @@ public class MusicManager {
             Multithreading.runMainThread(() -> {
                 if (musicPlayer.getGeneration() != completedSession || !queue.current(completedQueue)
                     || musicPlayer.isPlaying() || queueLoading || shuttingDown) return;
-                if (repeat) { play(); return; }
-                if (queue.advance(shuffle) != null) prepareQueued(null, _ -> { }, this::queueError);
+                if (repeatMode == MusicRepeatMode.ONE) { play(); return; }
+                if (queue.advance(shuffle, repeatMode == MusicRepeatMode.ALL) != null) prepareQueued(null, _ -> { }, this::queueError);
                 else { setCurrentMusic(null); musicPlayer.setPlaying(false); }
             });
         });
         this.shuffle = false;
-        this.repeat = false;
+        this.repeatMode = library.repeatMode();
+        musicPlayer.setRepeat(repeatMode == MusicRepeatMode.ONE);
         playerThread = Thread.ofPlatform().daemon().name("Pupper Client music").start(() -> {
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
@@ -237,6 +238,7 @@ public class MusicManager {
     }
 
     public MusicQueue getQueue() { return queue; }
+    public MusicLibraryStore getLibrary() { return library; }
     public boolean isQueueLoading() { return queueLoading; }
     public void playFrom(List<MusicQueue.Entry> entries, int index, String quality,
             java.util.function.Consumer<Music> ready, java.util.function.Consumer<MusicError> failure) {
@@ -294,7 +296,7 @@ public class MusicManager {
         MusicTrack track = music.getTrack();
         String artwork = music.getAlbum() != null && music.getAlbum().isFile() ? music.getAlbum().toURI().toString() : "";
         return new WindowsSmtc.Snapshot(music.getAudio().getAbsolutePath(), track.title(), track.artist(), track.album(),
-            artwork, isPlaying(), true, queue.canSwitch(), getCurrentTime(), getEndTime());
+            artwork, isPlaying(), true, queue.canSwitch() || repeatMode == MusicRepeatMode.ALL, getCurrentTime(), getEndTime());
     }
 
     public float getVolume() {
@@ -306,7 +308,7 @@ public class MusicManager {
     }
 
     public void next() {
-        if (queue.advance(shuffle) != null) { prepareQueued(null, _ -> { }, this::queueError); return; }
+        if (queue.advance(shuffle, repeatMode == MusicRepeatMode.ALL) != null) { prepareQueued(null, _ -> { }, this::queueError); return; }
         stop(); setCurrentMusic(null);
     }
 
@@ -369,11 +371,17 @@ public class MusicManager {
     }
 
     public boolean isRepeat() {
-        return repeat;
+        return repeatMode == MusicRepeatMode.ONE;
     }
 
     public void setRepeat(boolean repeat) {
-        this.repeat = repeat;
-        musicPlayer.setRepeat(repeat);
+        setRepeatMode(repeat ? MusicRepeatMode.ONE : MusicRepeatMode.OFF);
+    }
+    public MusicRepeatMode getRepeatMode() { return repeatMode; }
+    public void cycleRepeatMode() { setRepeatMode(repeatMode.next()); }
+    public void setRepeatMode(MusicRepeatMode mode) {
+        try { library.repeatMode(mode); }
+        catch (java.io.IOException failure) { queueError(new MusicError("music.error.file")); return; }
+        repeatMode = mode; musicPlayer.setRepeat(mode == MusicRepeatMode.ONE);
     }
 }
