@@ -88,6 +88,21 @@ public final class MusicInteractionChecks {
         require(!menu.keyPressed(GLFW.GLFW_KEY_ENTER) && calls.get() == 12, "Closed menu consumed or activated keyboard actions");
         menu.open(100, 100, items); menu.mousePressed(120, 175, GLFW.GLFW_MOUSE_BUTTON_RIGHT);
         require(!menu.isOpen() && calls.get() == 12, "Secondary press unexpectedly activated a menu action");
+        AtomicInteger choice = new AtomicInteger(-1);
+        var many = java.util.stream.IntStream.range(0, 24).mapToObj(i -> new MusicPopupMenu.Item("Playlist " + i, "", true, false, () -> choice.set(i))).toList();
+        menu.open(100, 100, many);
+        for (int i = 0; i < 18; i++) menu.mouseScrolled(120, 160, -1);
+        menu.mousePressed(120, 144, GLFW.GLFW_MOUSE_BUTTON_LEFT); menu.mouseReleased(120, 144, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        require(choice.get() == 14, "Scrolling a long playlist picker activated the wrong song list");
+        menu.open(100, 100, many); menu.keyPressed(GLFW.GLFW_KEY_UP); menu.keyPressed(GLFW.GLFW_KEY_ENTER);
+        require(choice.get() == 23, "Long-menu keyboard wrap lost the last playlist");
+        var disabledPrefix = java.util.stream.IntStream.range(0, 16).mapToObj(i -> new MusicPopupMenu.Item("Playlist " + i, "", i == 15, false, () -> choice.set(i))).toList();
+        menu.open(100, 100, disabledPrefix);
+        menu.mousePressed(120, 576, GLFW.GLFW_MOUSE_BUTTON_LEFT); menu.mouseReleased(120, 576, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        require(choice.get() == 15 && !menu.isOpen(), "Initial menu focus hid the first enabled action beyond ten rows");
+        menu.open(100, 100, many); menu.mousePressed(120, 144, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        menu.mouseScrolled(120, 160, -1); menu.mouseReleased(120, 144, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        require(choice.get() == 15 && menu.isOpen(), "Scrolling between press and release activated another playlist");
         System.out.println("Music interaction checks passed: " + checks + " assertions; list context, queue editing, stale requests, popup geometry and pointer/keyboard actions.");
     }
     private static void require(boolean condition, String message) { checks++; if (!condition) throw new AssertionError(message); }

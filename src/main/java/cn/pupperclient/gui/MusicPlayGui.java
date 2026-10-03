@@ -19,7 +19,7 @@ public class MusicPlayGui extends SimplePupperClientGui {
     private MusicPlayerLayout.Panel panel = MusicPlayerLayout.Panel.NONE;
     private record Press(MusicPlayerLayout.Box box, Runnable action) { }
     private Press pressed;
-    private boolean menuPressed;
+    private boolean menuPressed, dialogPressed;
 
     @Override public void init() {
         super.init();
@@ -28,7 +28,7 @@ public class MusicPlayGui extends SimplePupperClientGui {
         controls = new MusicControlBar(16, 616, 1088);
         var side = MusicPlayerLayout.sidePanel();
         lyrics = new MusicLyricsView(side.x(), side.y(), side.width(), side.height());
-        queue = new MusicQueueView(side);
+        queue = new MusicQueueView(side, () -> library.navigate(MusicLibraryView.Tab.SEARCH), () -> library.saveQueue());
     }
     private void toggle(MusicPlayerLayout.Panel next) {
         panel = panel == next ? MusicPlayerLayout.Panel.NONE : next;
@@ -44,8 +44,7 @@ public class MusicPlayGui extends SimplePupperClientGui {
             MaterialTheme.glassPanel(0, 0, UI_WIDTH, UI_HEIGHT, MaterialTheme.SURFACE_RADIUS, palette);
             String page = library.tab().name().toLowerCase(java.util.Locale.ROOT);
             MusicUi.sidebar(page, service.provider().id(), library.quality(), mx, my, palette);
-            MusicUi.browserHeader(page, MusicText.get(library.tab() == MusicLibraryView.Tab.SEARCH
-                ? service.provider().nameKey() : library.tab() == MusicLibraryView.Tab.LIKED ? "music.sidebar.favorites" : "music.library.subtitle"),
+            MusicUi.browserHeader(page, library.heading(),
                 panel, mx, my, palette);
             library.draw(mx, my);
             if (panel != MusicPlayerLayout.Panel.NONE) {
@@ -58,23 +57,26 @@ public class MusicPlayGui extends SimplePupperClientGui {
             if (MusicUi.inside(mx, my, 1044, 24, 48, 48)) MusicUi.tooltip(MusicText.get(panel == MusicPlayerLayout.Panel.QUEUE
                 ? "music.action.closequeue" : "music.action.showqueue"), mx, my, UI_WIDTH, palette);
             menu.draw(mx, my, palette);
+            library.drawDialog(mx, my);
         } finally { Skia.restore(); }
     }
     private Press navigationAt(double mx, double my) {
         MusicPlayerLayout.Box[] boxes = { new MusicPlayerLayout.Box(16, 116, 208, 48), new MusicPlayerLayout.Box(16, 224, 208, 48),
-            new MusicPlayerLayout.Box(16, 280, 208, 48), new MusicPlayerLayout.Box(16, 384, 208, 48),
-            new MusicPlayerLayout.Box(16, 440, 208, 48), new MusicPlayerLayout.Box(16, 520, 208, 48),
+            new MusicPlayerLayout.Box(16, 280, 208, 48), new MusicPlayerLayout.Box(16, 336, 208, 48), new MusicPlayerLayout.Box(16, 424, 208, 48),
+            new MusicPlayerLayout.Box(16, 480, 208, 48), new MusicPlayerLayout.Box(16, 548, 208, 48),
             new MusicPlayerLayout.Box(992, 24, 48, 48), new MusicPlayerLayout.Box(1044, 24, 48, 48) };
         Runnable[] actions = { () -> library.navigate(MusicLibraryView.Tab.SEARCH), () -> library.navigate(MusicLibraryView.Tab.LIBRARY),
-            () -> library.navigate(MusicLibraryView.Tab.LIKED), () -> { library.selectProvider("netease"); library.navigate(MusicLibraryView.Tab.SEARCH); },
-            () -> { library.selectProvider("audius"); library.navigate(MusicLibraryView.Tab.SEARCH); }, () -> library.openQuality(16, 568),
+            () -> library.navigate(MusicLibraryView.Tab.LIKED), () -> library.navigate(MusicLibraryView.Tab.PLAYLISTS),
+            () -> { library.selectProvider("netease"); library.navigate(MusicLibraryView.Tab.SEARCH); },
+            () -> { library.selectProvider("audius"); library.navigate(MusicLibraryView.Tab.SEARCH); }, () -> library.openQuality(16, 596),
             () -> toggle(MusicPlayerLayout.Panel.LYRICS), () -> toggle(MusicPlayerLayout.Panel.QUEUE) };
         for (int i = 0; i < boxes.length; i++) if (boxes[i].contains(mx, my)) return new Press(boxes[i], actions[i]);
         return null;
     }
     @Override public boolean onMousePressed(double mouseX, double mouseY, int button, boolean doubled) {
         float scale = scale(); double mx = localX(mouseX, scale), my = localY(mouseY, scale);
-        pressed = null; menuPressed = menu.isOpen();
+        pressed = null; dialogPressed = library.dialogOpen(); menuPressed = menu.isOpen();
+        if (dialogPressed) { library.mousePressed(mx, my, button, doubled); return true; }
         if (menuPressed) { menu.mousePressed(mx, my, button); return true; }
         // Forward outside presses to the search input so navigation and transport dismiss its focus.
         library.mousePressed(mx, my, button, doubled);
@@ -87,6 +89,7 @@ public class MusicPlayGui extends SimplePupperClientGui {
     }
     @Override public boolean onMouseReleased(double mouseX, double mouseY, int button) {
         float scale = scale(); double mx = localX(mouseX, scale), my = localY(mouseY, scale);
+        if (dialogPressed) { dialogPressed = false; library.mouseReleased(mx, my, button); return true; }
         if (menuPressed) { menuPressed = false; menu.mouseReleased(mx, my, button); return true; }
         Press press = pressed; pressed = null;
         library.mouseReleased(mx, my, button);
@@ -99,8 +102,9 @@ public class MusicPlayGui extends SimplePupperClientGui {
         controls.mouseReleased(mx, my, button); return true;
     }
     @Override public boolean onMouseScrolled(double x, double y, double horizontal, double vertical) {
-        if (menu.isOpen()) return true;
         float scale = scale(); double mx = localX(x, scale), my = localY(y, scale);
+        if (library.dialogOpen()) return true;
+        if (menu.isOpen()) { menu.mouseScrolled(mx, my, vertical); return true; }
         library.mouseScrolled(mx, my, horizontal, vertical);
         if (panel == MusicPlayerLayout.Panel.LYRICS) lyrics.mouseScrolled(mx, my, horizontal, vertical);
         else if (panel == MusicPlayerLayout.Panel.QUEUE) queue.mouseScrolled(mx, my, horizontal, vertical);
@@ -108,6 +112,7 @@ public class MusicPlayGui extends SimplePupperClientGui {
     }
     @Override public boolean onCharTyped(int chr) { if (!menu.isOpen()) library.charTyped(chr); return true; }
     @Override public boolean onKeyPressed(int key, int scancode, int modifiers) {
+        if (library.dialogOpen()) { library.keyPressed(key, scancode, modifiers); return true; }
         if (menu.keyPressed(key)) return true;
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             if (panel != MusicPlayerLayout.Panel.NONE) { panel = MusicPlayerLayout.Panel.NONE; library.layout(MusicPlayerLayout.content(panel)); return true; }

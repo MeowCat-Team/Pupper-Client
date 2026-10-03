@@ -32,12 +32,12 @@ public class MusicControlBar extends Component {
         MusicUi.playback(x, y, width, new MusicUi.Playback(
             track == null ? MusicText.get("music.player.ready") : track.title(),
             manager.isQueueLoading() ? MusicText.get("music.status.loading") : track == null ? MusicText.get("music.player.choose") : track.artist(),
-            pending ? manager.getService().cover(track) : music == null ? null : music.getAlbum(), manager.isPlaying() || manager.isQueueLoading(), manager.isRepeat(),
+            pending ? manager.getService().cover(track) : music == null ? null : music.getAlbum(), manager.isPlaying() || manager.isQueueLoading(), manager.getRepeatMode(),
             manager.isShuffle(), track != null && manager.getService().isLiked(track, entry != null ? entry.filename() : music.getAudio().getName()),
             manager.getVolume(), pending ? 0 : manager.getCurrentTime(), pending ? track.durationMillis() / 1000f : manager.getEndTime(), available), mouseX, mouseY, palette);
         int hovered = actionAt(mouseX, mouseY);
         if (hovered >= 0) {
-            String[] keys = { "music.action.repeat", "music.action.previous",
+            String[] keys = { manager.getRepeatMode().textKey(), "music.action.previous",
                 manager.isPlaying() || manager.isQueueLoading() ? "music.action.pause" : "music.action.play",
                 "music.action.next", "music.action.shuffle", "music.action.like", "music.action.mute" };
             MusicUi.tooltip(MusicText.get(keys[hovered]), mouseX, mouseY, x + width, palette);
@@ -60,11 +60,11 @@ public class MusicControlBar extends Component {
         pressed = -1;
         if (action < 0 || action != actionAt(mouseX, mouseY)) return;
         switch (action) {
-            case 0 -> { manager.setShuffle(false); manager.setRepeat(!manager.isRepeat()); }
+            case 0 -> manager.cycleRepeatMode();
             case 1 -> manager.back();
             case 2 -> manager.switchPlayBack();
             case 3 -> manager.next();
-            case 4 -> { manager.setRepeat(false); manager.setShuffle(!manager.isShuffle()); }
+            case 4 -> manager.setShuffle(!manager.isShuffle());
             case 5 -> {
                 var entry = manager.getQueue().snapshot().current();
                 Music music = manager.getCurrentMusic();

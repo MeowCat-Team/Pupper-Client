@@ -15,9 +15,11 @@ public final class MusicQueueView extends Component {
     private int pressed = -1, drop = -1;
     private long revision;
     private double startY;
-    private boolean removing, doubled, clearPressed, dragging;
-    public MusicQueueView(MusicPlayerLayout.Box box) {
+    private boolean removing, doubled, clearPressed, dragging, addPressed, savePressed;
+    private final Runnable add, save;
+    public MusicQueueView(MusicPlayerLayout.Box box, Runnable add, Runnable save) {
         super(box.x(), box.y()); width = box.width(); height = box.height();
+        this.add = add; this.save = save;
     }
     @Override public void draw(double mx, double my) {
         var manager = PupperClient.getInstance().getMusicManager();
@@ -28,7 +30,7 @@ public final class MusicQueueView extends Component {
         MusicUi.queueHeader(x, y, width, current == null ? null : current.track(), current == null ? null
             : playing != null && current.key().equals(MusicQueue.Entry.of(playing).key()) ? playing.getAlbum()
             : manager.getService().cover(current.track()), snapshot.upcoming().size(), mx, my, palette);
-        float top = y + 180, bodyHeight = height - 220;
+        float top = y + 180, bodyHeight = height - 236;
         scroll.setMaxScroll(snapshot.upcoming().size() * 64, bodyHeight); scroll.onUpdate();
         dragging = pressed >= 0 && !removing && Math.abs(my - startY) > 6;
         drop = dragging && !snapshot.upcoming().isEmpty() && MusicUi.inside(mx, my, x, top, width, bodyHeight)
@@ -49,15 +51,16 @@ public final class MusicQueueView extends Component {
                 }
             } finally { Skia.restore(); }
         }
-        Skia.drawText(Skia.getLimitText(MusicText.get("music.queue.drag"), Fonts.getRegular(12), width - 24),
-            x + 12, y + height - 26, palette.getOnSurfaceVariant(), Fonts.getRegular(12));
+        MusicUi.queueActions(x, y, width, height, mx, my, palette);
         if (MusicUi.inside(mx, my, x + width - 48, y, 48, 48))
             MusicUi.tooltip(MusicText.get("music.action.clearqueue"), mx, my, MusicPlayerLayout.WIDTH, palette);
     }
     public void mousePressed(double mx, double my, int button, boolean twice) {
         pressed = -1; dragging = false; doubled = twice;
         clearPressed = button == GLFW.GLFW_MOUSE_BUTTON_LEFT && MusicUi.inside(mx, my, x + width - 48, y, 48, 48);
-        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT || !MusicUi.inside(mx, my, x, y + 180, width, height - 220)) return;
+        addPressed = button == GLFW.GLFW_MOUSE_BUTTON_LEFT && MusicUi.inside(mx, my, x, y + height - 48, (width - 8) / 2, 48);
+        savePressed = button == GLFW.GLFW_MOUSE_BUTTON_LEFT && MusicUi.inside(mx, my, x + (width + 8) / 2, y + height - 48, (width - 8) / 2, 48);
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT || !MusicUi.inside(mx, my, x, y + 180, width, height - 236)) return;
         var snapshot = PupperClient.getInstance().getMusicManager().getQueue().snapshot();
         int index = (int) ((my - y - 180 - scroll.getValue()) / 64);
         if (index < 0 || index >= snapshot.upcoming().size()) return;
@@ -67,7 +70,9 @@ public final class MusicQueueView extends Component {
         var manager = PupperClient.getInstance().getMusicManager();
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             if (clearPressed && MusicUi.inside(mx, my, x + width - 48, y, 48, 48)) manager.getQueue().clear();
-            if (pressed >= 0 && MusicUi.inside(mx, my, x, y + 180, width, height - 220)) {
+            if (addPressed && MusicUi.inside(mx, my, x, y + height - 48, (width - 8) / 2, 48)) add.run();
+            if (savePressed && MusicUi.inside(mx, my, x + (width + 8) / 2, y + height - 48, (width - 8) / 2, 48)) save.run();
+            if (pressed >= 0 && MusicUi.inside(mx, my, x, y + 180, width, height - 236)) {
                 int index = (int) ((my - y - 180 - scroll.getValue()) / 64);
                 if (removing && index == pressed && mx >= x + width - 48) manager.getQueue().remove(pressed, revision);
                 else if (!removing && Math.abs(my - startY) > 6 && !manager.getQueue().snapshot().upcoming().isEmpty()) manager.getQueue().move(pressed,
@@ -75,9 +80,9 @@ public final class MusicQueueView extends Component {
                 else if (doubled && index == pressed && mx < x + width - 48) manager.jumpQueue(pressed, revision);
             }
         }
-        pressed = drop = -1; clearPressed = dragging = false;
+        pressed = drop = -1; clearPressed = dragging = addPressed = savePressed = false;
     }
     @Override public void mouseScrolled(double mx, double my, double horizontal, double vertical) {
-        if (MusicUi.inside(mx, my, x, y + 180, width, height - 220)) scroll.onScroll(vertical);
+        if (MusicUi.inside(mx, my, x, y + 180, width, height - 236)) scroll.onScroll(vertical);
     }
 }
