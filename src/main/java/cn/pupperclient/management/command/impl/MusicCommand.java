@@ -61,7 +61,7 @@ public class MusicCommand {
                 service().resolve(args[2], track -> {
                     String quality = requestedQuality == null ? service().defaultQuality(track) : requestedQuality;
                     if (play) service().play(track, quality, music -> ChatUtils.addChatMessage("§a"
-                        + MusicText.get("music.status.playing", music.getTitle())), MusicCommand::error);
+                        + MusicText.playing(music.getTrack())), MusicCommand::error);
                     else service().download(track, quality, false, MusicCommand::downloaded, MusicCommand::error);
                 }, MusicCommand::error);
             }
@@ -90,7 +90,7 @@ public class MusicCommand {
                 if (first.provider().equals("netease")) service().download(first, "exhigh", false,
                     MusicCommand::downloaded, MusicCommand::error);
                 else service().play(first, "standard", music -> ChatUtils.addChatMessage("§a"
-                    + MusicText.get("music.status.playing", music.getTitle())), MusicCommand::error);
+                    + MusicText.playing(music.getTrack())), MusicCommand::error);
                 return;
             }
             ChatUtils.addChatMessage("§6" + MusicText.get(result.total() < 0 ? "music.results.loaded" : "music.results.count",
@@ -98,11 +98,12 @@ public class MusicCommand {
             for (int i = 0; i < result.tracks().size(); i++) {
                 MusicTrack track = result.tracks().get(i);
                 String command = ".music " + (track.provider().equals("netease") ? "download " : "play ") + track.key();
-                Component row = Component.literal((i + 1) + ". " + track.title() + " — " + track.artist())
+                Component row = Component.literal((i + 1) + ". " + track.title() + " — " + track.artist()
+                    + (MusicText.access(track).isEmpty() ? "" : " · " + MusicText.access(track)))
                     .withStyle(ChatFormatting.AQUA)
                     .withStyle(style -> style.withClickEvent(new ClickEvent.SuggestCommand(command))
                         .withHoverEvent(new HoverEvent.ShowText(Component.literal(
-                            MusicText.get(track.provider().equals("netease") ? "music.action.download" : "music.action.play")
+                            (track.provider().equals("netease") ? MusicText.downloadAction(track) : MusicText.get("music.action.play"))
                                 + " · " + MusicText.get("music.provider." + track.provider())))));
                 ChatUtils.addChatMessage(row);
             }
@@ -110,14 +111,14 @@ public class MusicCommand {
     }
 
     private static void downloaded(Music music) {
-        ChatUtils.addChatMessage("§a" + MusicText.get("music.status.downloaded", music.getTitle()));
+        ChatUtils.addChatMessage("§a" + MusicText.downloaded(music.getTrack()));
     }
 
     private static void list() {
         List<Music> tracks = PupperClient.getInstance().getMusicManager().getMusics();
         ChatUtils.addChatMessage("§6" + MusicText.get("music.library.count", tracks.size()));
         for (int i = 0; i < tracks.size(); i++)
-            ChatUtils.addChatMessage("§b" + (i + 1) + ". §f" + tracks.get(i).getTitle() + " §7" + tracks.get(i).getArtist());
+            ChatUtils.addChatMessage("§b" + (i + 1) + ". §f" + tracks.get(i).getTitle() + " §7" + MusicText.artist(tracks.get(i).getTrack()));
     }
 
     private static void usage(String action) {

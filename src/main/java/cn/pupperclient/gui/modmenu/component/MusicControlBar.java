@@ -26,12 +26,13 @@ public class MusicControlBar extends Component {
         var snapshot = manager.getQueue().snapshot();
         var entry = snapshot.current();
         var track = entry != null ? entry.track() : music == null ? null : music.getTrack();
+        if (music != null && (entry == null || entry.key().equals(cn.pupperclient.management.music.MusicQueue.Entry.of(music).key()))) track = music.getTrack();
         boolean pending = entry != null && (music == null || !entry.key().equals(cn.pupperclient.management.music.MusicQueue.Entry.of(music).key()));
         boolean available = track != null || !snapshot.upcoming().isEmpty() || !manager.getMusics().isEmpty();
         var palette = PupperClient.getInstance().getColorManager().getPalette();
         MusicUi.playback(x, y, width, new MusicUi.Playback(
             track == null ? MusicText.get("music.player.ready") : track.title(),
-            manager.isQueueLoading() ? MusicText.get("music.status.loading") : track == null ? MusicText.get("music.player.choose") : track.artist(),
+            manager.isQueueLoading() ? MusicText.get("music.status.loading") : track == null ? MusicText.get("music.player.choose") : MusicText.artist(track),
             pending ? manager.getService().cover(track) : music == null ? null : music.getAlbum(), manager.isPlaying() || manager.isQueueLoading(), manager.getRepeatMode(),
             manager.isShuffle(), track != null && manager.getService().isLiked(track, entry != null ? entry.filename() : music.getAudio().getName()),
             manager.getVolume(), pending ? 0 : manager.getCurrentTime(), pending ? track.durationMillis() / 1000f : manager.getEndTime(), available), mouseX, mouseY, palette);

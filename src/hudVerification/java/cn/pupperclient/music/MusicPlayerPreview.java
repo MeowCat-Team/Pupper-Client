@@ -36,14 +36,14 @@ public final class MusicPlayerPreview {
         try {
             for (boolean dark : new boolean[] { false, true }) {
                 I18n.setLanguage(dark ? Language.CHINESE : Language.ENGLISH);
-                for (String view : new String[] { "player", "audius", "lyrics", "queue", "menu", "quality", "playlists", "playlist", "playlist-queue", "playlist-create", "playlist-menu" }) {
+                for (String view : new String[] { "player", "audius", "lyrics", "queue", "menu", "quality", "playlists", "playlist", "playlist-queue", "playlist-create", "playlist-menu", "access", "access-queue" }) {
                     try (Surface surface = Surface.makeRasterN32Premul(1120, 720)) {
                         field.set(null, surface); var canvas = surface.getCanvas();
                         canvas.clear(dark ? 0xff252735 : 0xffe9edf4);
                         var palette = new ColorPalette(Hct.from(265, 42, 60), dark);
                         int count = canvas.getSaveCount();
                         var panel = view.equals("lyrics") ? MusicPlayerLayout.Panel.LYRICS
-                            : view.equals("queue") || view.equals("playlist-queue") ? MusicPlayerLayout.Panel.QUEUE : MusicPlayerLayout.Panel.NONE;
+                            : view.equals("queue") || view.equals("playlist-queue") || view.equals("access-queue") ? MusicPlayerLayout.Panel.QUEUE : MusicPlayerLayout.Panel.NONE;
                         boolean audius = view.equals("audius");
                         boolean collection = view.equals("playlists") || view.equals("playlist-create");
                         boolean detail = view.startsWith("playlist") && !collection;
@@ -52,6 +52,7 @@ public final class MusicPlayerPreview {
                         String source = audius ? "audius" : "netease";
                         var track = new MusicTrack(3356975915L, audius ? "Afterglow" : "Montagem pitty",
                             dark ? "示例歌手" : "Sample artist", "Evening Mix", "", 137000);
+                        if (view.startsWith("access")) track = track.withAccess(1, 30000);
                         MaterialTheme.panel(0, 0, 1120, 720, 28, palette);
                         MusicUi.sidebar(page, source, audius ? "standard" : "exhigh", -1, -1, palette);
                         MusicUi.browserHeader(page, playlistName, panel, -1, -1, palette);
@@ -78,7 +79,9 @@ public final class MusicPlayerPreview {
                                     body.width(), names[i], i == 2 ? 0 : 12 + i, i == 1, -1, -1, palette);
                             } else for (int i = 0; i < 9; i++) MusicUi.songRow(body.x(), body.y() + 80 + i * 64, body.width(), null,
                                 i == 0 ? track.title() : i == 1 ? track.title() + " (Slowed)" : track.title() + " · Mix " + i,
-                                track.artist() + " · Evening Mix", i == 0 ? "2:17" : "2:42", i == 1, i == 0, true, i == 0,
+                                track.artist() + " · Evening Mix", view.startsWith("access") ? MusicText.access(track.withAccess(
+                                    i == 2 ? 4 : i == 3 ? 8 : i == 4 ? 0 : 1, i == 0 ? 30000 : i == 5 ? -1 : 0)) : "",
+                                i == 0 ? "2:17" : "2:42", i == 1, i == 0, true, i == 0,
                                 !audius || i != 1, true, i == 2 ? 46 : -1, -1, -1, palette);
                         } finally { Skia.restore(); }
                         var side = MusicPlayerLayout.sidePanel();
@@ -99,9 +102,9 @@ public final class MusicPlayerPreview {
                             } finally { Skia.restore(); }
                             MusicUi.queueActions(side.x(), side.y(), side.width(), side.height(), -1, -1, palette);
                         }
-                        MusicUi.playback(16, 616, 1088, new MusicUi.Playback(track.title(), track.artist(), null,
+                        MusicUi.playback(16, 616, 1088, new MusicUi.Playback(track.title(), MusicText.artist(track), null,
                             true, view.equals("lyrics") ? MusicRepeatMode.ONE : view.equals("player") ? MusicRepeatMode.OFF : MusicRepeatMode.ALL,
-                            view.equals("playlist-queue"), true, .65f, 37, 137, true), -1, -1, palette);
+                            view.equals("playlist-queue"), true, .65f, track.preview() ? 17 : 37, track.preview() ? 30 : 137, true), -1, -1, palette);
                         if (view.equals("menu") || view.equals("quality") || view.equals("playlist-menu")) {
                             MusicPopupMenu menu = new MusicPopupMenu();
                             if (view.equals("menu")) menu.open(1080, 490, List.of(

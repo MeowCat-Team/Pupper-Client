@@ -27,7 +27,8 @@ public final class MusicQueueView extends Component {
         var palette = PupperClient.getInstance().getColorManager().getPalette();
         var current = snapshot.current();
         var playing = manager.getCurrentMusic();
-        MusicUi.queueHeader(x, y, width, current == null ? null : current.track(), current == null ? null
+        MusicUi.queueHeader(x, y, width, current == null ? null : playing != null && current.key().equals(MusicQueue.Entry.of(playing).key())
+            ? playing.getTrack() : manager.getService().displayTrack(current.track()), current == null ? null
             : playing != null && current.key().equals(MusicQueue.Entry.of(playing).key()) ? playing.getAlbum()
             : manager.getService().cover(current.track()), snapshot.upcoming().size(), mx, my, palette);
         float top = y + 180, bodyHeight = height - 236;
@@ -45,7 +46,7 @@ public final class MusicQueueView extends Component {
                 for (int i = Math.max(0, (int) (-scroll.getValue() / 64)); i < snapshot.upcoming().size(); i++) {
                     float rowY = top + i * 64 + scroll.getValue(); if (rowY >= top + bodyHeight) break;
                     var entry = snapshot.upcoming().get(i);
-                    MusicUi.queueRow(x, rowY, width, entry.track(), manager.getService().cover(entry.track()),
+                    MusicUi.queueRow(x, rowY, width, manager.getService().displayTrack(entry.track()), manager.getService().cover(entry.track()),
                         i == pressed && snapshot.revision() == revision, mx, my, palette);
                     if (i == drop && snapshot.revision() == revision) Skia.drawLine(x + 8, rowY, x + width - 8, rowY, 2, palette.getPrimary());
                 }

@@ -80,6 +80,7 @@ public final class MusicLibraryView extends Component {
         var snapshot = manager.getQueue().snapshot();
         var entries = new ArrayList<MusicQueue.Entry>();
         if (snapshot.current() != null) entries.add(snapshot.current()); entries.addAll(snapshot.upcoming());
+        entries.replaceAll(entry -> new MusicQueue.Entry(service.displayTrack(entry.track()), entry.filename()));
         createPlaylist(entries);
     }
     private void createPlaylist(List<MusicQueue.Entry> entries) {
@@ -197,7 +198,7 @@ public final class MusicLibraryView extends Component {
                     File cover = row.local() != null && row.local().getAlbum() != null ? row.local().getAlbum() : service.cover(row.track());
                     String subtitle = row.track().artist().isBlank() ? MusicText.get("music.artist.unknown") : row.track().artist();
                     if (!row.track().album().isBlank()) subtitle += " · " + row.track().album();
-                    MusicUi.songRow(x, rowY, width, cover, row.track().title(), subtitle,
+                    MusicUi.songRow(x, rowY, width, cover, row.track().title(), subtitle, MusicText.access(row.track()),
                         row.track().durationMillis() > 0 ? MusicText.time(row.track().durationMillis() / 1000f) : "—",
                         selected.equals(row.entry().key()), active, manager.isPlaying(), service.isLiked(row.track(), row.filename()),
                         row.entry().playable(), !service.favoritesBusy(row.track()), service.downloadProgress(row.track()), mx, my, palette);
@@ -230,7 +231,7 @@ public final class MusicLibraryView extends Component {
     private Row row(MusicTrack track, String filename) {
         Music local = track.remote() ? service.local(track) : manager.getMusics().stream()
             .filter(m -> m.getAudio().getName().equals(filename)).findFirst().orElse(null);
-        return new Row(track, local, local == null ? filename : local.getAudio().getName());
+        return new Row(service.displayTrack(track), local, local == null ? filename : local.getAudio().getName());
     }
     @Override public void mousePressed(double mx, double my, int button) { mousePressed(mx, my, button, false); }
     public void mousePressed(double mx, double my, int button, boolean doubled) {
@@ -290,8 +291,10 @@ public final class MusicLibraryView extends Component {
             item("music.action.playlast", Icon.PLAYLIST_ADD, row.entry().playable(), () -> enqueue(row, false)),
             item("music.playlist.add", Icon.LIBRARY_ADD, true, () -> choosePlaylist(row, mx, my)),
             item(liked ? "music.action.unlike" : "music.action.like", Icon.FAVORITE, !service.favoritesBusy(row.track()), () -> like(row)),
-            item(row.local() != null ? "music.action.saved" : "music.action.download", Icon.DOWNLOAD,
-                row.local() == null && row.track().remote() && row.track().downloadable() && service.downloadProgress(row.track()) < 0, () -> download(row))));
+            new MusicPopupMenu.Item(row.local() == null ? MusicText.downloadAction(row.track()) : row.local().getTrack().preview()
+                ? MusicText.get("music.action.downloadagain") : MusicText.get("music.action.saved"), Icon.DOWNLOAD,
+                (row.local() == null || row.local().getTrack().preview()) && row.track().remote() && row.track().downloadable()
+                && service.downloadProgress(row.track()) < 0, false, () -> download(row))));
         if (tab == Tab.PLAYLIST) {
             var playlist = manager.getLibrary().playlist(playlistId); String id = playlistId;
             if (playlist != null) {
@@ -319,16 +322,24 @@ public final class MusicLibraryView extends Component {
             manager.switchPlayBack(); return;
         }
         List<MusicQueue.Entry> entries = rows().stream().map(Row::entry).filter(MusicQueue.Entry::playable).toList();
-        int index = entries.indexOf(row.entry()); if (index < 0) return;
+        int index = -1;
+        for (int i = 0; i < entries.size(); i++) if (entries.get(i).key().equals(row.entry().key())) { index = i; break; }
+        if (index < 0) return;
         status("music.status.loadingtrack", row.track().title());
-        manager.playFrom(entries, index, quality(row), music -> { if (!disposed) status("music.status.playing", music.getTitle()); }, this::error);
+        manager.playFrom(entries, index, quality(row), music -> { if (!disposed) {
+            if (music.getTrack().preview()) status("music.status.playingpreview", music.getTitle(), MusicText.access(music.getTrack()));
+            else status("music.status.playing", music.getTitle());
+        } }, this::error);
     }
     private void like(Row row) {
         service.toggleLike(row.track(), row.filename(), liked -> { if (!disposed) status(liked ? "music.status.liked" : "music.status.unliked", row.track().title()); }, this::error);
     }
     private void download(Row row) {
         status("music.status.downloadtrack", row.track().title());
-        service.download(row.track(), quality(row), false, music -> { if (!disposed) status("music.status.downloaded", music.getTitle()); }, this::error);
+        service.download(row.track(), quality(row), false, music -> { if (!disposed) {
+            if (music.getTrack().preview()) status("music.status.downloadedpreview", music.getTitle(), MusicText.access(music.getTrack()));
+            else status("music.status.downloaded", music.getTitle());
+        } }, this::error);
     }
     private String quality(Row row) {
         return row.track().provider().equals(service.provider().id()) ? quality : service.defaultQuality(row.track());
