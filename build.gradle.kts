@@ -197,6 +197,28 @@ val verifyItemRendering = tasks.register<JavaExec>("verifyItemRendering") {
 }
 tasks.check { dependsOn(verifyItemRendering) }
 
+val verifyStartupRendering = tasks.register<JavaExec>("verifyStartupRendering") {
+    group = "verification"
+    description = "Checks early Globals initialization, atlas deferral and Minecraft render hook compatibility."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.StartupRenderingChecks")
+    workingDir(layout.buildDirectory.dir("verification"))
+    doFirst { workingDir.mkdirs() }
+}
+tasks.check { dependsOn(verifyStartupRendering) }
+
+tasks.register<JavaExec>("verifyStartupGpu") {
+    group = "verification"
+    description = "Checks startup Globals publication and GPU contents in a hidden OpenGL context."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.StartupGpuChecks")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    workingDir(layout.buildDirectory.dir("verification"))
+    doFirst { workingDir.mkdirs() }
+}
+
 val verifyItemVertices = tasks.register<JavaExec>("verifyItemVertices") {
     group = "verification"
     description = "Compares packed item vertices byte-for-byte with Sodium's encoder."

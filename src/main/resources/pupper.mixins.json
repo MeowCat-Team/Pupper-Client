@@ -33,6 +33,7 @@
     "minecraft.client.render.MixinItemFeatureRendererOptimization",
     "minecraft.client.render.MixinModelManagerItemCache",
     "minecraft.client.render.MixinGameRenderer",
+    "minecraft.client.render.MixinTextureAtlas",
     "minecraft.client.render.MixinHeldItemRenderer",
     "minecraft.client.render.MixinInGameHud",
     "minecraft.client.render.MixinInGameOverlayRenderer",

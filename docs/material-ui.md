@@ -46,11 +46,20 @@ Guest likes are saved on the device. Logged-in likes use the account's `/like` a
 
 The Gradle client run enables `--enable-native-access=ALL-UNNAMED`. Add the same JVM option in a launcher to explicitly enable FFM native access; this uses the finalized API and needs no preview flag.
 
+## Startup rendering
+
+Minecraft 26.2 can apply its initial resource reload before the first frame publishes the `Globals` uniform buffer. Static atlas uploads and animation ticks can then draw without the uniform, causing `Missing uniform Globals`, a startup crash or an automatic resource-pack reset. This initialization timing also has an [upstream report](https://gitlab.com/distant-horizons-team/distant-horizons/-/issues/1292).
+
+`MixinGameRenderer` initializes and publishes its existing `GlobalSettingsUniform` at constructor return, before initial atlas uploads. It uses the current framebuffer size and graphics settings, with zero camera position/time until the normal first-frame update. No extra buffer is allocated, and an already published uniform is preserved. `MixinTextureAtlas` also defers animation uploads while Globals is missing, leaving animation states pending for the next tick. Static uploads remain intact.
+
+`verifyStartupRendering` exercises the animation guard with missing, ready and reset uniforms and checks both mixin registrations and the constructor/atlas contracts. `verifyStartupGpu` initializes a hidden OpenGL device and exercises the production initializer, reads back the actual GPU uniform contents, checks preservation of existing state, and verifies that ordinary frame updates replace the startup values. It requires a working GPU driver; full client startup and resource-pack loading still need in-game verification.
+
 ## Verification
 
 ```powershell
 .\gradlew.bat build previewHudTheme previewMaterialTheme --offline --console=plain
 .\gradlew.bat verifyGlassGpu --offline --console=plain
+.\gradlew.bat verifyStartupGpu --offline --console=plain
 .\gradlew.bat benchmarkGlassGpu --offline --console=plain
 .\gradlew.bat verifyMusicService previewMusicPlayer --offline --console=plain
 .\gradlew.bat verifyWindowsSmtc --offline --console=plain
