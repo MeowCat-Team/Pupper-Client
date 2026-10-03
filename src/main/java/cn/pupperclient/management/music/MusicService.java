@@ -30,6 +30,7 @@ public final class MusicService {
     private final Map<String, MusicDownload> downloads = new ConcurrentHashMap<>();
     private final LyricsManager lyrics;
     private final Map<String, Integer> progress = new ConcurrentHashMap<>();
+    private final Map<String, MusicTrack> observedAccess = new ConcurrentHashMap<>();
     private final Set<String> coversLoading = ConcurrentHashMap.newKeySet();
     private final Set<String> favoritesLoading = ConcurrentHashMap.newKeySet();
 
@@ -104,6 +105,7 @@ public final class MusicService {
                 MusicDownload.Result result = temporary
                     ? download.playback(track, quality, account.cookie(), playingFile, value -> progress.put(track.key(), value))
                     : download.download(track, quality, account.cookie(), playingFile, value -> progress.put(track.key(), value));
+                observedAccess.put(account.owner() + ":" + result.track().key(), result.track());
                 if (temporary) return new Music(result.audio().toFile(), result.track().title(), result.track().artist(),
                     java.nio.file.Files.isRegularFile(download.cover(track)) ? download.cover(track).toFile() : null,
                     Color.BLACK, result.track());
@@ -117,6 +119,12 @@ public final class MusicService {
     public int downloadProgress(MusicTrack track) { return progress.getOrDefault(track.key(), -1); }
     public Music local(MusicTrack track) {
         return manager.getMusics().stream().filter(m -> m.getTrack().sameSong(track)).findFirst().orElse(null);
+    }
+    /** Song fees describe the catalogue; preview length describes the audio actually returned for this account. */
+    public MusicTrack displayTrack(MusicTrack track) {
+        Music local = local(track);
+        MusicTrack known = local == null ? observedAccess.get(account(track.provider()).owner() + ":" + track.key()) : local.getTrack();
+        return known == null ? track : track.withAccess(known.fee() == 0 ? track.fee() : known.fee(), known.previewMillis());
     }
     public File cover(MusicTrack track) {
         MusicDownload download = downloads.get(track.provider());
@@ -133,18 +141,27 @@ public final class MusicService {
         lyrics.clearCache();
         task(() -> {
             manager.load();
-            List<Music> legacy = manager.getMusics().stream().filter(m -> !m.getTrack().remote()
+            List<Music> snapshot = manager.getMusics();
+            List<Music> legacy = snapshot.stream().filter(m -> !m.getTrack().remote()
                 && LEGACY.matcher(m.getAudio().getName()).matches()).toList();
-            if (legacy.isEmpty()) return 0;
-            List<Long> ids = legacy.stream().map(m -> {
+            List<Long> ids = new java.util.ArrayList<>(legacy.stream().map(m -> {
                 Matcher match = LEGACY.matcher(m.getAudio().getName()); match.matches();
                 return Long.parseLong(match.group(1));
-            }).toList();
-            List<MusicTrack> tracks = netease.details(ids);
+            }).toList());
+            snapshot.stream().map(Music::getTrack).filter(track -> track.remote() && track.provider().equals("netease"))
+                .map(MusicTrack::id).filter(id -> id > 0).forEach(ids::add);
+            if (ids.isEmpty()) return 0;
+            List<MusicTrack> tracks;
+            try { tracks = netease.details(ids.stream().distinct().toList()); }
+            catch (MusicError unavailable) { if (legacy.isEmpty()) return 0; throw unavailable; }
             for (MusicTrack track : tracks) {
-                Music playing = manager.getCurrentMusic();
-                downloads.get("netease").download(track, "exhigh", null, playing == null ? null
-                    : playing.getAudio().toPath().toAbsolutePath().normalize(), _ -> { });
+                if (!ids.contains(track.id())) continue;
+                List<Music> saved = snapshot.stream().filter(m -> m.getTrack().sameSong(track)).toList();
+                if (saved.isEmpty()) {
+                    Music playing = manager.getCurrentMusic();
+                    downloads.get("netease").download(track, "exhigh", null, playing == null ? null
+                        : playing.getAudio().toPath().toAbsolutePath().normalize(), _ -> { });
+                } else for (Music music : saved) library.refreshMetadata(music.getAudio().getName(), track);
             }
             manager.load();
             return tracks.size();

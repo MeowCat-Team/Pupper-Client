@@ -41,7 +41,15 @@ public final class MusicDownload {
         if (track.title().isBlank()) throw new MusicError("music.error.metadata");
         Path existing = library.downloaded(track);
         if (existing == null && track.provider().equals("netease")) existing = legacy(track.id());
-        if (existing != null) {
+        MusicTrack saved = existing == null ? null : library.metadata(existing.getFileName().toString());
+        MusicProvider.AudioSource source = null;
+        if (saved != null && saved.preview()) {
+            source = api.audio(track, quality, cookie, true);
+            track = track.withAccess(source.fee(), source.previewMillis());
+        }
+        boolean replacePreview = saved != null && saved.preview() && source != null && saved.previewMillis() != source.previewMillis();
+        if (existing != null && !replacePreview) {
+            if (saved != null) track = track.withAccess(track.fee(), saved.previewMillis());
             String previousFilename = existing.getFileName().toString();
             String extension = existing.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith(".flac")
                 ? ".flac" : ".mp3";
@@ -59,24 +67,41 @@ public final class MusicDownload {
             return new Result(existing, track);
         }
         if (!track.downloadable()) throw new MusicError("music.error.downloadrestricted");
-        MusicProvider.AudioSource source = api.audio(track, quality, cookie, true);
+        if (source == null) source = api.audio(track, quality, cookie, true);
+        track = track.withAccess(source.fee(), source.previewMillis());
+        if (replacePreview && existing.equals(playing)) throw new MusicError("music.error.previewplaying");
         Files.createDirectories(directory);
         Path output = directory.resolve(filename(track, source.extension()));
-        if (Files.exists(output)) throw new MusicError("music.error.fileexists");
+        if (Files.exists(output) && !output.equals(existing)) throw new MusicError("music.error.fileexists");
         Path partial = Files.createTempFile(directory, ".music-download-", ".part");
         try {
             transfer(source.uri(), partial, progress);
             validateAudio(partial, source.extension());
-            Files.move(partial, output);
-            try {
-                library.register(output.getFileName().toString(), track);
-            } catch (IOException failedIndex) {
-                Files.deleteIfExists(output);
-                throw failedIndex;
-            }
+            publish(partial, output, track, replacePreview ? existing : null);
         } finally { Files.deleteIfExists(partial); }
         fetchCover(track);
         return new Result(output, track);
+    }
+
+    private void publish(Path partial, Path output, MusicTrack track, Path previous) throws IOException {
+        Path backup = null;
+        boolean published = false;
+        try {
+            if (previous != null) {
+                Path temporary = Files.createTempFile(directory, ".music-replaced-", ".tmp");
+                try { Files.move(previous, temporary, StandardCopyOption.REPLACE_EXISTING); backup = temporary; }
+                catch (IOException failure) { Files.deleteIfExists(temporary); throw failure; }
+            }
+            Files.move(partial, output); published = true;
+            library.register(output.getFileName().toString(), track, previous == null ? output.getFileName().toString() : previous.getFileName().toString());
+        } catch (IOException failure) {
+            try {
+                if (published) Files.deleteIfExists(output);
+                if (backup != null) Files.move(backup, previous, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException restore) { failure.addSuppressed(restore); }
+            throw failure;
+        }
+        if (backup != null) Files.deleteIfExists(backup);
     }
 
     public Path legacy(long id) {
@@ -97,9 +122,11 @@ public final class MusicDownload {
     public Result playback(MusicTrack track, String quality, String cookie, Path playing, IntConsumer progress) throws MusicError, IOException {
         if (!track.playable()) throw new MusicError("music.error.playrestricted");
         MusicProvider.AudioSource source = api.audio(track, quality, cookie, false);
+        track = track.withAccess(source.fee(), source.previewMillis());
         Files.createDirectories(cache);
         String qualityKey = java.util.HexFormat.of().formatHex(quality.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        Path output = cache.resolve("music-preview-" + track.cacheId() + "-" + qualityKey + source.extension());
+        String accessKey = source.previewMillis() == 0 ? "full" : "trial-" + source.previewMillis();
+        Path output = cache.resolve("music-preview-" + track.cacheId() + "-" + qualityKey + "-" + accessKey + source.extension());
         // Revalidate access before reusing a cached track, even when its bytes are already present.
         if (!Files.isRegularFile(output)) {
             Path partial = Files.createTempFile(cache, ".music-preview-", ".part");

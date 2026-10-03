@@ -8,7 +8,9 @@ public interface MusicProvider {
     record SearchResult(List<MusicTrack> tracks, int total, int offset, int nextOffset) {
         public SearchResult(List<MusicTrack> tracks, int total, int offset) { this(tracks, total, offset, offset + tracks.size()); }
     }
-    record AudioSource(URI uri, String extension) { }
+    record AudioSource(URI uri, String extension, int fee, long previewMillis) {
+        public AudioSource(URI uri, String extension) { this(uri, extension, -1, 0); }
+    }
     record Lyrics(String original, String translated) { }
     String id();
     default String nameKey() { return "music.provider." + id(); }

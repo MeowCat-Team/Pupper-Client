@@ -62,6 +62,14 @@ public final class MusicLibraryStore {
     }
 
     public synchronized MusicTrack metadata(String filename) { return state.downloads.get(filename); }
+    /** Catalogue refreshes preserve the actual file's access state, including a concurrent preview-to-full upgrade. */
+    public synchronized boolean refreshMetadata(String filename, MusicTrack catalogue) throws IOException {
+        MusicTrack current = state.downloads.get(filename);
+        if (current == null || !current.sameSong(catalogue)) return false;
+        MusicTrack updated = catalogue.withAccess(catalogue.fee(), current.previewMillis());
+        if (updated.equals(current)) return false;
+        register(filename, updated); return true;
+    }
     public synchronized String provider() { return state.provider == null ? "netease" : state.provider; }
     public synchronized void provider(String provider) throws IOException { change(next -> next.provider = provider); }
     public synchronized MusicRepeatMode repeatMode() { return MusicRepeatMode.parse(state.repeatMode); }

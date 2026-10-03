@@ -19,7 +19,7 @@ import java.util.Map;
 /** One API origin for search, metadata, audio URLs and account favorites. */
 public final class NeteaseMusicApi {
     public record SearchResult(List<MusicTrack> tracks, int total, int offset) { }
-    public record AudioSource(URI uri, String extension) { }
+    public record AudioSource(URI uri, String extension, int fee, long previewMillis) { }
     public record Lyrics(String original, String translated) { }
     private final URI base;
 
@@ -46,7 +46,8 @@ public final class NeteaseMusicApi {
         for (int start = 0; start < ids.size(); start += 100) {
             String joined = String.join(",", ids.subList(start, Math.min(start + 100, ids.size()))
                 .stream().map(String::valueOf).toList());
-            tracks.addAll(parseTracks(array(request("song/detail", Map.of("ids", joined), null), "songs")));
+            JsonObject response = request("song/detail", Map.of("ids", joined), null);
+            tracks.addAll(parseTracks(array(response, "songs"), array(response, "privileges")));
         }
         return List.copyOf(tracks);
     }
@@ -61,7 +62,7 @@ public final class NeteaseMusicApi {
         String type = string(song, "type").toLowerCase(java.util.Locale.ROOT);
         if (!type.equals("mp3") && !type.equals("flac")) throw new MusicError("music.error.format");
         try {
-            return new AudioSource(URI.create(url), "." + type);
+            return new AudioSource(URI.create(url), "." + type, (int) number(song, "fee", -1), previewMillis(song));
         } catch (IllegalArgumentException invalid) {
             throw new MusicError("music.error.unavailable");
         }
@@ -131,6 +132,13 @@ public final class NeteaseMusicApi {
     }
 
     public static List<MusicTrack> parseTracks(JsonArray songs) {
+        return parseTracks(songs, new JsonArray());
+    }
+    private static List<MusicTrack> parseTracks(JsonArray songs, JsonArray privileges) {
+        Map<Long, JsonObject> access = new LinkedHashMap<>();
+        for (JsonElement element : privileges) if (element.isJsonObject()) {
+            JsonObject privilege = element.getAsJsonObject(); access.put(number(privilege, "id", 0), privilege);
+        }
         List<MusicTrack> tracks = new ArrayList<>();
         for (JsonElement element : songs) {
             if (!element.isJsonObject()) continue;
@@ -142,10 +150,23 @@ public final class NeteaseMusicApi {
             String artist = String.join(", ", artists.asList().stream().filter(JsonElement::isJsonObject)
                 .map(a -> string(a.getAsJsonObject(), "name")).filter(s -> !s.isBlank()).toList());
             JsonObject album = object(song, song.has("al") ? "al" : "album");
+            JsonObject privilege = access.getOrDefault(id, object(song, "privilege"));
             tracks.add(new MusicTrack(id, title, artist, string(album, "name"), string(album, "picUrl"),
-                number(song, "dt", number(song, "duration", 0))));
+                number(song, "dt", number(song, "duration", 0)), "netease", Long.toString(id), true, true,
+                (int) number(privilege, "fee", number(song, "fee", 0)), previewMillis(song)));
         }
         return List.copyOf(tracks);
+    }
+
+    private static long previewMillis(JsonObject song) {
+        JsonElement trial = song.get("freeTrialInfo");
+        if (trial == null || !trial.isJsonObject()) trial = song.get("trialInfo");
+        if (trial == null || !trial.isJsonObject()) return 0;
+        JsonObject info = trial.getAsJsonObject();
+        long start = number(info, "start", 0), end = number(info, "end", 0);
+        if (start >= 0 && end > start && end - start <= Long.MAX_VALUE / 1000) return (end - start) * 1000;
+        long time = number(song, "time", 0);
+        return time > 0 ? time : -1;
     }
 
     private static String form(Map<String, String> params) {

@@ -24,7 +24,7 @@ public final class NeteaseMusicProvider implements MusicProvider {
     }
     @Override public AudioSource audio(MusicTrack track, String quality, String cookie, boolean download) throws MusicError {
         var source = api.audio(track.id(), qualities().contains(quality) ? quality : defaultQuality(), cookie);
-        return new AudioSource(source.uri(), source.extension());
+        return new AudioSource(source.uri(), source.extension(), source.fee(), source.previewMillis());
     }
     @Override public Lyrics lyrics(MusicTrack track) throws MusicError {
         var result = api.lyrics(track.id());
