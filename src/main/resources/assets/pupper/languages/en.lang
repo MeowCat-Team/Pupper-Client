@@ -790,3 +790,5 @@ music.browse.saveloaded=Save loaded songs as playlist
 music.browse.save=Save as playlist
 music.browse.queued=Added %d songs to queue
 music.action.open=Open
+mod.servertextprivacy.name=Mod Probe Protection
+mod.servertextprivacy.description=Use vanilla fallbacks for server-supplied mod translations and keybinds. May affect custom text on modded servers.

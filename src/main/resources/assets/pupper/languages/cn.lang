@@ -791,3 +791,5 @@ music.browse.saveloaded=将已加载的歌曲保存为歌单
 music.browse.save=保存为歌单
 music.browse.queued=已将 %d 首歌曲加入队列
 music.action.open=打开
+mod.servertextprivacy.name=模组探测防护
+mod.servertextprivacy.description=服务器发来的模组翻译键和按键名使用原版回退值，可能影响模组服务器的自定义文本。

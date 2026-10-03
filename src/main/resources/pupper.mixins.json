@@ -47,8 +47,12 @@
     "minecraft.entity.MixinLivingEntity",
     "minecraft.entity.MixinPlayerEntity",
     "minecraft.network.MixinClientConnection",
+    "minecraft.network.MixinComponentSerialization",
+    "minecraft.network.MixinKeybindContents",
+    "minecraft.network.MixinTranslatableContents",
     "minecraft.world.MixinBiome",
     "minecraft.world.MixinClientWorldProperties",
+    "minecraft.world.MixinSignBlockEntity",
     "minecraft.world.MixinWorld",
     "viafabricplus.MixinMinecraftClient"
   ],

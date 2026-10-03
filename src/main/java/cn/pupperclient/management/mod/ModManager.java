@@ -110,6 +110,7 @@ public class ModManager {
         mods.add(new DiscordRPCMod());
         mods.add(new HypixelMod());
         mods.add(new MiniMessageCompletionMod());
+        mods.add(new ServerTextPrivacyMod());
         mods.add(new TimeChangerMod());
         mods.add(new WeatherChangerMod());
     }
