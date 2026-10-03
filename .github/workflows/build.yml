@@ -16,6 +16,11 @@ on:
         description: Publish or retry the current version on GitHub and Modrinth
         type: boolean
         default: true
+      retry_run_id:
+        description: Original failed run ID (reuse its verified JAR with the current release scripts)
+        type: string
+        required: false
+        default: ''
 
 # Do not interrupt a release between the two publishing platforms.
 concurrency:
@@ -24,6 +29,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_dispatch' || !inputs.publish || inputs.retry_run_id == ''
     runs-on: ubuntu-latest
     outputs:
       publish: ${{ steps.metadata.outputs.publish }}
@@ -67,20 +73,57 @@ jobs:
             build/release/notes.md
           if-no-files-found: error
 
-  release:
-    needs: build
-    if: needs.build.outputs.publish == 'true'
+  retry:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && inputs.retry_run_id != ''
     runs-on: ubuntu-latest
-    concurrency:
-      group: release-${{ needs.build.outputs.version }}
-      cancel-in-progress: false
     permissions:
-      contents: write
+      contents: read
+      actions: read
+    outputs:
+      run_id: ${{ steps.retry.outputs.run_id }}
+      sha: ${{ steps.retry.outputs.sha }}
+      version: ${{ steps.retry.outputs.version }}
     steps:
-      - name: Checkout the verified commit
+      - name: Checkout the repaired automation
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Check release automation
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
+
+      - name: Validate original build and artifact
+        id: retry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RETRY_RUN_ID: ${{ inputs.retry_run_id }}
+        run: python3 .github/scripts/release.py retry "$RETRY_RUN_ID"
+
+  release:
+    needs: [build, retry]
+    if: always() && ((needs.build.result == 'success' && needs.build.outputs.publish == 'true') || needs.retry.result == 'success')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-${{ needs.build.outputs.version || needs.retry.outputs.version }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Checkout the current release scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Preserve the repaired release scripts
+        run: cp -R .github/scripts "$RUNNER_TEMP/pupper-release-scripts"
+
+      - name: Checkout the verified build commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.retry.outputs.sha || github.sha }}
           fetch-depth: 0
 
       - name: Set up JDK 25
@@ -97,13 +140,16 @@ jobs:
       - name: Download the verified JAR and release notes
         uses: actions/download-artifact@v4
         with:
-          name: pupper-client-${{ github.sha }}
+          name: pupper-client-${{ needs.retry.outputs.sha || github.sha }}
           path: build
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.retry.outputs.run_id || github.run_id }}
 
       - name: Publish to GitHub Release and Modrinth
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          RELEASE_SHA: ${{ needs.retry.outputs.sha || github.sha }}
         run: |
           chmod +x gradlew
-          python3 .github/scripts/release.py publish
+          python3 "$RUNNER_TEMP/pupper-release-scripts/release.py" publish

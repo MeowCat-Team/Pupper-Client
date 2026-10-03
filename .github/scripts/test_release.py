@@ -77,7 +77,7 @@ class PlatformChecks(unittest.TestCase):
         self.info = release.metadata(PROPS)
         self.version = {"version_number": self.info["version"], "version_type": "alpha",
                         "files": [{"primary": True, "hashes": {"sha512": DIGEST["sha512"]}}]}
-        self.asset = {"name": Path(self.info["jar"]).name, "digest": f"sha256:{DIGEST['sha256']}"}
+        self.asset = {"name": release.asset_name(self.info), "digest": f"sha256:{DIGEST['sha256']}"}
 
     def test_modrinth_duplicate_and_conflict(self):
         self.assertTrue(release.needs_modrinth_upload([], self.info, DIGEST))
@@ -93,8 +93,28 @@ class PlatformChecks(unittest.TestCase):
     def test_github_asset_digest(self):
         self.assertFalse(release.has_asset("owner/repo", {"assets": []}, self.info, DIGEST))
         self.assertTrue(release.has_asset("owner/repo", {"assets": [self.asset]}, self.info, DIGEST))
+        original = self.asset | {"name": Path(self.info["jar"]).name}
+        self.assertTrue(release.has_asset("owner/repo", {"assets": [original]}, self.info, DIGEST))
         with self.assertRaises(ValueError):
             release.has_asset("owner/repo", {"assets": [self.asset | {"digest": "sha256:wrong"}]}, self.info, DIGEST)
+        with self.assertRaises(ValueError):
+            release.has_asset("owner/repo", {"assets": [self.asset, original | {"digest": "sha256:wrong"}]}, self.info, DIGEST)
+
+    def test_upload_normalizes_filename_without_changing_verified_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / Path(self.info["jar"]).name
+            path.write_bytes(b"original verified artifact")
+
+            def upload(*args):
+                self.assertEqual(args[:4], ("gh", "release", "upload", self.info["tag"]))
+                staged = Path(args[4])
+                self.assertEqual(staged.name, "Pupper.Client-Fabric-9.0.0-alpha.6+mc26.2.jar")
+                self.assertEqual(staged.read_bytes(), path.read_bytes())
+                self.assertEqual(args[5:], ("--repo", "owner/repo"))
+
+            with patch.object(release, "command", side_effect=upload) as command:
+                release.upload_asset("owner/repo", self.info | {"jar": str(path)})
+                command.assert_called_once()
 
     def test_tag_commit_and_annotation(self):
         with patch.object(release, "github", return_value=None):
@@ -121,7 +141,7 @@ class PlatformChecks(unittest.TestCase):
         with patch.object(release, "command", return_value=subprocess.CompletedProcess([], 1, "", "HTTP 404")):
             self.assertIsNone(release.github("owner/repo", "releases/tags/v1", missing=True))
 
-    def publication(self, existing, versions, upload_failure=False):
+    def publication(self, existing, versions, upload_failure=False, release_sha=None):
         events = []
         draft = {"id": 1, "draft": True, "assets": [], "target_commitish": SHA, "body": "Original notes"}
 
@@ -132,10 +152,8 @@ class PlatformChecks(unittest.TestCase):
             return draft | {"assets": [self.asset]}
 
         def run(*args, **kwargs):
-            if args[0] == "git":
-                return subprocess.CompletedProcess(args, 0, SHA + "\n", "")
-            events.append(("asset", args))
-            return subprocess.CompletedProcess(args, 0, "", "")
+            self.assertEqual(args, ("git", "rev-parse", "HEAD"))
+            return subprocess.CompletedProcess(args, 0, SHA + "\n", "")
 
         def gradle(args, **kwargs):
             events.append(("modrinth", args))
@@ -148,9 +166,14 @@ class PlatformChecks(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             notes = Path(temporary) / "notes.md"
             notes.write_text("Verified notes", encoding="utf-8")
-            with patch.dict(os.environ, {"GH_TOKEN": "fixture", "MODRINTH_TOKEN": "fixture", "GITHUB_REPOSITORY": "owner/repo", "GITHUB_SHA": SHA}, clear=True), \
+            environment = {"GH_TOKEN": "fixture", "MODRINTH_TOKEN": "fixture", "GITHUB_REPOSITORY": "owner/repo",
+                           "GITHUB_SHA": "d" * 40 if release_sha else SHA}
+            if release_sha:
+                environment["RELEASE_SHA"] = release_sha
+            with patch.dict(os.environ, environment, clear=True), \
                  patch.multiple(release, command=run, verify=Mock(return_value=DIGEST),
                                 check_tag=Mock(return_value=existing is not None), find_release=Mock(return_value=existing),
+                                upload_asset=Mock(side_effect=lambda *args: events.append(("asset", args))),
                                 versions=Mock(side_effect=versions), github=api, NOTES=notes), \
                  patch.object(release.subprocess, "run", side_effect=gradle):
                 if upload_failure:
@@ -178,11 +201,73 @@ class PlatformChecks(unittest.TestCase):
         self.assertEqual([event[0] for event in events], ["releases/1"])
         self.assertEqual(self.publication(draft | {"draft": False}, [[self.version]]), [])
 
+    def test_repaired_workflow_releases_original_verified_commit(self):
+        events = self.publication(None, [[], [self.version]], release_sha=SHA)
+        self.assertEqual(events[0], ("git/refs", {"ref": f"refs/tags/{self.info['tag']}", "sha": SHA}))
+        self.assertEqual(events[1][1]["target_commitish"], SHA)
+
     def test_missing_secret_stops_before_any_network_call(self):
         with patch.dict(os.environ, {}, clear=True), patch.object(release, "github") as api:
             with self.assertRaisesRegex(ValueError, "MODRINTH_TOKEN"):
                 release.publish(self.info)
             api.assert_not_called()
+
+
+class RetryChecks(unittest.TestCase):
+    def setUp(self):
+        self.run = {"event": "push", "status": "completed", "path": ".github/workflows/build.yml",
+                    "head_repository": {"full_name": "owner/repo"}, "head_branch": "ver/26.2", "head_sha": SHA}
+        self.jobs = [{"name": "build", "conclusion": "success"}, {"name": "release", "conclusion": "failure"}]
+        self.artifacts = [{"name": f"pupper-client-{SHA}", "expired": False}]
+
+    def retry(self, run=None, jobs=None, artifacts=None, ancestor=True):
+        responses = {"actions/runs/123": self.run if run is None else run,
+                     "actions/runs/123/jobs?filter=latest&per_page=100": {"jobs": self.jobs if jobs is None else jobs},
+                     "actions/runs/123/artifacts?per_page=100": {"artifacts": self.artifacts if artifacts is None else artifacts}}
+
+        def command(*args):
+            if args[:2] == ("git", "merge-base"):
+                self.assertEqual(args[2:], ("--is-ancestor", SHA, "HEAD"))
+                if not ancestor:
+                    raise RuntimeError("Original commit is not an ancestor")
+                return subprocess.CompletedProcess(args, 0, "", "")
+            self.assertEqual(args, ("git", "show", f"{SHA}:gradle.properties"))
+            return subprocess.CompletedProcess(args, 0, "\n".join(f"{key}={value}" for key, value in PROPS.items()), "")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "output"
+            with patch.dict(os.environ, {"GITHUB_REPOSITORY": "owner/repo", "GITHUB_REF_NAME": "ver/26.2",
+                                         "GITHUB_OUTPUT": str(output)}, clear=True), \
+                 patch.object(release, "github", side_effect=lambda repo, endpoint: responses[endpoint]), \
+                 patch.object(release, "command", side_effect=command):
+                release.retry("123")
+            return dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())
+
+    def test_retry_uses_original_build_sha_and_artifact(self):
+        self.assertEqual(self.retry(), {"run_id": "123", "sha": SHA, "version": "9.0.0-alpha.6+mc26.2"})
+
+    def test_retry_rejects_untrusted_or_incomplete_runs(self):
+        for update in ({"event": "pull_request"}, {"status": "in_progress"},
+                       {"head_repository": {"full_name": "other/repo"}}, {"head_branch": "ver/26.3"},
+                       {"path": ".github/workflows/other.yml"}, {"head_sha": "unsafe"}):
+            with self.subTest(update=update), self.assertRaises(ValueError):
+                self.retry(run=self.run | update)
+        with self.assertRaises(RuntimeError):
+            self.retry(ancestor=False)
+
+    def test_retry_requires_passed_build_and_unique_unexpired_artifact(self):
+        with self.assertRaises(ValueError):
+            self.retry(jobs=[{"name": "build", "conclusion": "failure"}])
+        for artifacts in ([], [self.artifacts[0] | {"expired": True}], self.artifacts * 2):
+            with self.subTest(artifacts=artifacts), self.assertRaises(ValueError):
+                self.retry(artifacts=artifacts)
+
+    def test_retry_input_is_not_executed(self):
+        with patch.object(release, "github") as api, patch.object(release, "command") as command:
+            with self.assertRaises(ValueError):
+                release.retry("123; echo unsafe")
+            api.assert_not_called()
+            command.assert_not_called()
 
 
 if __name__ == "__main__":

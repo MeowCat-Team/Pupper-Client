@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -96,6 +97,37 @@ def prepare():
     print(f"{info['version']}; publish={str(publish).lower()}; artifact={info['jar']}")
 
 
+def retry(run_id):
+    """Reuse a successful build while executing the current, repaired release scripts."""
+    if not re.fullmatch(r"[0-9]+", run_id):
+        raise ValueError("retry_run_id must be a numeric Actions run ID")
+    repo = os.environ["GITHUB_REPOSITORY"]
+    run = github(repo, f"actions/runs/{run_id}")
+    if (run.get("event") not in ("push", "workflow_dispatch") or run.get("status") != "completed"
+            or run.get("path", "").split("@")[0] != ".github/workflows/build.yml"
+            or run.get("head_repository", {}).get("full_name", "").lower() != repo.lower()
+            or run.get("head_branch") != os.environ["GITHUB_REF_NAME"]):
+        raise ValueError("Retry requires a completed Build and Release run from this repository and branch, not a pull request")
+    sha = run["head_sha"]
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ValueError("Invalid original build commit")
+    command("git", "merge-base", "--is-ancestor", sha, "HEAD")
+    props = properties(command("git", "show", f"{sha}:gradle.properties").stdout)
+    info = metadata(props)
+    should_publish("workflow_dispatch", run["head_branch"], props, None)
+    jobs = github(repo, f"actions/runs/{run_id}/jobs?filter=latest&per_page=100")["jobs"]
+    if not any(job["name"] == "build" and job["conclusion"] == "success" for job in jobs):
+        raise ValueError("The original build job must have passed")
+    artifact_name = f"pupper-client-{sha}"
+    artifacts = github(repo, f"actions/runs/{run_id}/artifacts?per_page=100")["artifacts"]
+    matches = [artifact for artifact in artifacts if artifact["name"] == artifact_name and not artifact["expired"]]
+    if len(matches) != 1:
+        raise ValueError("The original verified build artifact is missing or expired")
+    with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as stream:
+        stream.write(f"run_id={run_id}\nsha={sha}\nversion={info['version']}\n")
+    print(f"Retrying {info['version']} from verified run {run_id}, commit {sha}")
+
+
 def hashes(path):
     result = {}
     for algorithm in ("sha256", "sha512"):
@@ -179,28 +211,41 @@ def check_tag(repo, info, sha):
     return tag is not None
 
 
+def asset_name(info):
+    # GitHub normalizes spaces to dots. Use the canonical name explicitly on upload.
+    return Path(info["jar"]).name.replace(" ", ".")
+
+
 def has_asset(repo, release, info, digest):
-    assets = [asset for asset in release.get("assets", []) if asset["name"] == Path(info["jar"]).name]
+    names = {Path(info["jar"]).name, asset_name(info)}
+    assets = [asset for asset in release.get("assets", []) if asset["name"] in names]
     if not assets:
         return False
-    asset = assets[0]
-    if asset.get("digest"):
-        matches = asset["digest"] == f"sha256:{digest['sha256']}"
-    else:
-        # Older GitHub assets lack the digest field; compare the downloaded bytes.
-        with tempfile.TemporaryDirectory() as temporary:
-            command("gh", "release", "download", info["tag"], "--repo", repo, "--pattern", asset["name"], "--dir", temporary)
-            with (Path(temporary) / asset["name"]).open("rb") as stream:
-                matches = hashlib.file_digest(stream, "sha256").hexdigest() == digest["sha256"]
-    if not matches:
-        raise ValueError("GitHub already has different bytes for this version; bump mod_version")
+    for asset in assets:
+        if asset.get("digest"):
+            matches = asset["digest"] == f"sha256:{digest['sha256']}"
+        else:
+            # Older GitHub assets lack the digest field; compare the downloaded bytes.
+            with tempfile.TemporaryDirectory() as temporary:
+                command("gh", "release", "download", info["tag"], "--repo", repo, "--pattern", asset["name"], "--dir", temporary)
+                with (Path(temporary) / asset["name"]).open("rb") as stream:
+                    matches = hashlib.file_digest(stream, "sha256").hexdigest() == digest["sha256"]
+        if not matches:
+            raise ValueError("GitHub already has different bytes for this version; bump mod_version")
     return True
+
+
+def upload_asset(repo, info):
+    with tempfile.TemporaryDirectory() as temporary:
+        path = Path(temporary) / asset_name(info)
+        shutil.copyfile(info["jar"], path)
+        command("gh", "release", "upload", info["tag"], str(path), "--repo", repo)
 
 
 def publish(info):
     if not os.getenv("GH_TOKEN") or not os.getenv("MODRINTH_TOKEN"):
         raise ValueError("Set repository Secret MODRINTH_TOKEN (CREATE_VERSION scope); GitHub supplies GITHUB_TOKEN")
-    repo, sha = os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_SHA"]
+    repo, sha = os.environ["GITHUB_REPOSITORY"], os.getenv("RELEASE_SHA") or os.environ["GITHUB_SHA"]
     if not re.fullmatch(r"[0-9A-Za-z_.-]+/[0-9A-Za-z_.-]+", repo) or not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("Invalid repository or commit")
     if command("git", "rev-parse", "HEAD").stdout.strip() != sha:
@@ -222,7 +267,7 @@ def publish(info):
         notes = release["body"]
         NOTES.write_text(notes, encoding="utf-8")
     if not asset_exists:
-        command("gh", "release", "upload", info["tag"], info["jar"], "--repo", repo)
+        upload_asset(repo, info)
         if not has_asset(repo, github(repo, f"releases/{release['id']}"), info, digest):
             raise RuntimeError("GitHub upload could not be verified; rerun this failed release job")
     if upload:
@@ -248,6 +293,8 @@ if __name__ == "__main__":
         action = sys.argv[1]
         if action == "prepare":
             prepare()
+        elif action == "retry":
+            retry(sys.argv[2])
         elif action in ("verify", "publish"):
             info = metadata(properties(PROPERTIES.read_text(encoding="utf-8")))
             if action == "publish":
@@ -256,7 +303,7 @@ if __name__ == "__main__":
                 verify(info)
                 print(f"Verified release artifact: {info['jar']}")
         else:
-            raise ValueError("Usage: release.py prepare|verify|publish")
+            raise ValueError("Usage: release.py prepare|verify|publish|retry RUN_ID")
     except (KeyError, IndexError, ValueError, OSError, RuntimeError, subprocess.CalledProcessError, zipfile.BadZipFile) as failure:
         print(f"Release error: {failure}", file=sys.stderr)
         sys.exit(1)
