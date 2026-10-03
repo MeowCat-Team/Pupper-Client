@@ -76,8 +76,10 @@ final class MusicPlaybackChecks {
             }
             checkRepeat(mp3);
             checkRepeat(flac);
+            checkOutputCleanupRace(mp3, false);
+            checkOutputCleanupRace(flac, true);
             System.out.println("Music playback checks passed: " + checks
-                + " assertions; real MP3/FLAC decoding, repeat on/off, pause/resume, switch, mute and shutdown without audio hardware.");
+                + " assertions; real MP3/FLAC decoding, repeat on/off, pause/resume, switch/cleanup race, mute and shutdown without audio hardware.");
         } finally {
             try (var files = Files.walk(root)) {
                 for (Path path : files.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
@@ -125,6 +127,32 @@ final class MusicPlaybackChecks {
         });
     }
 
+    private static void checkOutputCleanupRace(Music track, boolean shutdown) throws Exception {
+        TestPlayer player = new TestPlayer(new AtomicInteger());
+        var output = MusicPlayer.class.getDeclaredField("sourceDataLine");
+        output.setAccessible(true);
+        SpyLine old = new SpyLine(new AudioFormat(44_100, 16, 2, true, false));
+        output.set(player, old.line);
+        // Deterministically reproduce cleanup clearing the volatile field between stop and flush.
+        old.onStop = () -> {
+            try { output.set(player, null); }
+            catch (IllegalAccessException failure) { throw new AssertionError(failure); }
+        };
+        if (shutdown) player.shutdown(); else player.setCurrentMusic(track);
+        require(old.stops == 1 && old.flushes == 1 && old.closed, "Concurrent cleanup interrupted audio output shutdown");
+        require(output.get(player) == null && player.isPlaying() == !shutdown, "Closing output left stale state");
+
+        SpyLine newer = new SpyLine(old.format);
+        output.set(player, newer.line);
+        var release = MusicPlayer.class.getDeclaredMethod("releaseLine", SourceDataLine.class);
+        release.setAccessible(true);
+        release.invoke(player, old.line);
+        require(output.get(player) == newer.line && !newer.closed, "Old decoder cleanup detached a new output");
+        player.shutdown();
+        player.shutdown();
+        require(newer.stops == 1 && newer.flushes == 1 && newer.closed, "Repeated shutdown reused closed output");
+    }
+
     private static void await(BooleanSupplier condition) throws Exception {
         long deadline = System.nanoTime() + 3_000_000_000L;
         while (!condition.getAsBoolean()) {
@@ -155,6 +183,8 @@ final class MusicPlaybackChecks {
         final SourceDataLine line;
         volatile boolean closed;
         volatile long bytes;
+        volatile Runnable onStop = () -> {};
+        int stops, flushes;
 
         SpyLine(AudioFormat format) {
             this.format = format;
@@ -170,6 +200,8 @@ final class MusicPlaybackChecks {
                             catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
                             return length;
                         }
+                        case "stop" -> { stops++; onStop.run(); return null; }
+                        case "flush" -> { flushes++; return null; }
                         case "close" -> { closed = true; return null; }
                         case "getControl" -> { return gain; }
                         case "getControls" -> { return new javax.sound.sampled.Control[] {gain}; }

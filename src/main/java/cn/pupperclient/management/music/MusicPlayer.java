@@ -129,7 +129,7 @@ public class MusicPlayer implements Runnable {
             }
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
         } finally {
-            if (line != null) { line.close(); if (sourceDataLine == line) sourceDataLine = null; }
+            releaseLine(line);
         }
     }
 
@@ -193,7 +193,7 @@ public class MusicPlayer implements Runnable {
             }
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
         } finally {
-            if (line != null) { line.close(); if (sourceDataLine == line) sourceDataLine = null; }
+            releaseLine(line);
         }
     }
 
@@ -255,11 +255,7 @@ public class MusicPlayer implements Runnable {
         playing = false;
         generation++;
 
-        if (sourceDataLine != null) {
-            sourceDataLine.stop();
-            sourceDataLine.flush();
-            sourceDataLine.close();
-        }
+        stopCurrentLine();
 
         this.currentMusic = currentMusic;
         lastCurrentTime = 0;
@@ -294,7 +290,23 @@ public class MusicPlayer implements Runnable {
     public synchronized void shutdown() {
         generation++;
         playing = false;
-        if (sourceDataLine != null) { sourceDataLine.stop(); sourceDataLine.flush(); sourceDataLine.close(); }
+        stopCurrentLine();
+    }
+
+    // Called while holding this player's lock; detach before shutdown races with decoder cleanup.
+    private void stopCurrentLine() {
+        SourceDataLine line = sourceDataLine;
+        sourceDataLine = null;
+        if (line != null) { line.stop(); line.flush(); line.close(); }
+    }
+
+    private void releaseLine(SourceDataLine line) {
+        if (line == null) return;
+        synchronized (this) {
+            // An old session must never clear a newer session's published output.
+            if (sourceDataLine == line) sourceDataLine = null;
+        }
+        line.close();
     }
 
     public boolean isPlaying() {
@@ -349,9 +361,10 @@ public class MusicPlayer implements Runnable {
     public void setVolume(float volume) {
         if (volume >= 0.0f && volume <= 1.0f) {
             this.volume = volume;
-            if (sourceDataLine != null) {
+            SourceDataLine line = sourceDataLine;
+            if (line != null) {
                 try {
-                    FloatControl gainControl = (FloatControl) sourceDataLine.getControl(FloatControl.Type.MASTER_GAIN);
+                    FloatControl gainControl = (FloatControl) line.getControl(FloatControl.Type.MASTER_GAIN);
                     float gain = volume <= 0 ? gainControl.getMinimum() : (float) (Math.log10(volume) * 20.0);
                     gainControl.setValue(Math.clamp(gain, gainControl.getMinimum(), gainControl.getMaximum()));
                 } catch (Exception e) {
