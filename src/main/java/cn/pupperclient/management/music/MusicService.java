@@ -1,13 +1,11 @@
 package cn.pupperclient.management.music;
 
-import cn.pupperclient.management.command.impl.LoginCommand;
 import cn.pupperclient.utils.file.FileLocation;
 import cn.pupperclient.utils.thread.Multithreading;
 import cn.pupperclient.management.music.lyric.LyricsManager;
 import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +24,7 @@ public final class MusicService {
     private final MusicManager manager;
     private final MusicLibraryStore library;
     private final NeteaseMusicApi netease;
+    private final MusicLoginService login;
     private final MusicProviders providers;
     private final Map<String, MusicDownload> downloads = new ConcurrentHashMap<>();
     private final LyricsManager lyrics;
@@ -37,7 +36,11 @@ public final class MusicService {
     public MusicService(MusicManager manager, MusicLibraryStore library) {
         this.manager = manager;
         this.library = library;
-        netease = new NeteaseMusicApi(URI.create(LoginCommand.getApiBase()));
+        netease = new NeteaseMusicApi(NeteaseMusicApi.DEFAULT_ORIGIN);
+        login = new MusicLoginService(netease,
+            new MusicAccountStore(FileLocation.MAIN_DIR.toPath().resolve("login_status.json")),
+            Multithreading::runAsync, Multithreading::runMainThread,
+            (task, delay) -> Multithreading.schedule(task, delay, java.util.concurrent.TimeUnit.MILLISECONDS));
         providers = new MusicProviders(library, new NeteaseMusicProvider(netease), new AudiusMusicProvider());
         for (MusicProvider provider : providers.all()) downloads.put(provider.id(), new MusicDownload(provider, library,
             FileLocation.MUSIC_DIR.toPath(), FileLocation.CACHE_DIR.toPath()));
@@ -46,6 +49,7 @@ public final class MusicService {
     }
 
     public LyricsManager lyrics() { return lyrics; }
+    public MusicLoginService login() { return login; }
     public MusicProvider provider() { return providers.selected(); }
     public List<MusicProvider> providers() { return providers.all(); }
     public void selectProvider(String id) throws MusicError, IOException { providers.select(id); }
@@ -235,9 +239,9 @@ public final class MusicService {
     }
     private Account account(String provider) {
         if (!provider.equals("netease") && !provider.equals("local")) return new Account("guest", null, null);
-        String cookie = LoginCommand.getCurrentCookie(), userId = LoginCommand.getCurrentUserId();
-        return cookie == null || cookie.isBlank() || userId == null
-            ? new Account("guest", null, null) : new Account("netease:" + userId, cookie, userId);
+        MusicAccount account = login.account();
+        return account.authenticated() ? new Account(account.owner(), account.cookie(), account.userId())
+            : new Account("guest", null, null);
     }
     private static <T> void task(Operation<T> operation, Consumer<T> success, Consumer<MusicError> failure) {
         Multithreading.runAsync(() -> {

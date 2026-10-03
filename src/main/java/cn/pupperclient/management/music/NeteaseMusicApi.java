@@ -18,9 +18,16 @@ import java.util.Map;
 
 /** One API origin for search, metadata, audio URLs and account favorites. */
 public final class NeteaseMusicApi {
+    public static final URI DEFAULT_ORIGIN = URI.create("https://zm.wwoyun.cn/");
     public record SearchResult(List<MusicTrack> tracks, int total, int offset) { }
     public record AudioSource(URI uri, String extension, int fee, long previewMillis) { }
     public record Lyrics(String original, String translated) { }
+    public record QrCode(String key, String url, String image) {
+        @Override public String toString() { return "QrCode[generated]"; }
+    }
+    public record QrCheck(int code, String cookie) {
+        @Override public String toString() { return "QrCheck[code=" + code + "]"; }
+    }
     private final URI base;
 
     public NeteaseMusicApi(URI base) {
@@ -129,17 +136,88 @@ public final class NeteaseMusicApi {
             "timestamp", String.valueOf(System.currentTimeMillis())), cookie);
     }
 
+    public void sendCaptcha(String phone) throws MusicError {
+        validatePhone(phone);
+        authRequest("captcha/sent", Map.of("phone", phone), null, false);
+    }
+    public MusicAccount phoneLogin(String phone, String captcha) throws MusicError {
+        validatePhone(phone);
+        if (captcha == null || !captcha.matches("[0-9]{4,8}")) throw new MusicError("music.login.error.input");
+        JsonObject response = authRequest("login/cellphone", Map.of("phone", phone, "captcha", captcha), null, false);
+        String cookie = string(response, "cookie");
+        if (cookie.isBlank()) throw new MusicError("music.login.error.response");
+        MusicAccount account = parseAccount(response, cookie, phone);
+        return account.authenticated() ? account : loginAccount(cookie, phone);
+    }
+    public MusicAccount loginAccount(String cookie, String phone) throws MusicError {
+        MusicAccount account = parseAccount(authRequest("user/account", Map.of(), cookie, false), cookie, phone);
+        if (!account.authenticated()) throw new MusicError("music.login.error.response");
+        return account;
+    }
+    public MusicAccount loginStatus(String cookie, String phone) throws MusicError {
+        try {
+            JsonObject data = object(authRequest("login/status", Map.of(), cookie, false), "data");
+            long code = number(data, "code", -1);
+            if (code == 301 || code == 401 || code == 403) return MusicAccount.GUEST;
+            if (code != 200) throw new MusicError("music.login.error.response");
+            // The API also returns data.code=200 for anonymous visitors, with null account/profile.
+            MusicAccount account = parseAccount(data, cookie, phone);
+            return account.authenticated() ? account : MusicAccount.GUEST;
+        } catch (MusicError error) {
+            if (error.key().equals("music.error.login")) return MusicAccount.GUEST;
+            throw error;
+        }
+    }
+    public String refreshLogin(String cookie) throws MusicError {
+        String refreshed = string(authRequest("login/refresh", Map.of(), cookie, false), "cookie");
+        return refreshed.isBlank() ? cookie : refreshed;
+    }
+    public void logout(String cookie) throws MusicError { authRequest("logout", Map.of(), cookie, false); }
+    public QrCode createLoginQr() throws MusicError {
+        JsonObject keyData = object(authRequest("login/qr/key", Map.of(), null, false), "data");
+        if (number(keyData, "code", -1) != 200) throw new MusicError("music.login.error.response");
+        String key = string(keyData, "unikey");
+        if (key.isBlank()) throw new MusicError("music.login.error.response");
+        JsonObject data = object(authRequest("login/qr/create", Map.of("key", key, "qrimg", "1"), null, false), "data");
+        String url = string(data, "qrurl"), image = string(data, "qrimg");
+        if (url.isBlank() || image.isBlank()) throw new MusicError("music.login.error.response");
+        return new QrCode(key, url, image);
+    }
+    public QrCheck checkLoginQr(String key) throws MusicError {
+        JsonObject response = authRequest("login/qr/check", Map.of("key", key), null, true);
+        int code = (int) number(response, "code", -1);
+        String cookie = string(response, "cookie");
+        if (code < 800 || code > 803 || (code == 803 && cookie.isBlank())) throw new MusicError("music.login.error.response");
+        return new QrCheck(code, cookie);
+    }
+    private JsonObject authRequest(String path, Map<String, String> parameters, String cookie, boolean qr) throws MusicError {
+        Map<String, String> params = new LinkedHashMap<>(parameters);
+        params.put("timestamp", String.valueOf(System.currentTimeMillis()));
+        return request(path, params, cookie, true, qr);
+    }
+    private static void validatePhone(String phone) throws MusicError {
+        if (phone == null || !phone.matches("[0-9]{5,20}")) throw new MusicError("music.login.error.input");
+    }
+    private static MusicAccount parseAccount(JsonObject response, String cookie, String phone) {
+        JsonObject account = object(response, "account"), profile = object(response, "profile");
+        long id = number(account, "id", number(profile, "userId", 0));
+        return new MusicAccount(cookie, id > 0 ? Long.toString(id) : "", string(profile, "nickname"), phone);
+    }
+
     private JsonObject request(String path, Map<String, String> parameters, String cookie) throws MusicError {
+        return request(path, parameters, cookie, cookie != null && !cookie.isBlank(), false);
+    }
+    private JsonObject request(String path, Map<String, String> parameters, String cookie, boolean post, boolean qr) throws MusicError {
         HttpURLConnection connection = null;
         try {
             Map<String, String> params = new LinkedHashMap<>(parameters);
             boolean authenticated = cookie != null && !cookie.isBlank();
             if (authenticated) params.put("cookie", cookie);
             String body = form(params);
-            URI endpoint = base.resolve(path + (authenticated ? "" : "?" + body));
+            URI endpoint = base.resolve(path + (post ? "" : "?" + body));
             connection = open(endpoint);
-            if (authenticated) {
-                // Keep the account cookie in the request body, out of URL/access logs.
+            if (post) {
+                // Keep cookies, phone numbers, captcha and QR keys out of request URLs/access logs.
                 connection.setRequestMethod("POST");
                 connection.setDoOutput(true);
                 connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
@@ -155,7 +233,8 @@ public final class NeteaseMusicApi {
                     StandardCharsets.UTF_8)).getAsJsonObject();
                 long code = number(response, "code", 200);
                 if (code == 301 || code == 401 || code == 403) throw new MusicError("music.error.login");
-                if (code != 200) throw new MusicError("music.error.network");
+                if (code != 200 && !(qr && code >= 800 && code <= 803))
+                    throw new MusicError(post && path.startsWith("login/") ? "music.login.error.response" : "music.error.network");
                 return response;
             }
         } catch (IOException | RuntimeException failure) {

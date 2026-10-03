@@ -274,6 +274,7 @@ public class MusicManager {
 
     public void shutdown() {
         shuttingDown = true;
+        service.login().close();
         mediaSession.close();
         playerThread.interrupt();
         musicPlayer.shutdown();
