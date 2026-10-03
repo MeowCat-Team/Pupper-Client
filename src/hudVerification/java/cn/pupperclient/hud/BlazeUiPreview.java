@@ -26,6 +26,7 @@ public final class BlazeUiPreview {
             }
             ImageIO.write(image, "PNG", output.toFile());
             SkiaContext.close();
+            UiSamplingGpuChecks.export(output.resolveSibling("blaze-quality-preview.png"));
         }
         System.out.println("Production Blaze3D Material specimen: " + output);
     }

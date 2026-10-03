@@ -152,6 +152,7 @@ public final class SkiaInteropGpuChecks {
                 }
                 require(stray == 0, "Glyph atlas sampled outside the reference glyphs: " + stray + " stray pixels");
             }
+            scenarios += UiSamplingGpuChecks.verify(renderer);
             byte[] before = target.read(); boolean threw = false;
             try { renderer.draw(target.view, canvas -> { rect(canvas, 0, 0, 128, 96, -1); throw new IllegalStateException("fixture"); }, true); }
             catch (IllegalStateException expected) { threw = true; }
