@@ -115,6 +115,7 @@ public class MusicPlayGui extends SimplePupperClientGui {
         if (library.dialogOpen()) { library.keyPressed(key, scancode, modifiers); return true; }
         if (menu.keyPressed(key)) return true;
         if (key == GLFW.GLFW_KEY_ESCAPE) {
+            if (library.back()) return true;
             if (panel != MusicPlayerLayout.Panel.NONE) { panel = MusicPlayerLayout.Panel.NONE; library.layout(MusicPlayerLayout.content(panel)); return true; }
             return super.onKeyPressed(key, scancode, modifiers);
         }

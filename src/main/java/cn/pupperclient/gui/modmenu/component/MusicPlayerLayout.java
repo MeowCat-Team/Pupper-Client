@@ -10,6 +10,8 @@ public final class MusicPlayerLayout {
     private MusicPlayerLayout() { }
     public static Box content(Panel panel) { return new Box(248, 100, panel == Panel.NONE ? 844 : 528, 500); }
     public static Box sidePanel() { return new Box(796, 100, 300, 500); }
+    public static Box searchType(float x, float y, int index) { return new Box(x + index * 144, y + 48, 136, 48); }
+    public static float listOffset(boolean search, boolean browse) { return browse ? 160 : search ? 136 : 80; }
     public static Box popup(double x, double y, float width, int rows) {
         float height = rows * 48 + 16;
         return new Box((float) Math.clamp(x, 8, WIDTH - width - 8),

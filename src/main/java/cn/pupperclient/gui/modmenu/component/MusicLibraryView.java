@@ -17,8 +17,9 @@ import org.lwjgl.glfw.GLFW;
 
 /** Desktop browsing: select a row, play its artwork/double-click, and use explicit contextual actions. */
 public final class MusicLibraryView extends Component {
-    public enum Tab { LIBRARY, SEARCH, LIKED, PLAYLISTS, PLAYLIST }
-    private record Row(MusicTrack track, Music local, String filename) {
+    public enum Tab { LIBRARY, SEARCH, LIKED, PLAYLISTS, PLAYLIST, BROWSE }
+    private record Row(MusicTrack track, Music local, String filename, int occurrence) {
+        Row(MusicTrack track, Music local, String filename) { this(track, local, filename, 0); }
         MusicQueue.Entry entry() { return new MusicQueue.Entry(track, filename); }
     }
     private record Press(float x, float y, float width, float height, Runnable action) {
@@ -30,29 +31,29 @@ public final class MusicLibraryView extends Component {
     private final MusicPopupMenu menu;
     private final SearchBar search;
     private final ScrollHelper scroll = new ScrollHelper();
-    private final List<MusicTrack> results = new ArrayList<>();
-    private final String[] queries = { "", "", "", "", "" };
+    private final MusicSearchState browser = new MusicSearchState(service.provider().id());
+    private final String[] queries = new String[Tab.values().length];
     private final MusicNameDialog dialog = new MusicNameDialog();
     private String playlistId = "";
     private long statusChanged;
     private Tab tab;
     private Press pressed;
-    private int requestGeneration, total, nextOffset;
-    private boolean searching, refreshing, disposed;
+    private boolean refreshing, disposed;
     private long queryChanged;
-    private String submittedQuery = "", observedQuery = "", selected = "";
+    private String observedQuery = "", selected = "";
     private String statusKey = "music.status.ready";
     private Object[] statusArguments = new Object[0];
     private String quality = service.provider().defaultQuality(), previousProvider = service.provider().id();
 
     public MusicLibraryView(MusicPlayerLayout.Box bounds, Tab initial, MusicPopupMenu menu) {
         super(bounds.x(), bounds.y());
-        this.menu = menu; tab = initial;
+        this.menu = menu; tab = initial; java.util.Arrays.fill(queries, "");
         search = new SearchBar(x, y, bounds.width() - 56, "", scroll::reset);
         layout(bounds); refresh();
     }
     public Tab tab() { return tab; }
-    public String heading() { return tab == Tab.PLAYLIST && manager.getLibrary().playlist(playlistId) != null
+    public String heading() { return tab == Tab.BROWSE && browser.collection() != null ? MusicText.get(browser.collection().type().nameKey())
+        : tab == Tab.PLAYLIST && manager.getLibrary().playlist(playlistId) != null
         ? manager.getLibrary().playlist(playlistId).name() : MusicText.get("music.tab." + tab.name().toLowerCase(Locale.ROOT)); }
     public boolean dialogOpen() { return dialog.isOpen(); }
     public void drawDialog(double mx, double my) { dialog.draw(mx, my); }
@@ -63,11 +64,22 @@ public final class MusicLibraryView extends Component {
     }
     public void navigate(Tab next) {
         if (tab != next) {
+            browser.cancel(); if (next == Tab.SEARCH) browser.back();
             queries[tab.ordinal()] = search.getText(); tab = next; search.setText(queries[next.ordinal()]);
             observedQuery = search.getText(); selected = ""; scroll.reset(); status("music.status.ready");
             if (next == Tab.LIKED && service.loggedIn("netease")) syncLikes();
         }
         if (next == Tab.SEARCH) search.keyPressed(GLFW.GLFW_KEY_F, 0, GLFW.GLFW_MOD_CONTROL);
+    }
+    public boolean back() { if (tab != Tab.BROWSE) return false; navigate(Tab.SEARCH); return true; }
+    private void selectSearchType(MusicSearchType type) {
+        if (!browser.reset(service.provider().id(), type, search.getText())) return;
+        selected = ""; scroll.reset(); status("music.status.ready");
+        if (!search.getText().isBlank()) search(false);
+    }
+    private void openCollection(MusicCollection collection) {
+        navigate(Tab.BROWSE); browser.open(collection);
+        search.setText(""); observedQuery = ""; selected = ""; scroll.reset(); search(false);
     }
     private void openPlaylist(String id) {
         playlistId = id; navigate(Tab.PLAYLIST); search.setText(""); observedQuery = ""; scroll.reset();
@@ -84,7 +96,10 @@ public final class MusicLibraryView extends Component {
         createPlaylist(entries);
     }
     private void createPlaylist(List<MusicQueue.Entry> entries) {
-        dialog.open("music.playlist.create", MusicText.get("music.playlist.default"), name -> {
+        createPlaylist(entries, MusicText.get("music.playlist.default"));
+    }
+    private void createPlaylist(List<MusicQueue.Entry> entries, String suggestedName) {
+        dialog.open("music.playlist.create", suggestedName, name -> {
             try {
                 var playlist = manager.getLibrary().createPlaylist(name, entries);
                 openPlaylist(playlist.id()); return "";
@@ -150,7 +165,7 @@ public final class MusicLibraryView extends Component {
         if (observedQuery.equals(search.getText())) return;
         observedQuery = search.getText(); selected = ""; scroll.reset(); queryChanged = System.nanoTime();
         if (tab == Tab.SEARCH) {
-            requestGeneration++; searching = false; results.clear(); total = nextOffset = 0; submittedQuery = "";
+            browser.reset(service.provider().id(), browser.type(), search.getText());
             status(search.getText().isBlank() ? "music.status.ready" : "music.search.typing");
         }
     }
@@ -158,31 +173,42 @@ public final class MusicLibraryView extends Component {
         if (tab == Tab.PLAYLIST && manager.getLibrary().playlist(playlistId) == null) navigate(Tab.PLAYLISTS);
         if (!previousProvider.equals(service.provider().id())) providerChanged();
         updateQuery();
-        if (tab == Tab.SEARCH && !search.getText().isBlank() && !searching && !search.getText().strip().equals(submittedQuery)
+        if (tab == Tab.SEARCH && !search.getText().isBlank() && !browser.loading() && !browser.searched()
                 && System.nanoTime() - queryChanged >= 350_000_000L) search(false);
         ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+        search.setX(tab == Tab.BROWSE ? x + 56 : x);
         search.setWidth(width - (tab == Tab.PLAYLISTS ? 176 : tab == Tab.PLAYLIST ? 112 : 56));
-        search.setHintText(tab == Tab.SEARCH ? "music.search.hint" : tab == Tab.PLAYLISTS ? "music.playlist.filter" : "music.filter.hint"); search.draw(mx, my);
+        search.setHintText(tab == Tab.SEARCH ? "music.search.hint." + browser.type().name().toLowerCase(Locale.ROOT)
+            : tab == Tab.PLAYLISTS ? "music.playlist.filter" : "music.filter.hint"); search.draw(mx, my);
         if (tab == Tab.PLAYLISTS) MusicUi.button(x + width - 160, y - 3, 160, MusicText.get("music.playlist.create"), true,
             MusicUi.inside(mx, my, x + width - 160, y - 3, 160, 48), palette);
-        else {
+        else if (tab == Tab.BROWSE) {
+            MusicUi.iconButton(x, y - 3, Icon.ARROW_BACK, false, true, MusicUi.inside(mx, my, x, y - 3, 48, 48), palette);
+            var collection = browser.collection();
+            if (collection != null) MusicUi.collectionHeader(x, y, width, collection, service.cover(collection), browser.tracks().size(),
+                rows().stream().anyMatch(row -> row.entry().playable()), mx, my, palette);
+        } else {
             MusicUi.iconButton(x + width - 48, y - 3, tab == Tab.SEARCH ? Icon.SEARCH : tab == Tab.PLAYLIST ? Icon.MORE_HORIZ : Icon.REFRESH, false,
-                !(searching || refreshing), MusicUi.inside(mx, my, x + width - 48, y - 3, 48, 48), palette);
+                !(browser.loading() || refreshing), MusicUi.inside(mx, my, x + width - 48, y - 3, 48, 48), palette);
             if (tab == Tab.PLAYLIST) MusicUi.iconButton(x + width - 104, y - 3, Icon.PLAY_ARROW, false, rows().stream().anyMatch(row -> row.entry().playable()),
                 MusicUi.inside(mx, my, x + width - 104, y - 3, 48, 48), palette);
         }
         if (tab == Tab.PLAYLISTS) { drawPlaylists(mx, my, palette); drawStatus(palette); return; }
         List<Row> rows = rows();
-        String heading = tab == Tab.SEARCH ? submittedQuery.isBlank() ? MusicText.get("music.discover")
-            : MusicText.get(total < 0 ? "music.results.query" : "music.results.for", submittedQuery, total)
+        if (tab == Tab.SEARCH) MusicUi.searchTypes(x, y, browser.type(), mx, my, palette);
+        String heading = tab == Tab.SEARCH ? !browser.searched() ? ""
+            : MusicText.get(browser.total() < 0 ? "music.search.results.query" : "music.search.results.for", browser.query(),
+                MusicText.get(browser.type().nameKey()), browser.total())
             : MusicText.get("music.tracks", rows.size());
-        Skia.drawText(Skia.getLimitText(heading, Fonts.getRegular(14), width - 16), x + 8, y + 54,
+        if (tab != Tab.BROWSE) Skia.drawText(Skia.getLimitText(heading, Fonts.getRegular(14), width - 16), x + 8, y + listOffset() - 26,
             palette.getOnSurfaceVariant(), Fonts.getRegular(14));
-        float top = y + 80, listHeight = height - 132;
+        if (tab == Tab.SEARCH && browser.type() != MusicSearchType.SONGS) { drawCollections(mx, my, palette); drawStatus(palette); drawMore(mx, my, palette); return; }
+        float top = y + listOffset(), listHeight = listHeight();
         scroll.setMaxScroll(rows.size() * ROW_HEIGHT, listHeight); scroll.onUpdate();
         if (rows.isEmpty()) {
-            String key = searching ? "music.status.searching" : tab == Tab.SEARCH ? submittedQuery.isBlank()
-                ? "music.empty.search" : "music.empty.results" : tab == Tab.LIKED ? "music.empty.liked" : tab == Tab.PLAYLIST ? "music.playlist.empty" : "music.empty.library";
+            String key = browser.loading() ? tab == Tab.BROWSE ? "music.browse.loading" : "music.status.searching"
+                : tab == Tab.SEARCH ? !browser.searched() ? "music.empty.search" : "music.empty.results"
+                : tab == Tab.BROWSE ? "music.browse.empty" : tab == Tab.LIKED ? "music.empty.liked" : tab == Tab.PLAYLIST ? "music.playlist.empty" : "music.empty.library";
             Skia.drawFullCenteredText(tab == Tab.SEARCH ? Icon.SEARCH : Icon.LIBRARY_MUSIC, x + width / 2,
                 top + listHeight / 2 - 28, palette.getPrimary(), Fonts.getIcon(32));
             Skia.drawCenteredText(MusicText.get(key), x + width / 2, top + listHeight / 2 + 24,
@@ -206,27 +232,52 @@ public final class MusicLibraryView extends Component {
             } finally { Skia.restore(); }
         }
         drawStatus(palette);
+        drawMore(mx, my, palette);
+    }
+    private void drawMore(double mx, double my, ColorPalette palette) {
         if (hasMore()) MusicUi.button(x + width - 136, y + height - 48, 136, MusicText.get("music.action.more"), false,
             MusicUi.inside(mx, my, x + width - 136, y + height - 48, 136, 48), palette);
     }
+    private float listOffset() { return MusicPlayerLayout.listOffset(tab == Tab.SEARCH, tab == Tab.BROWSE); }
+    private float listHeight() { return height - listOffset() - 52; }
+    private void drawCollections(double mx, double my, ColorPalette palette) {
+        float top = y + listOffset(), bodyHeight = listHeight(); var collections = browser.collections();
+        scroll.setMaxScroll(collections.size() * ROW_HEIGHT, bodyHeight); scroll.onUpdate();
+        if (collections.isEmpty()) Skia.drawCenteredText(MusicText.get(browser.loading() ? "music.status.searching"
+            : browser.searched() ? "music.empty.results" : "music.empty.search"), x + width / 2, top + bodyHeight / 2,
+            palette.getOnSurfaceVariant(), Fonts.getRegular(16));
+        Skia.save();
+        try {
+            Skia.clip(x, top, width, bodyHeight, 12);
+            for (int i = Math.max(0, (int) (-scroll.getValue() / ROW_HEIGHT)); i < collections.size(); i++) {
+                float rowY = top + i * ROW_HEIGHT + scroll.getValue(); if (rowY >= top + bodyHeight) break;
+                var collection = collections.get(i);
+                MusicUi.collectionRow(x, rowY, width, collection, service.cover(collection), selected.equals(collection.key()), mx, my, palette);
+            }
+        } finally { Skia.restore(); }
+    }
     private void drawStatus(ColorPalette palette) {
-        if (!statusKey.equals("music.status.ready") && (statusKey.startsWith("music.error") || searching || refreshing
+        if (!statusKey.equals("music.status.ready") && (statusKey.startsWith("music.error") || browser.loading() || refreshing
                 || System.nanoTime() - statusChanged < 4_000_000_000L))
             Skia.drawHeightCenteredText(Skia.getLimitText(MusicText.get(statusKey, statusArguments), Fonts.getRegular(14), width - (hasMore() ? 148 : 16)),
                 x + 8, y + height - 24, statusKey.startsWith("music.error") ? palette.getError() : palette.getOnSurfaceVariant(), Fonts.getRegular(14));
     }
     private List<Row> rows() {
         List<Row> rows;
-        if (tab == Tab.SEARCH) rows = results.stream().map(t -> row(t, "")).toList();
+        if (tab == Tab.SEARCH || tab == Tab.BROWSE) rows = browser.tracks().stream().map(t -> row(t, "")).toList();
         else if (tab == Tab.LIKED) rows = service.favorites().stream().map(f -> row(f.track(), f.filename())).toList();
         else if (tab == Tab.PLAYLIST) {
             var playlist = manager.getLibrary().playlist(playlistId);
             rows = playlist == null ? List.of() : playlist.entries().stream().map(entry -> row(entry.track(), entry.filename())).toList();
         } else rows = manager.getMusics().stream().map(m -> new Row(m.getTrack(), m, m.getAudio().getName())).toList();
-        if (tab == Tab.SEARCH || search.getText().isBlank()) return rows;
-        String filter = search.getText().strip().toLowerCase(Locale.ROOT);
-        return rows.stream().filter(r -> (r.track().title() + " " + r.track().artist() + " " + r.track().album())
-            .toLowerCase(Locale.ROOT).contains(filter)).toList();
+        if (tab != Tab.SEARCH && !search.getText().isBlank()) {
+            String filter = search.getText().strip().toLowerCase(Locale.ROOT);
+            rows = rows.stream().filter(r -> (r.track().title() + " " + r.track().artist() + " " + r.track().album())
+                .toLowerCase(Locale.ROOT).contains(filter)).toList();
+        }
+        var numbered = new ArrayList<Row>();
+        for (int i = 0; i < rows.size(); i++) { Row row = rows.get(i); numbered.add(new Row(row.track(), row.local(), row.filename(), i)); }
+        return List.copyOf(numbered);
     }
     private Row row(MusicTrack track, String filename) {
         Music local = track.remote() ? service.local(track) : manager.getMusics().stream()
@@ -237,10 +288,27 @@ public final class MusicLibraryView extends Component {
     public void mousePressed(double mx, double my, int button, boolean doubled) {
         if (dialog.isOpen()) { dialog.mousePressed(mx, my, button); return; }
         search.mousePressed(mx, my, button); pressed = null;
+        if (tab == Tab.SEARCH && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            for (MusicSearchType type : MusicSearchType.values()) {
+                var box = MusicPlayerLayout.searchType(x, y, type.ordinal());
+                if (box.contains(mx, my)) { pressed = new Press(box.x(), box.y(), box.width(), box.height(), () -> selectSearchType(type)); return; }
+            }
+        }
+        if (tab == Tab.BROWSE) {
+            if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && MusicUi.inside(mx, my, x, y - 3, 48, 48)) {
+                pressed = new Press(x, y - 3, 48, 48, this::back); return;
+            }
+            if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && MusicUi.inside(mx, my, x + width - 104, y + 60, 48, 48)) {
+                pressed = new Press(x + width - 104, y + 60, 48, 48, this::playCollection); return;
+            }
+            if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && MusicUi.inside(mx, my, x + width - 48, y + 60, 48, 48)) {
+                pressed = new Press(x + width - 48, y + 60, 48, 48, () -> openCollectionMenu(mx, my)); return;
+            }
+        }
         if (tab == Tab.PLAYLISTS && button == GLFW.GLFW_MOUSE_BUTTON_LEFT && MusicUi.inside(mx, my, x + width - 160, y - 3, 160, 48)) {
             pressed = new Press(x + width - 160, y - 3, 160, 48, this::createPlaylist); return;
         }
-        if (MusicUi.inside(mx, my, x + width - 48, y - 3, 48, 48) && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        if (tab != Tab.BROWSE && MusicUi.inside(mx, my, x + width - 48, y - 3, 48, 48) && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             pressed = new Press(x + width - 48, y - 3, 48, 48, () -> { if (tab == Tab.SEARCH) search(false);
                 else if (tab == Tab.PLAYLIST) openPlaylistMenu(playlistId, mx, my); else refresh(); }); return;
         }
@@ -252,7 +320,16 @@ public final class MusicLibraryView extends Component {
             if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) pressed = new Press(x + width - 136, y + height - 48, 136, 48, () -> search(true));
             return;
         }
-        if (!MusicUi.inside(mx, my, x, y + 80, width, height - 132)) return;
+        if (!MusicUi.inside(mx, my, x, y + listOffset(), width, listHeight())) return;
+        if (tab == Tab.SEARCH && browser.type() != MusicSearchType.SONGS) {
+            var collections = browser.collections(); int index = (int) ((my - y - listOffset() - scroll.getValue()) / ROW_HEIGHT);
+            if (index < 0 || index >= collections.size()) return;
+            var collection = collections.get(index); selected = collection.key();
+            float rowY = y + listOffset() + index * ROW_HEIGHT + scroll.getValue();
+            if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) pressed = new Press(x, rowY, width, ROW_HEIGHT, () -> openCollection(collection));
+            else if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) menu.open(mx, my, List.of(item("music.action.open", Icon.CHEVRON_RIGHT, true, () -> openCollection(collection))));
+            return;
+        }
         if (tab == Tab.PLAYLISTS) {
             var playlists = playlists(); int index = (int) ((my - y - 80 - scroll.getValue()) / ROW_HEIGHT);
             if (index < 0 || index >= playlists.size()) return;
@@ -266,10 +343,10 @@ public final class MusicLibraryView extends Component {
             return;
         }
         List<Row> rows = rows();
-        int index = (int) ((my - y - 80 - scroll.getValue()) / ROW_HEIGHT);
+        int index = (int) ((my - y - listOffset() - scroll.getValue()) / ROW_HEIGHT);
         if (index < 0 || index >= rows.size()) return;
         Row row = rows.get(index); selected = row.entry().key();
-        float rowY = y + 80 + index * ROW_HEIGHT + scroll.getValue();
+        float rowY = y + listOffset() + index * ROW_HEIGHT + scroll.getValue();
         if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) { openRowMenu(row, mx, my); return; }
         if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) return;
         if (mx >= x + width - 56) pressed = new Press(x + width - 56, rowY + 8, 48, 48, () -> openRowMenu(row, x + width - 288, rowY + 48));
@@ -277,6 +354,21 @@ public final class MusicLibraryView extends Component {
         else if (mx >= x + width - 160) pressed = new Press(x + width - 160, rowY + 8, 48, 48, () -> enqueue(row, false));
         else if (mx < x + 64) pressed = new Press(x + 8, rowY + 8, 48, 48, () -> play(row, true));
         else if (doubled) pressed = new Press(x + 64, rowY, width - 224, 64, () -> play(row, false));
+    }
+    private List<MusicQueue.Entry> collectionEntries() { return rows().stream().map(Row::entry).filter(MusicQueue.Entry::playable).toList(); }
+    private void playCollection() {
+        rows().stream().filter(row -> row.entry().playable()).findFirst().ifPresent(row -> play(row, false));
+    }
+    private void openCollectionMenu(double mx, double my) {
+        var collection = browser.collection(); if (collection == null) return;
+        var entries = collectionEntries(); boolean partial = hasMore() || !search.getText().isBlank();
+        menu.open(mx, my, List.of(
+            item(partial ? "music.browse.playloaded" : "music.action.play", Icon.PLAY_ARROW, !entries.isEmpty(), this::playCollection),
+            item(partial ? "music.browse.queueloaded" : "music.action.playlast", Icon.PLAYLIST_ADD, !entries.isEmpty(), () -> {
+                entries.forEach(entry -> manager.getQueue().enqueue(entry, false)); status("music.browse.queued", entries.size());
+            }),
+            item(partial ? "music.browse.saveloaded" : "music.browse.save", Icon.LIBRARY_ADD, !entries.isEmpty(),
+                () -> createPlaylist(entries, collection.name()))));
     }
     @Override public void mouseReleased(double mx, double my, int button) {
         if (dialog.isOpen()) { dialog.mouseReleased(mx, my, button); return; }
@@ -321,9 +413,10 @@ public final class MusicLibraryView extends Component {
         if (toggle && manager.getCurrentMusic() != null && row.entry().key().equals(MusicQueue.Entry.of(manager.getCurrentMusic()).key())) {
             manager.switchPlayBack(); return;
         }
-        List<MusicQueue.Entry> entries = rows().stream().map(Row::entry).filter(MusicQueue.Entry::playable).toList();
+        List<Row> playable = rows().stream().filter(candidate -> candidate.entry().playable()).toList();
+        List<MusicQueue.Entry> entries = playable.stream().map(Row::entry).toList();
         int index = -1;
-        for (int i = 0; i < entries.size(); i++) if (entries.get(i).key().equals(row.entry().key())) { index = i; break; }
+        for (int i = 0; i < playable.size(); i++) if (playable.get(i).occurrence() == row.occurrence() && entries.get(i).key().equals(row.entry().key())) { index = i; break; }
         if (index < 0) return;
         status("music.status.loadingtrack", row.track().title());
         manager.playFrom(entries, index, quality(row), music -> { if (!disposed) {
@@ -346,39 +439,48 @@ public final class MusicLibraryView extends Component {
     }
     private void search(boolean more) {
         updateQuery();
-        String query = more ? submittedQuery : search.getText().strip(); if (query.isBlank() || searching && more) return;
-        int generation = ++requestGeneration, offset = more ? nextOffset : 0;
-        if (!more) { results.clear(); total = nextOffset = 0; selected = ""; submittedQuery = query; scroll.reset(); }
-        searching = true; status("music.status.searching");
-        service.search(query, offset, result -> {
-            if (disposed || generation != requestGeneration) return;
-            searching = false; results.addAll(result.tracks()); nextOffset = result.nextOffset();
-            total = result.tracks().isEmpty() ? results.size() : result.total();
-            if (tab == Tab.SEARCH) status(total < 0 ? "music.results.loaded" : "music.results.count", total < 0 ? results.size() : total);
-        }, failure -> { if (!disposed && generation == requestGeneration) { searching = false; error(failure); } });
+        var request = browser.begin(more); if (request == null) return;
+        if (!more) { selected = ""; scroll.reset(); }
+        status(tab == Tab.BROWSE ? "music.browse.loading" : "music.status.searching");
+        java.util.function.Consumer<MusicError> failure = error -> { if (!disposed && browser.fail(request)) error(error); };
+        if (request.collection() != null) service.collectionTracks(request.collection(), request.offset(), result -> {
+            if (!disposed && browser.accept(request, result)) status("music.status.ready");
+        }, failure);
+        else service.search(request.query(), request.type(), request.offset(), result -> {
+            if (disposed || !browser.accept(request, result)) return;
+            status(browser.total() < 0 ? "music.search.loaded" : "music.search.count", browser.total() < 0
+                ? browser.tracks().size() + browser.collections().size() : browser.total());
+        }, failure);
     }
     private void refresh() {
         if (refreshing) return; refreshing = true; status("music.status.refreshing");
         service.refresh(repaired -> { if (!disposed) { refreshing = false; status("music.status.refreshed"); } }, failure -> { refreshing = false; error(failure); });
     }
     private void syncLikes() { status("music.status.syncing"); service.syncLikes("netease", count -> { if (!disposed) status("music.status.synced", count); }, this::error); }
-    private boolean hasMore() { return tab == Tab.SEARCH && !results.isEmpty() && (total < 0 || nextOffset < total); }
+    private boolean hasMore() { return (tab == Tab.SEARCH || tab == Tab.BROWSE) && browser.hasMore(); }
     private void providerChanged() {
-        previousProvider = service.provider().id(); requestGeneration++; searching = false; results.clear(); total = nextOffset = 0;
-        submittedQuery = selected = ""; scroll.reset(); quality = service.provider().defaultQuality(); queryChanged = System.nanoTime();
+        previousProvider = service.provider().id(); if (tab == Tab.BROWSE) navigate(Tab.SEARCH);
+        browser.reset(previousProvider, browser.type(), queries[Tab.SEARCH.ordinal()]);
+        if (tab == Tab.SEARCH) browser.reset(previousProvider, browser.type(), search.getText());
+        selected = ""; scroll.reset(); quality = service.provider().defaultQuality(); queryChanged = System.nanoTime();
         status("music.provider.selected", MusicText.get(service.provider().nameKey()));
         if (tab == Tab.SEARCH && !search.getText().isBlank()) search(false);
     }
-    public void dispose() { disposed = true; requestGeneration++; pressed = null; menu.close(); dialog.close(); }
+    public void dispose() { disposed = true; browser.cancel(); pressed = null; menu.close(); dialog.close(); }
     public boolean isInputFocused() { return dialog.isOpen() || search.isFocused(); }
     private void error(MusicError error) { if (!disposed) status(error.key()); }
     private void status(String key, Object... arguments) { statusKey = key; statusArguments = arguments; statusChanged = System.nanoTime(); }
     @Override public void mouseScrolled(double mx, double my, double horizontal, double vertical) {
-        if (MusicUi.inside(mx, my, x, y + 80, width, height - 132)) scroll.onScroll(vertical);
+        if (MusicUi.inside(mx, my, x, y + listOffset(), width, listHeight())) scroll.onScroll(vertical);
     }
     @Override public void charTyped(int chr) { if (dialog.isOpen()) dialog.charTyped(chr); else { search.charTyped(chr); updateQuery(); } }
     @Override public void keyPressed(int key, int scancode, int modifiers) {
         if (dialog.isOpen()) { dialog.keyPressed(key, scancode, modifiers); return; }
+        if (tab == Tab.BROWSE && key == GLFW.GLFW_KEY_LEFT && (modifiers & GLFW.GLFW_MOD_ALT) != 0) { back(); return; }
+        if (tab == Tab.SEARCH && key == GLFW.GLFW_KEY_TAB && (modifiers & GLFW.GLFW_MOD_CONTROL) != 0) {
+            int step = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0 ? -1 : 1;
+            var types = MusicSearchType.values(); selectSearchType(types[Math.floorMod(browser.type().ordinal() + step, types.length)]); return;
+        }
         if (search.isFocused()) {
             if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) { if (tab == Tab.SEARCH) search(false); }
             else search.keyPressed(key, scancode, modifiers);
@@ -396,6 +498,16 @@ public final class MusicLibraryView extends Component {
             else search.keyPressed(key, scancode, modifiers);
             return;
         }
+        if (tab == Tab.SEARCH && browser.type() != MusicSearchType.SONGS) {
+            var collections = browser.collections(); int index = -1;
+            for (int i = 0; i < collections.size(); i++) if (collections.get(i).key().equals(selected)) index = i;
+            if ((key == GLFW.GLFW_KEY_UP || key == GLFW.GLFW_KEY_DOWN) && !collections.isEmpty()) {
+                index = Math.clamp(index + (key == GLFW.GLFW_KEY_UP ? -1 : 1), 0, collections.size() - 1);
+                selected = collections.get(index).key(); keepVisible(index);
+            } else if ((key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) && index >= 0) openCollection(collections.get(index));
+            else search.keyPressed(key, scancode, modifiers);
+            return;
+        }
         List<Row> rows = rows();
         int index = -1;
         for (int i = 0; i < rows.size(); i++) if (rows.get(i).entry().key().equals(selected)) { index = i; break; }
@@ -409,6 +521,6 @@ public final class MusicLibraryView extends Component {
     }
     private void keepVisible(int index) {
         float top = index * ROW_HEIGHT + scroll.getValue();
-        if (top < 0) scroll.onScroll(-top / 60); else if (top + ROW_HEIGHT > height - 132) scroll.onScroll(-(top + ROW_HEIGHT - height + 132) / 60);
+        if (top < 0) scroll.onScroll(-top / 60); else if (top + ROW_HEIGHT > listHeight()) scroll.onScroll(-(top + ROW_HEIGHT - listHeight()) / 60);
     }
 }

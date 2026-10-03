@@ -4,6 +4,8 @@ import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.music.MusicText;
 import cn.pupperclient.management.music.MusicTrack;
 import cn.pupperclient.management.music.MusicRepeatMode;
+import cn.pupperclient.management.music.MusicSearchType;
+import cn.pupperclient.management.music.MusicCollection;
 import cn.pupperclient.management.music.lyric.LyricsManager;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
@@ -21,7 +23,7 @@ public final class MusicUi {
     public static void sidebar(String page, String provider, String quality, double mx, double my, ColorPalette palette) {
         Skia.drawFullCenteredText(Icon.MUSIC_NOTE, 40, 44, palette.getPrimary(), Fonts.getIconFill(24));
         Skia.drawText(MusicText.get("music.player.title"), 64, 30, palette.getOnSurface(), Fonts.getMedium(22));
-        tab(16, 116, 208, Icon.SEARCH, MusicText.get("music.tab.search"), page.equals("search"),
+        tab(16, 116, 208, Icon.SEARCH, MusicText.get("music.tab.search"), page.equals("search") || page.equals("browse"),
             inside(mx, my, 16, 116, 208, 48), palette);
         Skia.drawText(MusicText.get("music.sidebar.library"), 28, 192, palette.getOnSurfaceVariant(), Fonts.getMedium(14));
         tab(16, 224, 208, Icon.LIBRARY_MUSIC, MusicText.get("music.tab.library"), page.equals("library"),
@@ -43,12 +45,56 @@ public final class MusicUi {
 
     public static void browserHeader(String page, String subtitle, MusicPlayerLayout.Panel panel,
             double mx, double my, ColorPalette palette) {
-        Skia.drawText(Skia.getLimitText(page.equals("playlist") ? subtitle : MusicText.get("music.tab." + page), Fonts.getMedium(28), 728),
+        Skia.drawText(Skia.getLimitText(page.equals("playlist") || page.equals("browse") ? subtitle : MusicText.get("music.tab." + page), Fonts.getMedium(28), 728),
             248, 36, palette.getOnSurface(), Fonts.getMedium(28));
         iconButton(992, 24, Icon.LYRICS, panel == MusicPlayerLayout.Panel.LYRICS, true,
             inside(mx, my, 992, 24, 48, 48), palette);
         iconButton(1044, 24, Icon.QUEUE_MUSIC, panel == MusicPlayerLayout.Panel.QUEUE, true,
             inside(mx, my, 1044, 24, 48, 48), palette);
+    }
+
+    public static void searchTypes(float x, float y, MusicSearchType selected, double mx, double my, ColorPalette palette) {
+        for (MusicSearchType type : MusicSearchType.values()) {
+            var box = MusicPlayerLayout.searchType(x, y, type.ordinal()); boolean active = type == selected;
+            var color = active ? palette.getOnSecondaryContainer() : palette.getOnSurfaceVariant();
+            float top = box.y() + 4;
+            if (active) Skia.drawRoundedRect(box.x(), top, box.width(), 40, 12, MaterialTheme.surface(palette.getSecondaryContainer()));
+            else MaterialTheme.outline(box.x(), top, box.width(), 40, 12, palette, MaterialTheme.opacity());
+            if (box.contains(mx, my)) Skia.drawRoundedRect(box.x(), top, box.width(), 40, 12, MaterialTheme.alpha(color, .08f));
+            if (active) Skia.drawFullCenteredText(Icon.CHECK, box.x() + 22, top + 20, color, Fonts.getIcon(20));
+            Skia.drawFullCenteredText(MusicText.get(type.nameKey()), box.x() + box.width() / 2 + (active ? 8 : 0), top + 20, color, Fonts.getMedium(16));
+        }
+    }
+    public static void collectionRow(float x, float y, float width, MusicCollection collection, File cover,
+            boolean selected, double mx, double my, ColorPalette palette) {
+        if (selected || inside(mx, my, x, y, width, 64)) Skia.drawRoundedRect(x, y, width, 64, 12,
+            MaterialTheme.alpha(selected ? palette.getSecondaryContainer() : palette.getOnSurface(), selected ? .65f : .06f));
+        collectionArtwork(collection, cover, x + 12, y + 8, 48, palette);
+        Skia.drawText(Skia.getLimitText(collection.name(), Fonts.getMedium(18), width - 140), x + 76, y + 10, palette.getOnSurface(), Fonts.getMedium(18));
+        Skia.drawText(Skia.getLimitText(MusicText.collection(collection), Fonts.getRegular(14), width - 140), x + 76, y + 38,
+            palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+        iconButton(x + width - 56, y + 8, Icon.CHEVRON_RIGHT, false, true, inside(mx, my, x + width - 56, y + 8, 48, 48), palette);
+    }
+    public static void collectionHeader(float x, float y, float width, MusicCollection collection, File cover, int count,
+            boolean enabled, double mx, double my, ColorPalette palette) {
+        collectionArtwork(collection, cover, x + 8, y + 52, 64, palette);
+        Skia.drawText(Skia.getLimitText(collection.name(), Fonts.getMedium(22), width - 208), x + 88, y + 55,
+            palette.getOnSurface(), Fonts.getMedium(22));
+        Skia.drawText(Skia.getLimitText(MusicText.collection(collection), Fonts.getRegular(14), width - 208), x + 88, y + 86,
+            palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+        Skia.drawText(MusicText.get("music.browse.loaded", count), x + 8, y + 134, palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+        iconButton(x + width - 104, y + 60, Icon.PLAY_ARROW, false, enabled, inside(mx, my, x + width - 104, y + 60, 48, 48), palette);
+        iconButton(x + width - 48, y + 60, Icon.MORE_HORIZ, false, enabled, inside(mx, my, x + width - 48, y + 60, 48, 48), palette);
+    }
+    private static void collectionArtwork(MusicCollection collection, File cover, float x, float y, float size, ColorPalette palette) {
+        if (cover != null && cover.isFile()) Skia.drawRoundedImage(cover, x, y, size, size,
+            collection.type() == MusicSearchType.ARTISTS ? size / 2 : size / 5);
+        else {
+            Skia.drawRoundedRect(x, y, size, size, collection.type() == MusicSearchType.ARTISTS ? size / 2 : size / 5,
+                MaterialTheme.surface(palette.getPrimaryContainer()));
+            Skia.drawFullCenteredText(collection.type() == MusicSearchType.ARTISTS ? Icon.PERSON : Icon.QUEUE_MUSIC,
+                x + size / 2, y + size / 2, palette.getOnPrimaryContainer(), Fonts.getIcon(size * .5f));
+        }
     }
 
     public static void songRow(float x, float y, float width, File cover, String title, String subtitle, String access,

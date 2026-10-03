@@ -50,6 +50,8 @@ Guest likes are saved on the device. Logged-in likes use the account's `/like` a
 
 The Gradle client run enables `--enable-native-access=ALL-UNNAMED`. Add the same JVM option in a launcher to explicitly enable FFM native access; this uses the finalized API and needs no preview flag.
 
+Search uses 48-unit targets for Songs, Artists and Playlists, with translated 16-unit labels. The selected category changes the provider request instead of filtering song rows locally. NetEase uses the upstream [search type values](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/main/module/cloudsearch.js) and paged artist/song-list endpoints. Audius uses public user/playlist searches and user-track paging; its [playlist-tracks schema](https://api.audius.co/v1/swagger.yaml) returns the complete list without pagination parameters, so subsequent pages use one cached snapshot and reopening refreshes it. Artist and playlist artwork have separate namespaces from songs. Result rows open a read-only detail view with a back button, local song filtering, playback, queue insertion and an explicit copy to a local playlist. Actions label a partial/filtered list as loaded songs. Local copies retain the existing unique-song rule; playback queues preserve repeated occurrences. Back restores the search text, category, results and next offset. Request tokens reject stale success/error replies after category/source/navigation changes. Ctrl+Tab cycles categories, Alt+Left and Escape return from details; list arrows/Enter work outside text input.
+
 ## Startup rendering
 
 Minecraft 26.2 can apply its initial resource reload before the first frame publishes the `Globals` uniform buffer. Static atlas uploads and animation ticks can then draw without the uniform, causing `Missing uniform Globals`, a startup crash or an automatic resource-pack reset. This initialization timing also has an [upstream report](https://gitlab.com/distant-horizons-team/distant-horizons/-/issues/1292).
@@ -59,6 +61,8 @@ Minecraft 26.2 can apply its initial resource reload before the first frame publ
 `verifyStartupRendering` exercises the animation guard with missing, ready and reset uniforms and checks both mixin registrations and the constructor/atlas contracts. `verifyStartupGpu` initializes a hidden OpenGL device and exercises the production initializer, reads back the actual GPU uniform contents, checks preservation of existing state, and verifies that ordinary frame updates replace the startup values. It requires a working GPU driver; full client startup and resource-pack loading still need in-game verification.
 
 ## Verification
+
+`MusicCatalogChecks` covers typed HTTP requests and fallback, raw-offset pagination, authenticated NetEase collection requests, Audius credential isolation and full-list slicing, artist access flags, separate artwork caches, duplicate queue occurrences/local copies, stale requests, translated category headings and compact filter geometry. Search and detail specimens share production painters in both languages, including Playing Next layouts and long names. These checks use fixtures rather than a live account or Minecraft interaction.
 
 ```powershell
 .\gradlew.bat build previewHudTheme previewMaterialTheme --offline --console=plain

@@ -142,6 +142,7 @@ public final class MusicServiceChecks {
             MusicInteractionChecks.run();
             MusicPlaylistChecks.run();
             MusicAccessChecks.run();
+            MusicCatalogChecks.run();
         } finally {
             server.stop(0);
             try (var files = Files.walk(root)) {
