@@ -50,6 +50,7 @@ public final class MusicService {
 
     public LyricsManager lyrics() { return lyrics; }
     public MusicLoginService login() { return login; }
+    public List<Music> libraryTracks() { return manager.getMusics(); }
     public MusicProvider provider() { return providers.selected(); }
     public List<MusicProvider> providers() { return providers.all(); }
     public void selectProvider(String id) throws MusicError, IOException { providers.select(id); }
@@ -90,12 +91,34 @@ public final class MusicService {
         resolve("netease:" + id, track -> download(track, quality, play, success, failure), failure);
     }
     public void resolve(String reference, Consumer<MusicTrack> success, Consumer<MusicError> failure) {
-        String[] parts = reference.split(":", 2);
-        MusicProvider source;
-        try { source = providers.forReference(reference); }
+        MusicRequest.Target target;
+        try { target = MusicRequest.target(providers, reference, null); }
         catch (MusicError invalid) { failure.accept(invalid); return; }
-        String trackId = parts.length == 2 ? parts[1] : parts[0];
-        task(() -> source.track(trackId), success, failure);
+        task(() -> target.provider().track(target.trackId()), success, failure);
+    }
+    public void request(MusicRequest.Action action, String reference, String quality,
+            Consumer<Music> success, Consumer<MusicError> failure) {
+        MusicRequest.Target target;
+        try { target = MusicRequest.target(providers, reference, quality); }
+        catch (MusicError invalid) { failure.accept(invalid); return; }
+        task(() -> target.provider().track(target.trackId()), track ->
+            request(action, track, target.quality(), success, failure), failure);
+    }
+    private void request(MusicRequest.Action action, MusicTrack track, String quality,
+            Consumer<Music> success, Consumer<MusicError> failure) {
+        if (action == MusicRequest.Action.PLAY) play(track, quality, success, failure);
+        else download(track, quality, false, success, failure);
+    }
+    public void quick(String keyword, Consumer<MusicTrack> selected, Consumer<MusicRequest.Result> success,
+            Consumer<MusicError> failure) {
+        search(keyword, 1, 0, result -> {
+            if (result.tracks().isEmpty()) { failure.accept(new MusicError("music.empty.results")); return; }
+            MusicTrack track = result.tracks().getFirst();
+            selected.accept(track);
+            MusicRequest.Action action = MusicRequest.quickAction(track);
+            // Search metadata survives detail outages; the provider's own default quality is used.
+            request(action, track, defaultQuality(track), music -> success.accept(new MusicRequest.Result(action, music)), failure);
+        }, failure);
     }
 
     public void download(MusicTrack track, String quality, boolean play, Consumer<Music> success, Consumer<MusicError> failure) {

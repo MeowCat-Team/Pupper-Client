@@ -2,7 +2,6 @@ package cn.pupperclient.management.command;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.command.impl.BindCommand;
-import cn.pupperclient.management.command.impl.MusicCommand;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModManager;
 import com.mojang.brigadier.suggestion.Suggestions;
@@ -101,7 +100,8 @@ public final class PupperCommandSuggestions {
         String action = arguments.substring(0, firstSpace);
         if (action.equalsIgnoreCase("provider")) {
             int sourceStart = skipSpaces(input, start + firstSpace + 1);
-            return suggestWords(input, sourceStart, MusicCommand.getProviders(), input.substring(sourceStart));
+            return suggestWords(input, sourceStart, PupperClient.getInstance().getMusicManager().getService()
+                .providers().stream().map(provider -> provider.id()).toList(), input.substring(sourceStart));
         }
         if (!action.equalsIgnoreCase("download") && !action.equalsIgnoreCase("play")) {
             return new SuggestionsBuilder(input, start).build();
@@ -112,7 +112,8 @@ public final class PupperCommandSuggestions {
         if (qualitySpace < 0 || songIdStart == qualitySpace) {
             return new SuggestionsBuilder(input, start).build();
         }
-        return suggestWords(input, skipSpaces(input, qualitySpace + 1), MusicCommand.getQualityLevels(input.substring(songIdStart, qualitySpace)),
+        return suggestWords(input, skipSpaces(input, qualitySpace + 1), PupperClient.getInstance().getMusicManager()
+            .getService().qualities(input.substring(songIdStart, qualitySpace)),
             input.substring(skipSpaces(input, qualitySpace + 1)));
     }
 
