@@ -1,297 +1,178 @@
 package cn.pupperclient.hud;
 
-import cn.pupperclient.skia.GlassRenderer;
+import cn.pupperclient.ui.render.BlazeUiRenderer;
+import cn.pupperclient.ui.render.UiCanvas;
 import cn.pupperclient.skia.context.SkiaContext;
-import cn.pupperclient.skia.context.SkiaUiLayer;
-import cn.pupperclient.skia.gl.States;
-import com.mojang.blaze3d.GpuFormat;
-import com.mojang.blaze3d.PrimitiveTopology;
-import com.mojang.blaze3d.opengl.GlBackend;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.opengl.GlTexture;
-import com.mojang.blaze3d.pipeline.BindGroupLayout;
-import com.mojang.blaze3d.pipeline.ColorTargetState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.shaders.GpuDebugOptions;
-import com.mojang.blaze3d.shaders.ShaderType;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.*;
-import io.github.humbleui.skija.Canvas;
-import io.github.humbleui.skija.Paint;
-import io.github.humbleui.types.Rect;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import cn.pupperclient.skia.font.Fonts;
+import io.github.humbleui.skija.*;
+import io.github.humbleui.types.*;
 import java.util.Arrays;
-import java.util.Optional;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.pipeline.*;
+import com.mojang.blaze3d.PrimitiveTopology;
 import net.minecraft.resources.Identifier;
-import org.joml.Vector4f;
-import org.lwjgl.glfw.GLFWErrorCallback;
-import org.lwjgl.opengl.GL;
-import org.lwjgl.system.MemoryUtil;
-import static org.lwjgl.glfw.GLFW.*;
-import static org.lwjgl.opengl.GL33C.*;
+import java.util.Optional;
 
-/** Uses the production compositor and real Blaze3D caches, not a raster-only rendering mock. */
+/** Exercise the production geometry, glyph atlas, clipping and compositor on a real device. */
 public final class SkiaInteropGpuChecks {
-    private static int checks;
-    private static final String LIGHTMAP_FRAGMENT = """
-            #version 330
-            uniform sampler2D Base;
-            uniform sampler2D Lightmap;
-            in vec2 texCoord;
-            out vec4 fragColor;
-            void main() { fragColor = texture(Base, texCoord) * texture(Lightmap, texCoord); }
-            """;
-    public static void main(String[] args) throws Exception {
-        var error = GLFWErrorCallback.createPrint(System.err);
-        glfwSetErrorCallback(error);
-        long window = 0;
-        boolean ready = false;
-        try {
-            require(glfwInit(), "GLFW initialization failed");
-            glfwDefaultWindowHints();
-            var backend = new GlBackend();
-            backend.setWindowHints();
-            glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-            window = glfwCreateWindow(128, 128, "Pupper Client Skia interop checks", 0, 0);
-            require(window != 0, "Hidden GPU window creation failed");
-            RenderSystem.initRenderThread();
-            var device = backend.createDevice(window, SkiaInteropGpuChecks::shader,
-                    new GpuDebugOptions(0, false, false, false), () -> {});
-            RenderSystem.initRenderer(device);
-            ready = true;
-            System.out.println("Skia interop GPU: " + glGetString(GL_RENDERER) + ", " + glGetString(GL_VERSION));
-            checkBindings();
-            try (var target = new Target(64, 48)) {
-                for (int frame = 0; frame < 4; frame++) {
-                    float alpha = frame % 2;
-                    clear(target, 0.2F, 0.4F, 0.6F, alpha);
-                    byte[] before = read(target);
-                    glEnable(GL_DITHER); glDisable(GL_PROGRAM_POINT_SIZE);
-                    SkiaContext.drawOffscreen(target.view, canvas -> {
-                        require(Arrays.equals(before, read(target)), "Skia changed the scene before composition");
-                        markers(canvas);
-                    }, false);
-                    require(glIsEnabled(GL_DITHER), "Native Skia reset leaked dither state");
-                    require(!glIsEnabled(GL_PROGRAM_POINT_SIZE), "Native Skia reset leaked program point-size state");
-                    assertMarkers(target, alpha);
-                    // Transparent areas are byte-for-byte identical, including a scene alpha of zero.
-                    pixel(target, 60, 44, 51, 102, 153, (int) alpha * 255, "Unchanged scene outside UI");
-                }
-                clear(target, 0.2F, 0.4F, 0.6F, 0);
-                SkiaContext.drawOffscreen(target.view, canvas -> {
-                    rect(canvas, 20, 16, 16, 16, 0xFFFF00FF);
-                    GlassRenderer.draw(canvas, 16, 12, 28, 24, 4, 0, 0);
-                }, true);
-                pixel(target, 28, 24, 51, 102, 153, 255, "Glass samples the scene, not preceding UI");
-                pixel(target, 60, 44, 51, 102, 153, 0, "Glass leaves exterior unchanged");
-                clear(target, 0.2F, 0.4F, 0.6F, 1);
-                byte[] beforeDisabled = read(target);
-                SkiaContext.drawOffscreen(target.view, canvas -> GlassRenderer.draw(canvas, 0, 0, 64, 48, 0, 0, 0), false);
-                require(Arrays.equals(read(target), beforeDisabled), "Disabled glass capture changed the scene");
-                pixel(target, 28, 24, 51, 102, 153, 255, "Disabled glass capture preserves scene");
-                checkCallbackFailure(target);
-                checkLightmap(target);
-                // Exercise the backend-independent upload path on the available GL device.
-                try (var raster = new SkiaUiLayer(64, 48, null)) {
-                    clear(target, 0.2F, 0.4F, 0.6F, 1);
-                    raster.draw(target.view, SkiaInteropGpuChecks::markers, false);
-                    assertMarkers(target, 1);
-                }
-            }
-            // Different dimensions and a replacement destination texture must reallocate only UI storage.
-            try (var resized = new Target(96, 72)) {
-                clear(resized, 0.1F, 0.2F, 0.3F, 0);
-                SkiaContext.drawOffscreen(resized.view, canvas -> rect(canvas, 0, 0, 12, 12, 0xFFFF0000), true);
-                pixel(resized, 4, 4, 255, 0, 0, 255, "Resize retains top-left UI origin");
-                pixel(resized, 90, 64, 26, 51, 76, 0, "Resize preserves scene exterior");
-                var sharedContext = SkiaContext.getContext();
-                SkiaContext.drawOffscreen(resized.view, canvas -> {}, false);
-                require(sharedContext == SkiaContext.getContext(), "Resize replaced the shared image context");
-            }
-            SkiaContext.close();
-            SkiaContext.close();
-            require(SkiaContext.getContext() == null, "Context not released on shutdown");
-            require(glGetError() == GL_NO_ERROR, "OpenGL error after interop checks");
-            System.out.println("Skia interop GPU checks passed: " + checks + " assertions; state/cache isolation, scene-only glass, premultiplied composition, orientation, resize, failed callbacks and raster upload.");
-        } finally {
-            if (ready) {
-                SkiaContext.close();
-                GlassRenderer.releaseResources();
-                RenderSystem.shutdownRenderer();
-            }
-            if (window != 0) { glfwMakeContextCurrent(0); GL.setCapabilities(null); glfwDestroyWindow(window); }
-            glfwTerminate();
-            glfwSetErrorCallback(null);
-            error.free();
-        }
-    }
-
-    private static void checkBindings() {
-        int[] slots = {0, 1, 2, 11, glGetInteger(GL_MAX_TEXTURE_IMAGE_UNITS) - 1};
-        int[] textures = new int[slots.length], samplers = new int[slots.length];
-        int buffer = glGenBuffers(), vao = glGenVertexArrays(), element = glGenBuffers();
-        int alignment = glGetInteger(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT);
-        try {
-            for (int i = 0; i < slots.length; i++) {
-                textures[i] = glGenTextures(); samplers[i] = glGenSamplers();
-                glActiveTexture(GL_TEXTURE0 + slots[i]); glBindTexture(GL_TEXTURE_2D, textures[i]); glBindSampler(slots[i], samplers[i]);
-            }
-            glBindBuffer(GL_UNIFORM_BUFFER, buffer);
-            glBufferData(GL_UNIFORM_BUFFER, alignment * 2L, GL_STATIC_DRAW);
-            glBindBufferRange(GL_UNIFORM_BUFFER, 2, buffer, alignment, alignment);
-            glBindVertexArray(vao); glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element);
-            glDepthFunc(GL_GREATER); glDepthRange(0.125, 0.875);
-            glStencilFuncSeparate(GL_FRONT, GL_EQUAL, 3, 0x3F); glStencilMaskSeparate(GL_BACK, 0x15);
-            glStencilOpSeparate(GL_BACK, GL_REPLACE, GL_INCR, GL_DECR);
-            glColorMaski(1, true, false, true, false); glEnablei(GL_BLEND, 1);
-            glActiveTexture(GL_TEXTURE2);
-            States.push();
-            try {
-                for (int slot : slots) { glActiveTexture(GL_TEXTURE0 + slot); glBindTexture(GL_TEXTURE_2D, 0); glBindSampler(slot, 0); }
-                glBindBufferBase(GL_UNIFORM_BUFFER, 2, 0); glBindBuffer(GL_UNIFORM_BUFFER, 0);
-                glBindVertexArray(0); glDepthFunc(GL_LESS); glDepthRange(0, 1);
-                glStencilFuncSeparate(GL_FRONT, GL_ALWAYS, 0, -1); glStencilMaskSeparate(GL_BACK, -1);
-                glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
-                glColorMaski(1, false, true, false, true); glDisablei(GL_BLEND, 1);
-                // Emulate a lazy Minecraft texture upload inside a UI callback.
-                GlStateManager._activeTexture(GL_TEXTURE3); GlStateManager._bindTexture(0);
-            } finally { States.popMinecraft(); }
-            require(glGetInteger(GL_ACTIVE_TEXTURE) == GL_TEXTURE2, "Active texture slot was not restored");
-            for (int i = 0; i < slots.length; i++) {
-                glActiveTexture(GL_TEXTURE0 + slots[i]);
-                require(glGetInteger(GL_TEXTURE_BINDING_2D) == textures[i], "Texture slot " + slots[i] + " leaked");
-                require(glGetInteger(GL_SAMPLER_BINDING) == samplers[i], "Sampler slot " + slots[i] + " leaked");
-            }
-            // This setter is cached after reconciliation; a missing physical restore would stay wrong.
-            GlStateManager._activeTexture(GL_TEXTURE1); GlStateManager._bindTexture(textures[1]);
-            require(glGetInteger(GL_TEXTURE_BINDING_2D) == textures[1], "Minecraft texture cache disagrees with GL");
-            require(glGetIntegeri(GL_UNIFORM_BUFFER_BINDING, 2) == buffer
-                    && glGetInteger64i(GL_UNIFORM_BUFFER_START, 2) == alignment
-                    && glGetInteger64i(GL_UNIFORM_BUFFER_SIZE, 2) == alignment, "Uniform buffer range leaked");
-            require(glGetInteger(GL_VERTEX_ARRAY_BINDING) == vao && glGetInteger(GL_ELEMENT_ARRAY_BUFFER_BINDING) == element, "VAO element buffer leaked");
-            require(glGetInteger(GL_DEPTH_FUNC) == GL_GREATER, "Depth function leaked");
-            double[] range = new double[2]; glGetDoublev(GL_DEPTH_RANGE, range);
-            require(range[0] == 0.125 && range[1] == 0.875, "Depth range leaked");
-            require(glGetInteger(GL_STENCIL_FUNC) == GL_EQUAL && glGetInteger(GL_STENCIL_REF) == 3
-                    && glGetInteger(GL_STENCIL_BACK_WRITEMASK) == 0x15
-                    && glGetInteger(GL_STENCIL_BACK_PASS_DEPTH_PASS) == GL_DECR, "Stencil state leaked");
-            require(glIsEnabledi(GL_BLEND, 1), "Indexed blend enable leaked");
-            ByteBuffer mask = MemoryUtil.memAlloc(4);
-            try { glGetBooleani_v(GL_COLOR_WRITEMASK, 1, mask); require(mask.get(0) != 0 && mask.get(1) == 0 && mask.get(2) != 0 && mask.get(3) == 0, "Indexed color mask leaked"); }
-            finally { MemoryUtil.memFree(mask); }
-        } finally {
-            for (int i = 0; i < slots.length; i++) { glActiveTexture(GL_TEXTURE0 + slots[i]); glBindTexture(GL_TEXTURE_2D, 0); glBindSampler(slots[i], 0); glDeleteTextures(textures[i]); glDeleteSamplers(samplers[i]); }
-            GlStateManager._activeTexture(GL_TEXTURE0); GlStateManager._bindTexture(0);
-            GlStateManager._depthFunc(GL_LEQUAL); glDepthRange(0, 1);
-            glBindVertexArray(0); glBindBufferBase(GL_UNIFORM_BUFFER, 2, 0); glBindBuffer(GL_UNIFORM_BUFFER, 0);
-            glDeleteBuffers(buffer); glDeleteBuffers(element); glDeleteVertexArrays(vao);
-            GlStateManager._disableBlend(1); GlStateManager._colorMask(1, ColorTargetState.WRITE_ALL);
-        }
-    }
-
-    private static void checkCallbackFailure(Target target) {
-        clear(target, 0.2F, 0.4F, 0.6F, 1);
-        byte[] before = read(target);
-        int previous = glGetInteger(GL_ACTIVE_TEXTURE);
-        try (var isolated = new SkiaUiLayer(target.width, target.height, SkiaContext.getContext())) {
-            try {
-                isolated.draw(target.view, canvas -> { markers(canvas); throw new IllegalStateException("Expected callback failure"); }, false);
-                throw new AssertionError("Callback failure was swallowed by the UI layer");
-            } catch (IllegalStateException expected) { require(expected.getMessage().equals("Expected callback failure"), "Unexpected rendering failure"); }
-            require(Arrays.equals(before, read(target)), "Failed UI callback modified the scene");
-            require(glGetInteger(GL_ACTIVE_TEXTURE) == previous, "Failed callback leaked texture state");
-            isolated.draw(target.view, SkiaInteropGpuChecks::markers, false);
-            assertMarkers(target, 1);
-        }
-    }
-
-    private static void checkLightmap(Target target) {
-        var id = Identifier.fromNamespaceAndPath("pupper", "interop_lightmap");
-        var pipeline = RenderPipeline.builder().withLocation(id).withVertexShader(Identifier.fromNamespaceAndPath("pupper", "skia_ui"))
-                .withFragmentShader(id).withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
-                .withBindGroupLayout(BindGroupLayout.builder().withSampler("Base").withSampler("Lightmap").build())
-                .withColorTargetState(new ColorTargetState(Optional.empty(), GpuFormat.RGBA8_UNORM, ColorTargetState.WRITE_ALL))
-                .withDepthStencilState(Optional.empty()).withCull(false).build();
-        try (var base = new Target(2, 2); var light = new Target(2, 2)) {
-            clear(base, 0, 1, 1, 1); clear(light, 1, 1, 0, 1);
+    private static int scenarios;
+    public static void main(String[] args) {
+        try (var fixture = new UiGpuFixture(); var renderer = new BlazeUiRenderer(); var target = new UiGpuFixture.Target(128, 96)) {
             for (int frame = 0; frame < 4; frame++) {
-                try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Lightmap regression", target.view, Optional.empty())) {
-                    pass.setPipeline(pipeline);
-                    var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
-                    pass.bindTexture("Base", base.view, sampler); pass.bindTexture("Lightmap", light.view, sampler);
-                    pass.draw(3, 1, 0, 0);
-                }
-                pixel(target, 60, 44, 0, 255, 0, 255, "Blaze3D texture + lightmap after Skia frame");
-                SkiaContext.drawOffscreen(target.view, SkiaInteropGpuChecks::markers, false);
+                float alpha = frame % 2;
+                target.clear(.2f, .4f, .6f, alpha);
+                byte[] before = target.read();
+                renderer.draw(target.view, canvas -> {
+                    require(Arrays.equals(before, target.read()), "Recording altered the destination");
+                    rect(canvas, 2, 2, 12, 10, 0xFFFF0000);
+                    rect(canvas, 2, 78, 12, 10, 0xFF0000FF);
+                    rect(canvas, 24, 16, 16, 16, 0x80FF0000);
+                }, false);
+                target.pixel(6, 6, 255, 0, 0, 255, "Top marker");
+                target.pixel(6, 82, 0, 0, 255, 255, "Bottom marker");
+                target.pixel(32, 24, 153, 51, 76, alpha == 0 ? 128 : 255, "Premultiplied blend once");
+                target.pixel(120, 88, 51, 102, 153, (int) alpha * 255, "Untouched exterior"); scenarios++;
             }
-        }
-    }
+            target.clear(0, 0, 0, 0);
+            renderer.draw(target.view, canvas -> {
+                int saved = canvas.save(); canvas.translate(12, 8); canvas.scale(2, 2);
+                try (var clip = Path.makeRRect(RRect.makeXYWH(0, 0, 24, 24, 6));
+                     var hole = Path.makeRRect(RRect.makeXYWH(8, 8, 8, 8, 2))) {
+                    canvas.clipPath(clip, ClipMode.INTERSECT, true);
+                    canvas.clipPath(hole, ClipMode.DIFFERENCE, true);
+                    rect(canvas, -8, -8, 40, 40, 0xFF00FF00);
+                }
+                canvas.restoreToCount(saved);
+                rect(canvas, 90, 60, 12, 12, 0xFF0000FF);
+            }, false);
+            target.pixel(14, 10, 0, 0, 0, 0, "Rounded clip corner");
+            target.pixel(20, 30, 0, 255, 0, 255, "Transformed intersection");
+            target.pixel(36, 32, 0, 0, 0, 0, "Difference clip hole");
+            target.pixel(95, 65, 0, 0, 255, 255, "Restored clip and transform"); scenarios++;
 
-    private static String shader(Identifier id, ShaderType type) {
-        if (id.getPath().equals("interop_lightmap")) return LIGHTMAP_FRAGMENT;
-        String path = "/assets/" + id.getNamespace() + "/shaders/" + id.getPath() + (type == ShaderType.VERTEX ? ".vsh" : ".fsh");
-        try (InputStream input = SkiaInteropGpuChecks.class.getResourceAsStream(path)) {
-            return input == null ? null : new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (Exception failure) { throw new IllegalStateException(path, failure); }
-    }
-    private static void markers(Canvas canvas) {
-        rect(canvas, 2, 2, 12, 10, 0xFFFF0000);
-        rect(canvas, 2, 34, 12, 10, 0xFF0000FF);
-        rect(canvas, 24, 16, 16, 16, 0x80FF0000);
-    }
-    private static void rect(Canvas canvas, int x, int y, int width, int height, int color) {
-        try (var paint = new Paint().setColor(color)) { canvas.drawRect(Rect.makeXYWH(x, y, width, height), paint); }
-    }
-    private static void assertMarkers(Target target, float alpha) {
-        pixel(target, 6, 6, 255, 0, 0, 255, "Top marker orientation");
-        pixel(target, 6, 38, 0, 0, 255, 255, "Bottom marker orientation");
-        pixel(target, 32, 24, 153, 51, 76, alpha == 0 ? 128 : 255, "Premultiplied alpha blended once");
-    }
-    private static void clear(Target target, float r, float g, float b, float a) {
-        RenderSystem.getDevice().createCommandEncoder().clearColorTexture(target.texture, new Vector4f(r, g, b, a));
-    }
-    private static void pixel(Target target, int x, int y, int r, int g, int b, int a, String message) {
-        byte[] data = read(target); int start = ((target.height - y - 1) * target.width + x) * 4;
-        int[] expected = {r, g, b, a};
-        for (int k = 0; k < 4; k++) require(Math.abs((data[start + k] & 255) - expected[k]) <= 2,
-                message + ": channel " + k + ", expected " + expected[k] + ", got " + (data[start + k] & 255));
-    }
-    private static byte[] read(Target target) {
-        int saved = glGetInteger(GL_READ_FRAMEBUFFER_BINDING), pack = glGetInteger(GL_PIXEL_PACK_BUFFER_BINDING);
-        int alignment = glGetInteger(GL_PACK_ALIGNMENT), row = glGetInteger(GL_PACK_ROW_LENGTH);
-        int skipX = glGetInteger(GL_PACK_SKIP_PIXELS), skipY = glGetInteger(GL_PACK_SKIP_ROWS);
-        ByteBuffer data = MemoryUtil.memAlloc(target.width * target.height * 4);
-        try {
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, target.framebuffer); glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-            glPixelStorei(GL_PACK_ALIGNMENT, 1); glPixelStorei(GL_PACK_ROW_LENGTH, 0); glPixelStorei(GL_PACK_SKIP_PIXELS, 0); glPixelStorei(GL_PACK_SKIP_ROWS, 0);
-            glReadPixels(0, 0, target.width, target.height, GL_RGBA, GL_UNSIGNED_BYTE, data);
-            byte[] bytes = new byte[data.remaining()]; data.get(bytes); return bytes;
-        } finally {
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, saved); glBindBuffer(GL_PIXEL_PACK_BUFFER, pack);
-            glPixelStorei(GL_PACK_ALIGNMENT, alignment); glPixelStorei(GL_PACK_ROW_LENGTH, row); glPixelStorei(GL_PACK_SKIP_PIXELS, skipX); glPixelStorei(GL_PACK_SKIP_ROWS, skipY);
-            MemoryUtil.memFree(data);
+            // Subsequent Minecraft-style draws must still see their own texture/sampler bindings.
+            try (var base = new UiGpuFixture.Target(2, 2); var lightmap = new UiGpuFixture.Target(2, 2)) {
+                var pipeline = RenderPipeline.builder().withLocation(Identifier.fromNamespaceAndPath("pupper", "test/lightmap"))
+                        .withVertexShader(Identifier.fromNamespaceAndPath("pupper", "skia_ui"))
+                        .withFragmentShader(Identifier.fromNamespaceAndPath("pupper", "test_lightmap"))
+                        .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+                        .withBindGroupLayout(BindGroupLayout.builder().withSampler("Base").withSampler("Lightmap").build())
+                        .withColorTargetState(new ColorTargetState(Optional.empty(), com.mojang.blaze3d.GpuFormat.RGBA8_UNORM, ColorTargetState.WRITE_ALL))
+                        .withDepthStencilState(Optional.empty()).withCull(false).build();
+                base.clear(.8f, .5f, .25f, 1); lightmap.clear(.5f, .8f, .6f, 1);
+                for (int frame = 0; frame < 4; frame++) {
+                    renderer.draw(target.view, canvas -> rect(canvas, 0, 0, 128, 96, 0xFFFF0000), true);
+                    try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Lightmap after UI", target.view, Optional.empty())) {
+                        pass.setPipeline(pipeline);
+                        var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
+                        pass.bindTexture("Base", base.view, sampler); pass.bindTexture("Lightmap", lightmap.view, sampler);
+                        pass.draw(3, 1, 0, 0);
+                    }
+                    target.pixel(60, 40, 102, 102, 38, 255, "Lightmap colors after UI");
+                }
+            }
+            scenarios++;
+
+            target.clear(0, 0, 0, 0);
+            renderer.draw(target.view, canvas -> {
+                try (var ring = new Paint().setColor(0xFF00FF00).setMode(PaintMode.STROKE).setStrokeWidth(3);
+                     var arc = new Paint().setColor(0xFFFF0000).setMode(PaintMode.STROKE).setStrokeWidth(2)) {
+                    canvas.drawCircle(20, 20, 10, ring);
+                    canvas.drawArc(50, 10, 70, 30, 0, 90, false, arc);
+                    canvas.drawRadialCircle(100, 20, 10, -1, 0x00FFFFFF);
+                }
+            }, false);
+            target.pixel(20, 20, 0, 0, 0, 0, "Ring center remains empty");
+            target.pixel(29, 20, 0, 255, 0, 255, "Ring stroke");
+            target.pixel(69, 22, 255, 0, 0, 255, "Arc inside sweep");
+            target.pixel(50, 20, 0, 0, 0, 0, "Arc outside sweep");
+            byte[] ripple = target.read();
+            require(target.channel(ripple, 100, 20, 3) > 230 && target.channel(ripple, 109, 20, 3) < 30, "Radial ripple alpha falloff");
+            scenarios++;
+
+            target.clear(0, 0, 0, 0);
+            renderer.draw(target.view, canvas -> {
+                try (var opacity = new Paint().setAlpha(128)) {
+                    int saved = canvas.saveLayer(Rect.makeXYWH(8, 8, 80, 60), opacity);
+                    rect(canvas, 10, 10, 36, 36, -1); rect(canvas, 30, 10, 36, 36, -1);
+                    canvas.restoreToCount(saved);
+                }
+                canvas.drawGradient(RRect.makeXYWH(8, 65, 80, 24, 4), new Point(8, 65), new Point(88, 65),
+                        new int[]{0xFFFF0000, 0xFF0000FF}, new float[]{0, 1}, 0);
+            }, false);
+            target.pixel(20, 20, 128, 128, 128, 128, "Group opacity");
+            target.pixel(40, 20, 128, 128, 128, 128, "Overlapping group opacity once");
+            byte[] gradient = target.read();
+            require(target.channel(gradient, 12, 77, 0) > 220 && target.channel(gradient, 82, 77, 2) > 220, "Gradient orientation/colors"); scenarios++;
+
+            try (var source = Surface.makeRasterN32Premul(8, 8); var paint = new Paint().setColor(-1)) {
+                source.getCanvas().clear(0xFFFF0000);
+                source.getCanvas().drawRect(Rect.makeXYWH(0, 4, 8, 4), paint.setColor(0xFF0000FF));
+                try (var image = source.makeImageSnapshot()) {
+                    var font = Fonts.getRegular(16);
+                    target.clear(0, 0, 0, 0);
+                    renderer.draw(target.view, canvas -> {
+                        canvas.drawImageRect(image, Rect.makeXYWH(90, 6, 24, 24));
+                        canvas.drawString("Pupper 音乐", 8, 50, font, paint.setColor(-1));
+                    }, false);
+                    target.pixel(100, 10, 255, 0, 0, 255, "CPU image top orientation");
+                    target.pixel(100, 27, 0, 0, 255, 255, "CPU image bottom orientation");
+                    byte[] first = target.read(); int visible = 0;
+                    for (int y = 32; y < 55; y++) for (int x = 8; x < 88; x++) if (target.channel(first, x, y, 3) > 64) visible++;
+                    require(visible > 120, "Glyph atlas produced no readable text");
+                    int rasterizations = renderer.assetRasterizations();
+                    target.clear(0, 0, 0, 0);
+                    renderer.draw(target.view, canvas -> {
+                        canvas.drawImageRect(image, Rect.makeXYWH(90, 6, 24, 24));
+                        canvas.drawString("Pupper 音乐", 8, 50, font, paint.setColor(-1));
+                    }, false);
+                    require(renderer.assetRasterizations() == rasterizations, "Unchanged text/artwork was rerasterized");
+                    require(Arrays.equals(first, target.read()), "Cached frame differs");
+                }
+                // Retired artwork is closed before the following frame: cache cleanup must not read native dimensions.
+                renderer.draw(target.view, canvas -> {}, false);
+            }
+            scenarios++;
+            try (var reference = Surface.makeRasterN32Premul(128, 96); var white = new Paint().setColor(-1)) {
+                var testFont = Fonts.getRegular(28);
+                reference.getCanvas().clear(0); reference.getCanvas().scale(2, 2);
+                reference.getCanvas().drawString("Pupp", 2, 28, testFont, white);
+                java.awt.image.BufferedImage expected;
+                try (var image = reference.makeImageSnapshot(); var png = image.encodeToData(EncodedImageFormat.PNG)) {
+                    expected = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(png.getBytes()));
+                } catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); }
+                target.clear(0,0,0,0);
+                renderer.draw(target.view, canvas -> {canvas.scale(2,2);canvas.drawString("Pupp",2,28,testFont,white);}, false);
+                byte[] actual = target.read(); int stray = 0;
+                for (int y=2;y<94;y++) for(int x=2;x<126;x++) {
+                    int nearby=0;
+                    for(int dy=-2;dy<=2;dy++) for(int dx=-2;dx<=2;dx++) nearby=Math.max(nearby,expected.getRGB(x+dx,y+dy)>>>24);
+                    if(nearby==0 && target.channel(actual,x,y,3)>8) stray++;
+                }
+                require(stray == 0, "Glyph atlas sampled outside the reference glyphs: " + stray + " stray pixels");
+            }
+            byte[] before = target.read(); boolean threw = false;
+            try { renderer.draw(target.view, canvas -> { rect(canvas, 0, 0, 128, 96, -1); throw new IllegalStateException("fixture"); }, true); }
+            catch (IllegalStateException expected) { threw = true; }
+            require(threw && Arrays.equals(before, target.read()), "Failed UI frame changed the destination"); scenarios++;
+            try (var resized = new UiGpuFixture.Target(192, 128); var borrowed = new UiGpuFixture.Target(8, 8)) {
+                borrowed.clear(0, 1, 0, 1); resized.clear(0, 0, 0, 0);
+                renderer.draw(resized.view, canvas -> canvas.drawTexture(borrowed.view, Rect.makeWH(8, 8), Rect.makeXYWH(4, 4, 20, 20), 1), false);
+                resized.pixel(12, 12, 0, 255, 0, 255, "Borrowed GPU image after resize");
+                renderer.close(); require(!borrowed.view.isClosed() && !borrowed.texture.isClosed(), "Renderer closed Minecraft-owned texture");
+            }
+            scenarios++;
+            // Exercise the actual event drawing facade and repeated shutdown.
+            target.clear(0, 0, 0, 0);
+            SkiaContext.drawOffscreen(target.view, canvas -> cn.pupperclient.skia.Skia.drawRect(4, 4, 12, 12, java.awt.Color.RED), false);
+            target.pixel(8, 8, 255, 0, 0, 255, "Production context/facade");
+            SkiaContext.close(); SkiaContext.close();
+            System.out.println("Blaze3D UI GPU checks passed: " + scenarios + " scenarios; composition, clips, opacity groups, gradients, cached glyphs/images, resize and ownership.");
         }
     }
-    private static final class Target implements AutoCloseable {
-        final int width, height, framebuffer;
-        final GpuTexture texture;
-        final GpuTextureView view;
-        Target(int width, int height) {
-            this.width = width; this.height = height;
-            texture = RenderSystem.getDevice().createTexture(() -> "Interop test scene",
-                    GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_COPY_DST,
-                    GpuFormat.RGBA8_UNORM, width, height, 1, 1);
-            view = RenderSystem.getDevice().createTextureView(texture);
-            framebuffer = glGenFramebuffers();
-            int saved = glGetInteger(GL_DRAW_FRAMEBUFFER_BINDING);
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-            glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ((GlTexture) texture).glId(), 0);
-            require(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Test framebuffer incomplete");
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, saved);
-        }
-        @Override public void close() { glDeleteFramebuffers(framebuffer); view.close(); texture.close(); }
+    private static void rect(UiCanvas canvas, float x, float y, float w, float h, int color) {
+        try (var paint = new Paint().setColor(color)) { canvas.drawRect(Rect.makeXYWH(x, y, w, h), paint); }
     }
-    private static void require(boolean condition, String message) { checks++; if (!condition) throw new AssertionError(message); }
+    private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
 }
