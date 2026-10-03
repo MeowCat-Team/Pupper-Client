@@ -114,6 +114,7 @@ public final class MusicDownload {
 
     public Path cover(long id) { return cache.resolve("ncm-cover-" + id + ".jpg"); }
     public Path cover(MusicTrack track) { return cache.resolve(track.coverFilename()); }
+    public Path cover(MusicCollection collection) { return cache.resolve(collection.coverFilename()); }
 
     /** Temporary playback files never become library downloads or grant offline-download permission. */
     public Result playback(MusicTrack track, String quality, Path playing, IntConsumer progress) throws MusicError, IOException {
@@ -154,16 +155,20 @@ public final class MusicDownload {
     }
 
     public void fetchCover(MusicTrack track) {
-        if (!track.remote() || track.coverUrl().isBlank() || Files.exists(cover(track))) return;
+        if (track.remote()) fetchCover(track.coverUrl(), cover(track), track.provider());
+    }
+    public void fetchCover(MusicCollection collection) { fetchCover(collection.coverUrl(), cover(collection), collection.provider()); }
+    private void fetchCover(String url, Path output, String provider) {
+        if (url.isBlank() || Files.exists(output)) return;
         Path partial = null;
         try {
             Files.createDirectories(cache);
             partial = Files.createTempFile(cache, ".cover-", ".tmp");
-            URI url = URI.create(track.coverUrl() + (track.provider().equals("netease")
-                ? (track.coverUrl().contains("?") ? "&" : "?") + "param=600y600" : ""));
-            transfer(url, partial, _ -> { });
+            URI uri = URI.create(url + (provider.equals("netease")
+                ? (url.contains("?") ? "&" : "?") + "param=600y600" : ""));
+            transfer(uri, partial, _ -> { });
             if (ImageIO.read(partial.toFile()) != null)
-                Files.move(partial, cover(track), StandardCopyOption.REPLACE_EXISTING);
+                Files.move(partial, output, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException | MusicError | RuntimeException unavailable) {
             // Cover failure does not discard successfully downloaded audio.
         } finally {

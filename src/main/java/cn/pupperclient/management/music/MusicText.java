@@ -25,6 +25,10 @@ public final class MusicText {
             default -> get("music.access.paid");
         };
     }
+    public static String collection(MusicCollection collection) {
+        String description = collection.owner().isBlank() ? get(collection.type().nameKey()) : collection.owner();
+        return collection.trackCount() < 0 ? description : description + " · " + get("music.tracks", collection.trackCount());
+    }
     public static String artist(MusicTrack track) {
         String access = access(track);
         return access.isEmpty() ? track.artist() : access + (track.artist().isBlank() ? "" : " · " + track.artist());

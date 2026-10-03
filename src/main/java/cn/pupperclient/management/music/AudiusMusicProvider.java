@@ -15,10 +15,54 @@ import java.util.List;
 /** Public Audius Discovery API. Restricted tracks remain visible, with unavailable actions disabled. */
 public final class AudiusMusicProvider implements MusicProvider {
     private final URI base;
+    private record PlaylistTracks(String id, JsonArray songs) { }
+    private volatile PlaylistTracks playlistTracks;
     public AudiusMusicProvider() { this(URI.create("https://api.audius.co/v1/")); }
     public AudiusMusicProvider(URI base) { this.base = URI.create(base.toString().replaceAll("/+$", "") + "/"); }
     @Override public String id() { return "audius"; }
     @Override public List<String> qualities() { return List.of("standard"); }
+
+    @Override public CatalogResult search(String keyword, MusicSearchType type, int limit, int offset) throws MusicError {
+        if (type == MusicSearchType.SONGS) return MusicProvider.super.search(keyword, type, limit, offset);
+        limit = Math.clamp(limit, 1, 50); offset = Math.max(0, offset);
+        JsonArray data = array(request((type == MusicSearchType.ARTISTS ? "users" : "playlists")
+            + "/search?query=" + encode(keyword) + "&limit=" + limit + "&offset=" + offset), "data");
+        var collections = new ArrayList<MusicCollection>();
+        for (JsonElement element : data) if (element.isJsonObject()) {
+            JsonObject item = element.getAsJsonObject();
+            String id = string(item, "id"), name = string(item, type == MusicSearchType.ARTISTS ? "name" : "playlist_name");
+            if (!id.matches("[a-zA-Z0-9_-]{1,80}") || name.isBlank()) continue;
+            String owner = type == MusicSearchType.ARTISTS ? string(item, "handle") : string(object(item, "user"), "name");
+            if (type == MusicSearchType.ARTISTS && !owner.isBlank()) owner = "@" + owner;
+            collections.add(new MusicCollection(id(), id, type, name, owner,
+                artwork(object(item, type == MusicSearchType.ARTISTS ? "profile_picture" : "artwork")), integer(item, "track_count", -1)));
+        }
+        return new CatalogResult(type, List.of(), collections, data.size() == limit ? -1 : offset + data.size(), offset, offset + data.size());
+    }
+
+    @Override public SearchResult collectionTracks(MusicCollection collection, int limit, int offset, String cookie) throws MusicError {
+        if (!collection.provider().equals(id())) throw new MusicError("music.error.metadata");
+        validId(collection.id()); limit = Math.clamp(limit, 1, 50); offset = Math.max(0, offset);
+        JsonArray data; int start = 0, end, total;
+        if (collection.type() == MusicSearchType.PLAYLISTS) {
+            // The official playlist-tracks route has no limit/offset parameters. Keep one snapshot for its subsequent pages.
+            PlaylistTracks cached = playlistTracks;
+            if (offset == 0 || cached == null || !cached.id().equals(collection.id())) {
+                cached = new PlaylistTracks(collection.id(), array(request("playlists/" + collection.id() + "/tracks"), "data"));
+                playlistTracks = cached;
+            }
+            data = cached.songs(); start = Math.min(offset, data.size()); end = Math.min(start + limit, data.size()); total = data.size();
+        } else {
+            data = array(request("users/" + collection.id() + "/tracks?limit=" + limit + "&offset=" + offset), "data");
+            end = data.size(); total = data.size() == limit ? -1 : offset + data.size();
+        }
+        var tracks = new ArrayList<MusicTrack>();
+        for (int i = start; i < end; i++) {
+            JsonElement element = data.get(i); if (!element.isJsonObject()) continue;
+            MusicTrack track = parse(element.getAsJsonObject()); if (track != null) tracks.add(track);
+        }
+        return new SearchResult(List.copyOf(tracks), total, offset, offset + end - start);
+    }
 
     @Override public SearchResult search(String keyword, int limit, int offset) throws MusicError {
         limit = Math.clamp(limit, 1, 50);
@@ -91,6 +135,16 @@ public final class AudiusMusicProvider implements MusicProvider {
     private static String string(JsonObject data, String key) {
         JsonElement value = data.get(key);
         return value != null && value.isJsonPrimitive() ? value.getAsString() : "";
+    }
+    private static JsonArray array(JsonObject data, String key) {
+        return data.has(key) && data.get(key).isJsonArray() ? data.getAsJsonArray(key) : new JsonArray();
+    }
+    private static int integer(JsonObject data, String key, int fallback) {
+        try { return data.get(key).getAsInt(); } catch (RuntimeException invalid) { return fallback; }
+    }
+    private static String artwork(JsonObject data) {
+        String cover = string(data, "480x480");
+        return cover.isBlank() ? string(data, "150x150") : cover;
     }
     private static JsonObject object(JsonObject data, String key) {
         return data.has(key) && data.get(key).isJsonObject() ? data.getAsJsonObject(key) : new JsonObject();

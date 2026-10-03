@@ -28,7 +28,14 @@ public final class NeteaseMusicApi {
     }
 
     public SearchResult search(String keyword, int limit, int offset) throws MusicError {
-        Map<String, String> params = Map.of("keywords", keyword, "type", "1", "limit", String.valueOf(limit),
+        var result = search(keyword, MusicSearchType.SONGS, limit, offset);
+        return new SearchResult(result.tracks(), result.total(), result.offset());
+    }
+
+    public MusicProvider.CatalogResult search(String keyword, MusicSearchType type, int limit, int offset) throws MusicError {
+        limit = Math.clamp(limit, 1, 50); offset = Math.max(0, offset);
+        String apiType = switch (type) { case SONGS -> "1"; case ARTISTS -> "100"; case PLAYLISTS -> "1000"; };
+        Map<String, String> params = Map.of("keywords", keyword, "type", apiType, "limit", String.valueOf(limit),
             "offset", String.valueOf(offset));
         JsonObject response;
         try {
@@ -37,8 +44,45 @@ public final class NeteaseMusicApi {
             response = request("search", params, null);
         }
         JsonObject result = object(response, "result");
-        List<MusicTrack> tracks = parseTracks(array(result, "songs"));
-        return new SearchResult(tracks, (int) number(result, "songCount", offset + tracks.size()), offset);
+        String field = switch (type) { case SONGS -> "songs"; case ARTISTS -> "artists"; case PLAYLISTS -> "playlists"; };
+        JsonArray data = array(result, field);
+        int next = offset + data.size();
+        int total = (int) number(result, switch (type) { case SONGS -> "songCount"; case ARTISTS -> "artistCount"; case PLAYLISTS -> "playlistCount"; },
+            pageTotal(result, limit, offset, data.size()));
+        return new MusicProvider.CatalogResult(type, type == MusicSearchType.SONGS ? parseTracks(data) : List.of(),
+            type == MusicSearchType.SONGS ? List.of() : parseCollections(data, type), total, offset, next);
+    }
+
+    public MusicProvider.SearchResult collectionTracks(MusicCollection collection, int limit, int offset, String cookie) throws MusicError {
+        if (!collection.provider().equals("netease") || !collection.id().matches("[1-9][0-9]{0,18}")) throw new MusicError("music.error.metadata");
+        limit = Math.clamp(limit, 1, 50); offset = Math.max(0, offset);
+        Map<String, String> parameters = new LinkedHashMap<>(Map.of("id", collection.id(), "limit", String.valueOf(limit), "offset", String.valueOf(offset)));
+        if (collection.type() == MusicSearchType.ARTISTS) parameters.put("order", "hot");
+        JsonObject response = request(collection.type() == MusicSearchType.ARTISTS ? "artist/songs" : "playlist/track/all", parameters, cookie);
+        JsonArray data = array(response, "songs");
+        return new MusicProvider.SearchResult(parseTracks(data, array(response, "privileges")),
+            (int) number(response, "total", pageTotal(response, limit, offset, data.size())), offset, offset + data.size());
+    }
+
+    private static int pageTotal(JsonObject response, int limit, int offset, int count) {
+        if (response.has("more") && response.get("more").isJsonPrimitive()) try {
+            return response.get("more").getAsBoolean() ? -1 : offset + count;
+        } catch (RuntimeException invalid) { /* Fall back to the received page length. */ }
+        return count == limit ? -1 : offset + count;
+    }
+
+    private static List<MusicCollection> parseCollections(JsonArray data, MusicSearchType type) {
+        var collections = new ArrayList<MusicCollection>();
+        for (JsonElement element : data) if (element.isJsonObject()) {
+            JsonObject item = element.getAsJsonObject(); long id = number(item, "id", 0);
+            String name = string(item, "name"); if (id <= 0 || name.isBlank()) continue;
+            String cover = string(item, type == MusicSearchType.ARTISTS ? "img1v1Url" : "coverImgUrl");
+            if (cover.isBlank()) cover = string(item, "picUrl");
+            collections.add(new MusicCollection("netease", Long.toString(id), type, name,
+                type == MusicSearchType.ARTISTS ? "" : string(object(item, "creator"), "nickname"), cover,
+                (int) number(item, type == MusicSearchType.ARTISTS ? "musicSize" : "trackCount", -1)));
+        }
+        return List.copyOf(collections);
     }
 
     public List<MusicTrack> details(List<Long> ids) throws MusicError {

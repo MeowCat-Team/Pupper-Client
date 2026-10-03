@@ -68,6 +68,20 @@ public final class MusicService {
         task(() -> selected.search(keyword, limit, offset), success, failure);
     }
 
+    public void search(String keyword, MusicSearchType type, int offset, Consumer<MusicProvider.CatalogResult> success,
+            Consumer<MusicError> failure) {
+        MusicProvider selected = provider();
+        task(() -> selected.search(keyword, type, 30, offset), success, failure);
+    }
+    public void collectionTracks(MusicCollection collection, int offset, Consumer<MusicProvider.SearchResult> success,
+            Consumer<MusicError> failure) {
+        MusicProvider source;
+        try { source = providers.get(collection.provider()); }
+        catch (MusicError invalid) { failure.accept(invalid); return; }
+        String cookie = account(source.id()).cookie();
+        task(() -> source.collectionTracks(collection, 30, offset, cookie), success, failure);
+    }
+
     public void download(long id, String quality, boolean play, Consumer<Music> success, Consumer<MusicError> failure) {
         resolve("netease:" + id, track -> download(track, quality, play, success, failure), failure);
     }
@@ -133,6 +147,14 @@ public final class MusicService {
         if (java.nio.file.Files.isRegularFile(cover)) return cover.toFile();
         if (!track.coverUrl().isBlank() && coversLoading.add(track.key()))
             Multithreading.runAsync(() -> download.fetchCover(track));
+        return null;
+    }
+    public File cover(MusicCollection collection) {
+        MusicDownload download = downloads.get(collection.provider()); if (download == null) return null;
+        Path cover = download.cover(collection);
+        if (java.nio.file.Files.isRegularFile(cover)) return cover.toFile();
+        if (!collection.coverUrl().isBlank() && coversLoading.add(collection.key()))
+            Multithreading.runAsync(() -> download.fetchCover(collection));
         return null;
     }
 

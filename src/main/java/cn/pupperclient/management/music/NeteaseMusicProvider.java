@@ -9,6 +9,12 @@ public final class NeteaseMusicProvider implements MusicProvider {
     private final NeteaseMusicApi api;
     public NeteaseMusicProvider(NeteaseMusicApi api) { this.api = api; }
     @Override public String id() { return "netease"; }
+    @Override public CatalogResult search(String keyword, MusicSearchType type, int limit, int offset) throws MusicError {
+        return api.search(keyword, type, limit, offset);
+    }
+    @Override public SearchResult collectionTracks(MusicCollection collection, int limit, int offset, String cookie) throws MusicError {
+        return api.collectionTracks(collection, limit, offset, cookie);
+    }
     @Override public List<String> qualities() { return QUALITIES; }
     @Override public String defaultQuality() { return "exhigh"; }
     @Override public SearchResult search(String keyword, int limit, int offset) throws MusicError {
