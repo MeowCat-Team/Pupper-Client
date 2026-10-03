@@ -332,21 +332,28 @@ tasks.register<JavaExec>("benchmarkGlassGpu") {
 }
 
 val releaseType = when {
-    modVersion.contains("alpha", ignoreCase = true) -> "alpha"
+    modVersion.contains('-') && !modVersion.contains("beta", ignoreCase = true) -> "alpha"
     modVersion.contains("beta", ignoreCase = true) -> "beta"
     else -> "release"
 }
 
+// Retried releases must produce the same file on both publishing platforms.
+tasks.withType<AbstractArchiveTask>().configureEach {
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+
 modrinth {
     token.set(providers.environmentVariable("MODRINTH_TOKEN"))
-    projectId.set("pupper-client")
+    projectId.set(providers.gradleProperty("modrinth_project_id"))
     versionNumber.set(project.version.toString())
     versionName.set("Pupper Client $modVersion for Minecraft $minecraftVersion")
     versionType.set(releaseType)
     uploadFile.set(tasks.named("jar"))
     gameVersions.add(minecraftVersion)
     loaders.add("fabric")
-    changelog.set(providers.environmentVariable("CHANGELOG").orElse("No changelog was provided."))
+    changelog.set(providers.environmentVariable("CHANGELOG_FILE").map { file(it).readText(Charsets.UTF_8) }
+        .orElse(providers.environmentVariable("CHANGELOG")).orElse("No changelog was provided."))
 
     dependencies {
         required.project("fabric-api")

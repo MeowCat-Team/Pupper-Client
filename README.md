@@ -27,6 +27,9 @@ A Better, Faster Minecraft Client
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 ## Contributing
+
+Maintainers can bump `mod_version` and push to the matching version branch to publish automatically to GitHub Release and Modrinth. See [release setup and retries](docs/releases.md).
+
 Contributions are welcome! Please fork the repository and submit a pull request with your changes. 
 
 For major changes, please open an issue first to discuss what you would like to change.

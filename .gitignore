@@ -15,3 +15,6 @@ bin
 run
 .skidfuscator
 .idea
+
+# Python release tooling
+__pycache__/
