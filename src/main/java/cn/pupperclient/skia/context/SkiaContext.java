@@ -7,6 +7,9 @@ import cn.pupperclient.PupperLogger;
 import cn.pupperclient.skia.GlassRenderer;
 import cn.pupperclient.skia.api.WrappedBackendRenderTarget;
 import cn.pupperclient.skia.gl.States;
+import com.mojang.blaze3d.opengl.GlTexture;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.GpuTextureView;
 import io.github.humbleui.skija.*;
 
 import org.lwjgl.opengl.GL11;
@@ -20,6 +23,33 @@ public class SkiaContext {
     private static DirectContext context = null; // Skia GPU context
     private static Surface surface; // Skia drawing surface
     private static WrappedBackendRenderTarget renderTarget; // Backend render target for GL
+    private static SkiaUiLayer uiLayer;
+    private static boolean reportedFailure;
+
+    /** Called before GpuSurface.blitFromTexture, while Minecraft still owns the frame. */
+    public static void drawOffscreen(GpuTextureView destination, Consumer<Canvas> drawing, boolean captureGlass) {
+        if (destination == null || destination.isClosed()) return;
+        int width = destination.getWidth(0), height = destination.getHeight(0);
+        if (width <= 0 || height <= 0) return;
+        boolean gpu = destination.texture() instanceof GlTexture;
+        try {
+            if (gpu && context == null) {
+                States.push();
+                try { context = DirectContext.makeGL(); }
+                finally { States.popMinecraft(); }
+            }
+            if (uiLayer == null || !uiLayer.matches(width, height, gpu)) {
+                if (uiLayer != null) { uiLayer.close(); uiLayer = null; surface = null; }
+                uiLayer = new SkiaUiLayer(width, height, gpu ? context : null);
+            }
+            surface = uiLayer.surface();
+            uiLayer.draw(destination, drawing, captureGlass);
+            reportedFailure = false;
+        } catch (RuntimeException failure) {
+            if (!reportedFailure) PupperLogger.error("Skia", "Failed to render the UI layer", failure);
+            reportedFailure = true;
+        }
+    }
 
     /**
      * Gets the current Skia canvas for drawing.
@@ -30,8 +60,7 @@ public class SkiaContext {
     }
 
     /**
-     * Creates or recreates the Skia surface with the given dimensions.
-     * This should be called when the window size changes.
+     * Explicit framebuffer path for isolated GPU verification. Production uses drawOffscreen.
      * @param width The width of the surface in pixels.
      * @param height The height of the surface in pixels.
      * @param fboid framebuffer object id, or null to use the currently bound draw framebuffer
@@ -134,5 +163,23 @@ public class SkiaContext {
      */
     public static DirectContext getContext() {
         return context;
+    }
+
+    /** Release native wrappers before Blaze3D shuts down its device. */
+    public static void close() {
+        if (uiLayer != null) { uiLayer.close(); uiLayer = null; surface = null; }
+        if (context == null) return;
+        States.push();
+        try {
+            GlassRenderer.endFrame();
+            if (surface != null) { surface.close(); surface = null; }
+            if (renderTarget != null) { renderTarget.close(); renderTarget = null; }
+            context.close();
+            context = null;
+        } finally {
+            if (RenderSystem.tryGetDevice() != null) States.popMinecraft();
+            else States.pop();
+        }
+        reportedFailure = false;
     }
 }

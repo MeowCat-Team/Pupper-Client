@@ -67,6 +67,7 @@ public class PupperClient implements IMinecraft {
         }
         cn.pupperclient.skia.Skia.releaseResources();
         cn.pupperclient.skia.font.FontHelper.clearCache();
+        cn.pupperclient.skia.context.SkiaContext.close();
         Multithreading.shutdown();
     }
 

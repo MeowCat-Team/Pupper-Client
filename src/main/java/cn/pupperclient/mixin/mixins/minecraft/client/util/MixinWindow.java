@@ -8,7 +8,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import cn.pupperclient.skia.context.SkiaContext;
 import com.mojang.blaze3d.platform.Window;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWImage;
@@ -25,11 +24,6 @@ public class MixinWindow {
     @Shadow
     @Final
     private long handle;
-
-    @Inject(method = "onFramebufferResize", at = @At("RETURN"))
-	private void onFramebufferSizeChanged(long window, int width, int height, CallbackInfo ci) {
-		SkiaContext.createSurface(width > 0 ? width : 1, height > 0 ? height : 1, null);
-	}
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onWindowInit(CallbackInfo ci) {

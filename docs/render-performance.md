@@ -20,7 +20,19 @@ A 30-second JFR sample of the running development client on 2026-09-27 contained
 
 ## Skia and glass
 
+The production UI renders into a separate transparent RGBA8 texture owned by Blaze3D. Skia wraps a private framebuffer attached to that texture; it no longer wraps the window framebuffer. A Blaze3D `RenderPipeline`/`RenderPass` composites the texture with premultiplied alpha before `GpuSurface.blitFromTexture`, command submission and presentation. The target dimensions drive allocation and the root scale, including RGSS; resizing does not replace the shared Skia context or invalidate cached UI images.
+
+Native Ganesh still uses OpenGL inside the bridge. Its boundary saves/restores fragment texture slots and samplers, uniform-buffer ranges, framebuffer/VAO/indirect-buffer bindings, indexed blending/color masks, pixel-transfer state, depth, stencil, dither and line/point state. Restoration also reconciles Minecraft's state cache after lazy texture uploads from UI callbacks. An exception in a callback restores the boundary and skips composition of that incomplete UI frame. Native wrappers are released before the Blaze3D device closes.
+
+For a destination from another graphics backend, the layer uses raster Skia and uploads through Blaze3D, without executing the GL bridge. That path keeps the Material tint but omits scene refraction; it also incurs a full UI upload. The upload/composition path is checked on an OpenGL device. This is not a claim that the complete client has been tested with Vulkan.
+
 The scene is captured once per frame that needs glass. With both glass switches off, the renderer does not copy the framebuffer. Each visible rounded panel samples that shared scene with a normalized nine-sample stencil and small edge refraction. No fullscreen backdrop filter is applied. Text shadows use faint ordinary glyph draws; animated opacity layers use local bounds; cover-art blur filters have a bounded cache.
+
+Glass captures Minecraft's scene through a separate, read-only-in-use surface before drawing the UI texture. Overlapping panels therefore share the original scene instead of sampling previously painted text or controls. RGBA8 scene targets support this capture; other formats keep the tint without refraction.
+
+`verifySkiaInterop` runs in `check` and guards the 26.2 presentation order and state-cache contract. `verifySkiaInteropGpu` creates a hidden real Blaze3D device and runs the production compositor: it checks untouched scene pixels, alpha-zero game colors, premultiplied blending, asymmetric top/bottom markers, glass isolation, texture/sampler/UBO/cache restoration, alternating lightmap passes, resize, failed callbacks, raster upload and shutdown. It is optional for CI hosts without a graphics device. Local verification passed on Intel Arc Graphics, driver 32.0.101.8331; the user's server scene and resource/shader packs still need verification after restarting the rebuilt client.
+
+A separate local Fabric pre-launch smoke check confirmed application of the new Minecraft UI hook with the configured runtime mods, including Sodium and Iris. It exited before Minecraft initialization and did not open a game window or enter a world.
 
 `verifyGlassGpu` exercises real hidden OpenGL framebuffers, including valid scene RGB with alpha zero, scene-only sampling, clipping/transforms, alpha layers, disabled effects and GL state restoration. The old backdrop pass doubles RGB for an alpha-zero scene; the regression explicitly reproduces this before checking the replacement.
 
@@ -33,4 +45,4 @@ Local run on 2026-09-27, Intel Arc Graphics, driver 32.0.101.8331 (median millis
 | HUD | 2.686 | 0.796 | 0.699 | 0.267 |
 | HUD and menu | 3.516 | 1.204 | 0.833 | 0.305 |
 
-The comparison isolates the panel algorithms. It excludes the previous fullscreen menu blur and per-line text blur, and does not claim an end-to-end FPS gain from these figures.
+The comparison isolates the panel algorithms. It predates the offscreen Blaze3D compositor and does not measure its state boundary or final composite pass. It excludes the previous fullscreen menu blur and per-line text blur, and does not claim an end-to-end FPS gain from these figures.

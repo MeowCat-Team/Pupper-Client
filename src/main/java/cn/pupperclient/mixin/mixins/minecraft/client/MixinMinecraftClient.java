@@ -31,7 +31,6 @@ import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.gui.tooltip.ContainerPreview;
 import com.mojang.blaze3d.platform.Window;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -152,15 +151,6 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
 		PupperClient.getInstance().start();
 	}
 
-    @Inject(method = "<init>", at = @At("RETURN"))
-    public void skia(CallbackInfo ci) throws IOException {
-        int[] width = new int[1];
-        int[] height = new int[1];
-
-        GLFW.glfwGetFramebufferSize(Minecraft.getInstance().getWindow().handle(), width, height);
-        SkiaContext.createSurface(width[0] > 0 ? width[0] : 1, height[0] > 0 ? height[0] : 1, null);
-    }
-
     @Inject(method = "close", at = @At("HEAD"))
     public void onShutdown(CallbackInfo ci) {
         PupperClient.getInstance().onShutdown();
@@ -175,10 +165,10 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
         method = {"renderFrame"},
         at = @At(
             value = "INVOKE",
-            target = "Lcom/mojang/blaze3d/systems/GpuSurface;present()V"
+            target = "Lcom/mojang/blaze3d/systems/GpuSurface;blitFromTexture(Lcom/mojang/blaze3d/systems/CommandEncoder;Lcom/mojang/blaze3d/textures/GpuTextureView;)V"
         )
     )
-    private void onBeforeFlipFrame(CallbackInfo ci) {
+    private void onBeforePresentBlit(CallbackInfo ci) {
         Minecraft minecraft = Minecraft.getInstance();
         Screen screen = minecraft.gui.screen();
         boolean skiaScreen = screen instanceof SimplePupperClientGui;
@@ -198,8 +188,13 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
         boolean glassGui = skiaScreen && !(screen instanceof GuiEditHUD) && menuSettings != null
             && menuSettings.getBlurSetting().isEnabled()
             && menuSettings.getBackgroundOpacity() > 0 && menuSettings.getBackgroundOpacity() < 1;
-        SkiaContext.draw((canvas) -> {
+        var destination = minecraft.gameRenderer.mainRenderTarget().getColorTextureView();
+        if (destination == null) return;
+        SkiaContext.drawOffscreen(destination, (canvas) -> {
             Window currentWindow = minecraft.getWindow();
+            // RGSS can make the render target larger than the physical window.
+            canvas.scale((float) destination.getWidth(0) / Math.max(1, currentWindow.getWidth()),
+                    (float) destination.getHeight(0) / Math.max(1, currentWindow.getHeight()));
             if (drawHud) {
                 Skia.save();
                 try {
@@ -214,11 +209,12 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
                 double mouseX = minecraft.mouseHandler.getScaledXPos(currentWindow);
                 double mouseY = minecraft.mouseHandler.getScaledYPos(currentWindow);
                 Skia.save();
-                if (skiaGui.usesMinecraftGuiScale()) {
-                    Skia.scale((float) currentWindow.getGuiScale());
-                }
-                skiaGui.renderSkia(mouseX, mouseY);
-                Skia.restore();
+                try {
+                    if (skiaGui.usesMinecraftGuiScale()) {
+                        Skia.scale((float) currentWindow.getGuiScale());
+                    }
+                    skiaGui.renderSkia(mouseX, mouseY);
+                } finally { Skia.restore(); }
             }
             if (preview) {
                 Skia.save();

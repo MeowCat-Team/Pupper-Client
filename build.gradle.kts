@@ -188,6 +188,26 @@ tasks.register<JavaExec>("verifyGlassGpu") {
     doFirst { workingDir.mkdirs() }
 }
 
+val verifySkiaInterop = tasks.register<JavaExec>("verifySkiaInterop") {
+    group = "verification"
+    description = "Checks Skia presentation order and Minecraft state-cache compatibility."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.SkiaInteropChecks")
+}
+tasks.check { dependsOn(verifySkiaInterop) }
+
+tasks.register<JavaExec>("verifySkiaInteropGpu") {
+    group = "verification"
+    description = "Checks the offscreen Skia UI compositor and Blaze3D state caches on a real hidden GPU device."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.SkiaInteropGpuChecks")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    workingDir(layout.buildDirectory.dir("verification"))
+    doFirst { workingDir.mkdirs() }
+}
+
 val verifyItemRendering = tasks.register<JavaExec>("verifyItemRendering") {
     group = "verification"
     description = "Checks item shadow budgets and Minecraft render hook compatibility."
