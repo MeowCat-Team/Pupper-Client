@@ -42,6 +42,7 @@ import static org.lwjgl.opengl.GL45.*;
 public class State {
     private final int glVersion;
     private final Properties props = new Properties();
+    private final GlBindings bindings = new GlBindings();
 
     public State(int glVersion) {
         this.glVersion = glVersion;
@@ -56,6 +57,7 @@ public class State {
         glGetIntegerv(GL_ACTIVE_TEXTURE, props.lastActiveTexture);
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, props.lastDrawFramebuffer);
         glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, props.lastReadFramebuffer);
+        bindings.push();
         glActiveTexture(GL_TEXTURE0);
         glGetIntegerv(GL_CURRENT_PROGRAM, props.lastProgram);
         glGetIntegerv(GL_TEXTURE_BINDING_2D, props.lastTexture);
@@ -198,7 +200,10 @@ public class State {
         }
 
         glDepthMask(props.isLastDepthMask());
+        bindings.pop();
+        glActiveTexture(props.lastActiveTexture[0]);
 
         return this;
     }
+    public void reconcileMinecraft() { bindings.reconcile(props); }
 }

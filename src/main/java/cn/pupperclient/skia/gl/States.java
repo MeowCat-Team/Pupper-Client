@@ -58,12 +58,19 @@ public final class States {
      * Pops the last OpenGL state from the stack and restores it.
      */
     public static void pop() {
+        pop(false);
+    }
+    public static void popMinecraft() {
+        pop(true);
+    }
+    private static void pop(boolean minecraft) {
         if (STATES.isEmpty()) {
             throw new IllegalStateException("No state to restore.");
         }
         State state = STATES.pop();
         try {
             state.pop();
+            if (minecraft) state.reconcileMinecraft();
         } finally {
             AVAILABLE.push(state);
         }
