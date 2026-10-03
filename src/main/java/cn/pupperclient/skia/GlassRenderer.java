@@ -2,6 +2,9 @@ package cn.pupperclient.skia;
 
 import cn.pupperclient.PupperLogger;
 import io.github.humbleui.skija.Canvas;
+import cn.pupperclient.ui.render.UiCanvas;
+import cn.pupperclient.ui.render.BlazeUiCanvas;
+import cn.pupperclient.ui.render.RasterUiCanvas;
 import io.github.humbleui.skija.Data;
 import io.github.humbleui.skija.FilterTileMode;
 import io.github.humbleui.skija.Image;
@@ -79,7 +82,7 @@ public final class GlassRenderer {
 
     private GlassRenderer() {}
 
-    /** Called exactly once at the start of a Skia frame, before HUD/GUI rendering. */
+    /** Capture a CPU specimen backdrop. Production glass uses Blaze3D's scene texture. */
     public static void beginFrame(Surface surface) {
         endFrame();
         if (unavailable) return;
@@ -97,7 +100,13 @@ public final class GlassRenderer {
      * Draws the scene inside the current transform and clip, including animated alpha layers.
      * Strength and refraction are local UI pixels; tint opacity is deliberately independent.
      */
-    public static void draw(Canvas canvas, float x, float y, float width, float height,
+    public static void draw(UiCanvas canvas, float x, float y, float width, float height,
+                            float radius, float strength, float refraction) {
+        if (canvas instanceof BlazeUiCanvas gpu) gpu.drawGlass(x, y, width, height, radius, strength, refraction);
+        else if (canvas instanceof RasterUiCanvas raster) drawRaster(raster.raster(), x, y, width, height, radius, strength, refraction);
+    }
+
+    private static void drawRaster(Canvas canvas, float x, float y, float width, float height,
                             float radius, float strength, float refraction) {
         if (sceneShader == null || unavailable || !Float.isFinite(x) || !Float.isFinite(y)
                 || !Float.isFinite(width) || !Float.isFinite(height) || width <= 0 || height <= 0) return;
@@ -136,7 +145,7 @@ public final class GlassRenderer {
         return Float.isFinite(value) ? Math.max(minimum, Math.min(maximum, value)) : fallback;
     }
 
-    /** Release frame-owned GPU snapshots after submitting drawing to Skia. */
+    /** Release CPU specimen snapshots. */
     public static void endFrame() {
         if (sceneShader != null) {
             sceneShader.close();

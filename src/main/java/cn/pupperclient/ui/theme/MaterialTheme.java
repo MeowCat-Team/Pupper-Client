@@ -5,9 +5,6 @@ import java.awt.Color;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.mod.impl.settings.ModMenuSettings;
 import cn.pupperclient.skia.Skia;
-import io.github.humbleui.skija.Paint;
-import io.github.humbleui.skija.PaintMode;
-import io.github.humbleui.skija.Shader;
 import io.github.humbleui.types.Point;
 import io.github.humbleui.types.RRect;
 
@@ -59,11 +56,10 @@ public final class MaterialTheme {
         float r = Math.min(radius, Math.min(width, height) / 2);
         Skia.drawShadow(x, y, width, height, r);
         // A single fill keeps the configured opacity exact, including both gradient stops.
-        try (Shader shader = Shader.makeLinearGradient(new Point(x, y), new Point(x + width * .35f, y + height),
-                new int[] { surface(palette.getSurfaceContainerHigh(), opacity).getRGB(), surface(palette.getSurface(), opacity).getRGB() });
-             Paint paint = new Paint().setAntiAlias(true).setShader(shader)) {
-            Skia.getCanvas().drawRRect(RRect.makeXYWH(x, y, width, height, r), paint);
-        }
+        Skia.getCanvas().drawGradient(RRect.makeXYWH(x, y, width, height, r),
+                new Point(x, y), new Point(x + width * .35f, y + height),
+                new int[] { surface(palette.getSurfaceContainerHigh(), opacity).getRGB(), surface(palette.getSurface(), opacity).getRGB() },
+                new float[] { 0, 1 }, 0);
         outline(x, y, width, height, r, palette, opacity);
     }
 
@@ -89,14 +85,12 @@ public final class MaterialTheme {
         if (width <= 1 || height <= 1 || opacity <= 0) return;
         float r = Math.max(.5f, Math.min(radius, Math.min(width, height) / 2) - .5f);
         // One continuous specular rim: no abrupt half-height clipping or additive glow.
-        try (Shader shader = Shader.makeLinearGradient(new Point(x, y), new Point(x + width * .6f, y + height),
+        Skia.getCanvas().drawGradient(RRect.makeXYWH(x + .5f, y + .5f, width - 1, height - 1, r),
+                new Point(x, y), new Point(x + width * .6f, y + height),
                 new int[] {
                     alpha(Color.WHITE, opacity * (palette.isDarkMode() ? .50f : .90f)).getRGB(),
                     alpha(palette.getOutlineVariant(), opacity * .24f).getRGB(),
                     alpha(palette.getOutline(), opacity * .32f).getRGB()
-                }, new float[] { 0, .48f, 1 });
-             Paint paint = new Paint().setAntiAlias(true).setMode(PaintMode.STROKE).setStrokeWidth(1).setShader(shader)) {
-            Skia.getCanvas().drawRRect(RRect.makeXYWH(x + .5f, y + .5f, width - 1, height - 1, r), paint);
-        }
+                }, new float[] { 0, .48f, 1 }, 1);
     }
 }

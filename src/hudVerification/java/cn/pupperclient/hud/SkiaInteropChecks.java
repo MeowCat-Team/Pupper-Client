@@ -4,15 +4,18 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import cn.pupperclient.skia.context.SkiaContext;
 import org.objectweb.asm.*;
 import static org.objectweb.asm.Opcodes.*;
 
-/** Guard the presentation order and the version-specific Minecraft state-cache boundary. */
+/** Guard presentation timing and keep backend-specific GPU access out of production classes. */
 public final class SkiaInteropChecks {
     private static int checks;
     public static void main(String[] args) throws Exception {
         List<String> frameCalls = new ArrayList<>();
-        AtomicInteger blits = new AtomicInteger(), textureSlots = new AtomicInteger();
+        AtomicInteger blits = new AtomicInteger();
         read("net/minecraft/client/Minecraft", new ClassVisitor(ASM9) {
             @Override public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
                 if (!name.equals("renderFrame")) return null;
@@ -30,13 +33,6 @@ public final class SkiaInteropChecks {
         require(blits.get() == 1, "Expected one presentation blit in Minecraft.renderFrame");
         require(frameCalls.indexOf("blitFromTexture") < frameCalls.indexOf("submit")
                 && frameCalls.indexOf("submit") < frameCalls.indexOf("present"), "UI hook is no longer before submission/presentation");
-        read("com/mojang/blaze3d/opengl/GlStateManager", new ClassVisitor(ASM9) {
-            @Override public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-                if (name.equals("TEXTURE_COUNT")) textureSlots.set((Integer) value);
-                return null;
-            }
-        });
-        require(textureSlots.get() == 12, "Minecraft texture cache size changed; update GlBindings reconciliation");
         List<String> targets = new ArrayList<>();
         read("cn/pupperclient/mixin/mixins/minecraft/client/MixinMinecraftClient", new ClassVisitor(ASM9) {
             @Override public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
@@ -56,7 +52,37 @@ public final class SkiaInteropChecks {
         });
         require(targets.stream().anyMatch(t -> t.contains("GpuSurface;blitFromTexture(")), "Offscreen UI mixin is not hooked before the blit");
         require(targets.stream().noneMatch(t -> t.contains("GpuSurface;present(")), "UI still runs after GPU submission");
-        System.out.println("Skia interop contracts passed: " + checks + " assertions.");
+        Path classes = Path.of(SkiaContext.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        int scanned = 0;
+        try (var files = Files.walk(classes.resolve("cn/pupperclient"))) {
+            for (Path file : files.filter(p -> p.toString().endsWith(".class")).toList()) {
+                new ClassReader(Files.readAllBytes(file)).accept(new ClassVisitor(ASM9) {
+                    void check(String reference) {
+                        require(reference == null || (!reference.contains("org/lwjgl/opengl/")
+                                && !reference.contains("com/mojang/blaze3d/opengl/")
+                                && !reference.contains("io/github/humbleui/skija/DirectContext")
+                                && !reference.contains("io/github/humbleui/skija/BackendRenderTarget")),
+                                "Backend-specific GPU access in " + file.getFileName() + ": " + reference);
+                    }
+                    @Override public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) { check(desc); return null; }
+                    @Override public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+                        check(desc);
+                        return new MethodVisitor(ASM9) {
+                            @Override public void visitTypeInsn(int opcode, String type) { check(type); }
+                            @Override public void visitFieldInsn(int opcode, String owner, String name, String desc) { check(owner); check(desc); }
+                            @Override public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
+                                check(owner); check(desc);
+                                require(!name.equals("adoptGLTextureFrom") && !name.equals("makeGL") && !name.equals("wrapBackendRenderTarget"),
+                                        "Native Skia GPU bridge returned in " + file.getFileName());
+                            }
+                        };
+                    }
+                }, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+                scanned++;
+            }
+        }
+        require(scanned > 100, "Production class scan was incomplete");
+        System.out.println("Blaze3D UI contracts passed: presentation timing and " + scanned + " production classes without raw GL/Skia GPU access.");
     }
 
     private static void read(String name, ClassVisitor visitor) throws Exception {

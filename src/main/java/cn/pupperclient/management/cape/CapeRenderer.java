@@ -2,85 +2,50 @@ package cn.pupperclient.management.cape;
 
 import cn.pupperclient.PupperLogger;
 import cn.pupperclient.skia.Skia;
-import com.mojang.blaze3d.opengl.GlTexture;
+import com.mojang.blaze3d.textures.GpuTextureView;
 import io.github.humbleui.skija.ClipMode;
 import io.github.humbleui.skija.Path;
-import io.github.humbleui.skija.SurfaceOrigin;
 import io.github.humbleui.types.RRect;
 import io.github.humbleui.types.Rect;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 
-public class CapeRenderer {
+public final class CapeRenderer {
+    private CapeRenderer() {}
 
-    @SuppressWarnings("unused")
     public static void renderCapePreview(Identifier capeTexture, float x, float y) {
         if (capeTexture == null) return;
-
         try {
-            var texture = Minecraft.getInstance().getTextureManager().getTexture(capeTexture).getTexture();
-
-            if (texture instanceof GlTexture glTexture) {
-                int textureId = glTexture.glId();
-                boolean loaded = Skia.getImageHelper().load(textureId, 64, 32, SurfaceOrigin.TOP_LEFT) ||
-                    Skia.getImageHelper().load(textureId, 128, 64, SurfaceOrigin.TOP_LEFT);
-
-                if (loaded) {
-                    Skia.save();
-                    Skia.translate(x + 2, y + 8);
-                    Skia.scale(2f, 2f, 1f);
-
-                    Rect srcRect = Rect.makeXYWH(1, 1, 10, 16);
-                    Rect dstRect = Rect.makeXYWH(0, 0, 10, 16);
-                    Skia.getCanvas().drawImageRect(Skia.getImageHelper().get(textureId), srcRect, dstRect, null, false);
-
-                    Skia.restore();
-
-                    Skia.save();
-                    Skia.translate(x + 26, y + 8);
-                    Skia.scale(2f, 2f, 1f);
-
-                    Rect srcRect2 = Rect.makeXYWH(12, 1, 10, 16);
-                    Rect dstRect2 = Rect.makeXYWH(0, 0, 10, 16);
-                    Skia.getCanvas().drawImageRect(Skia.getImageHelper().get(textureId), srcRect2, dstRect2, null, false);
-
-                    Skia.restore();
-                }
-            } else {
-                PupperLogger.warn("CapeRenderer", "Failed to render cape preview: : unknown glTexture");
-            }
-        } catch (Exception e) {
-            PupperLogger.warn("CapeRenderer", "Failed to render cape preview: " + e.getMessage());
+            var view = Minecraft.getInstance().getTextureManager().getTexture(capeTexture).getTextureView();
+            if (view == null || view.isClosed()) return;
+            draw(view, 1, Rect.makeXYWH(x + 2, y + 8, 20, 32));
+            draw(view, 12, Rect.makeXYWH(x + 26, y + 8, 20, 32));
+        } catch (Exception failure) {
+            PupperLogger.warn("CapeRenderer", "Failed to render cape preview: " + failure.getMessage());
         }
     }
 
     public static void renderRoundedCapePreview(Identifier capeTexture, float x, float y,
                                                 float width, float height, float radius) {
         if (capeTexture == null) return;
-
         try {
-            var texture = Minecraft.getInstance().getTextureManager().getTexture(capeTexture).getTexture();
-            if (texture instanceof GlTexture glTexture) {
-                int textureId = glTexture.glId();
-                boolean loaded = Skia.getImageHelper().load(textureId, 64, 32, SurfaceOrigin.TOP_LEFT) ||
-                    Skia.getImageHelper().load(textureId, 128, 64, SurfaceOrigin.TOP_LEFT);
-
-                if (loaded) {
-                    Path path = Path.makeRRect(RRect.makeXYWH(x, y, width, height, radius));
-
-                    Rect srcRect = Rect.makeXYWH(1, 1, 10, 16);
-                    Rect dstRect = Rect.makeXYWH(x, y, width, height);
-
-                    Skia.save();
+            var view = Minecraft.getInstance().getTextureManager().getTexture(capeTexture).getTextureView();
+            if (view == null || view.isClosed()) return;
+            try (Path path = Path.makeRRect(RRect.makeXYWH(x, y, width, height, radius))) {
+                int saved = Skia.getCanvas().save();
+                try {
                     Skia.getCanvas().clipPath(path, ClipMode.INTERSECT, true);
-                    Skia.getCanvas().drawImageRect(Skia.getImageHelper().get(textureId), srcRect, dstRect, null, false);
-                    Skia.restore();
-                }
-            } else {
-                PupperLogger.warn("CapeRenderer", "Failed to render rounded cape preview: unknown glTexture");
+                    draw(view, 1, Rect.makeXYWH(x, y, width, height));
+                } finally { Skia.getCanvas().restoreToCount(saved); }
             }
-        } catch (Exception e) {
-            PupperLogger.warn("CapeRenderer", "Failed to render rounded cape preview: " + e.getMessage());
+        } catch (Exception failure) {
+            PupperLogger.warn("CapeRenderer", "Failed to render rounded cape preview: " + failure.getMessage());
         }
+    }
+
+    private static void draw(GpuTextureView view, int sourceX, Rect destination) {
+        // Canonical cape coordinates are 64 x 32; resource packs may supply larger images.
+        float sx = view.getWidth(0) / 64f, sy = view.getHeight(0) / 32f;
+        Skia.getCanvas().drawTexture(view, Rect.makeXYWH(sourceX * sx, sy, 10 * sx, 16 * sy), destination, 1);
     }
 }

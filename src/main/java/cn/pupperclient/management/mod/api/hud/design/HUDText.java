@@ -4,6 +4,8 @@ import java.awt.Color;
 import cn.pupperclient.management.mod.impl.settings.HUDModSettings;
 import cn.pupperclient.skia.Skia;
 import io.github.humbleui.skija.Canvas;
+import cn.pupperclient.ui.render.UiCanvas;
+import cn.pupperclient.ui.render.RasterUiCanvas;
 import io.github.humbleui.skija.Font;
 import io.github.humbleui.skija.Paint;
 
@@ -50,6 +52,11 @@ public final class HUDText {
 
     /** Also used by the offscreen specimen so it exercises the same glyph treatment. */
     public static void drawAtBaseline(Canvas canvas, Paint paint, String text, float x, float baseline,
+                                      Color color, Font font, float opacity) {
+        drawAtBaseline(new RasterUiCanvas(canvas), paint, text, x, baseline, color, font, opacity);
+    }
+
+    public static void drawAtBaseline(UiCanvas canvas, Paint paint, String text, float x, float baseline,
                                       Color color, Font font, float opacity) {
         if (text.isEmpty() || color.getAlpha() == 0) return;
         float shadowStrength = Math.max(0, Math.min(1, (0.70f - opacity) / 0.25f));

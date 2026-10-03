@@ -11,10 +11,7 @@ import cn.pupperclient.management.mod.settings.impl.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.render.RippleEffect;
 import com.mojang.blaze3d.platform.Window;
-import io.github.humbleui.skija.Canvas;
-import io.github.humbleui.skija.Paint;
-import io.github.humbleui.skija.Shader;
-import io.github.humbleui.types.Point;
+import cn.pupperclient.ui.render.UiCanvas;
 import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
@@ -117,7 +114,7 @@ public class ClickEffectMod extends Mod {
         }
     };
 
-    private void renderRipple(Canvas canvas, RippleEffect ripple, Color baseColor) {
+    private void renderRipple(UiCanvas canvas, RippleEffect ripple, Color baseColor) {
         Window window = Minecraft.getInstance().getWindow();
         float windowHeight = window.getGuiScaledHeight();
 
@@ -141,13 +138,6 @@ public class ClickEffectMod extends Mod {
             baseColor.getBlue()
         );
 
-        Point center = new Point(ripple.getX(), flippedY);
-        try (Shader shader = Shader.makeRadialGradient(
-                 center, radius, new int[] { innerSkColor, outerSkColor }, new float[] { 0.0f, 1.0f });
-             Paint paint = new Paint()) {
-            paint.setShader(shader);
-            paint.setAntiAlias(true);
-            canvas.drawCircle(ripple.getX(), flippedY, radius, paint);
-        }
+        canvas.drawRadialCircle(ripple.getX(), flippedY, radius, innerSkColor, outerSkColor);
     }
 }

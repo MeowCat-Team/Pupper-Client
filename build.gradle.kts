@@ -179,7 +179,7 @@ tasks.register<JavaExec>("previewMaterialTheme") {
 
 tasks.register<JavaExec>("verifyGlassGpu") {
     group = "verification"
-    description = "Checks glass brightness, clipping and GL state against a hidden GPU framebuffer."
+    description = "Checks Blaze3D glass brightness, clipping and scene coordinates on a hidden GPU device."
     dependsOn(hudVerification.classesTaskName)
     classpath = hudVerification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.GlassGpuChecks")
@@ -190,7 +190,7 @@ tasks.register<JavaExec>("verifyGlassGpu") {
 
 val verifySkiaInterop = tasks.register<JavaExec>("verifySkiaInterop") {
     group = "verification"
-    description = "Checks Skia presentation order and Minecraft state-cache compatibility."
+    description = "Checks UI presentation order and absence of backend-specific GPU access."
     dependsOn(hudVerification.classesTaskName)
     classpath = hudVerification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.SkiaInteropChecks")
@@ -199,7 +199,7 @@ tasks.check { dependsOn(verifySkiaInterop) }
 
 tasks.register<JavaExec>("verifySkiaInteropGpu") {
     group = "verification"
-    description = "Checks the offscreen Skia UI compositor and Blaze3D state caches on a real hidden GPU device."
+    description = "Checks Blaze3D UI geometry, compositing, clips, glyph/image caching and ownership on a hidden GPU device."
     dependsOn(hudVerification.classesTaskName)
     classpath = hudVerification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.SkiaInteropGpuChecks")
@@ -308,9 +308,21 @@ tasks.register<JavaExec>("benchmarkItemVertices") {
     doFirst { workingDir.mkdirs() }
 }
 
+tasks.register<JavaExec>("previewBlazeUi") {
+    group = "verification"
+    description = "Renders production Material controls through the Blaze3D GPU geometry path."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.BlazeUiPreview")
+    args(layout.buildDirectory.file("reports/ui/blaze-preview.png").get().asFile.absolutePath)
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    workingDir(layout.buildDirectory.dir("verification"))
+    doFirst { workingDir.mkdirs() }
+}
+
 tasks.register<JavaExec>("benchmarkGlassGpu") {
     group = "verification"
-    description = "Measures representative Skia/glass GPU and CPU cost in a hidden window."
+    description = "Measures representative Blaze3D UI and glass GPU/CPU cost in a hidden window."
     dependsOn(hudVerification.classesTaskName)
     classpath = hudVerification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.GlassGpuBenchmark")

@@ -1,18 +1,16 @@
 package cn.pupperclient.event.skia;
 
 import cn.pupperclient.event.Event;
-import cn.pupperclient.skia.api.WrappedBackendRenderTarget;
-import io.github.humbleui.skija.Canvas;
-import io.github.humbleui.skija.DirectContext;
+import cn.pupperclient.ui.render.UiCanvas;
 
 public class RenderSkiaEvent extends Event {
-    private final Canvas canvas;
+    private final UiCanvas canvas;
 
-    public RenderSkiaEvent(Canvas canvas) {
+    public RenderSkiaEvent(UiCanvas canvas) {
         this.canvas = canvas;
     }
 
-    public Canvas getCanvas() {
+    public UiCanvas getCanvas() {
         return canvas;
     }
 }

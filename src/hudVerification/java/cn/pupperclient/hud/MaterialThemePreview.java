@@ -135,7 +135,7 @@ public final class MaterialThemePreview {
         return new ColorPalette(Hct.from(220, 26, 6), dark);
     }
 
-    private static void drawSpecimen() {
+    static void drawSpecimen() {
         text("Pupper Client · Material 控件样张", 28, 24, new Color(0x1e2b36), 28);
         text("直接调用游戏控件的绘制函数 · 真实逻辑尺寸 · 45% 默认背景不透明度", 30, 66, new Color(0x4c5e6b), 13);
         column(24, 108, false);

@@ -6,25 +6,23 @@ import java.io.File;
 import net.minecraft.resources.Identifier;
 import cn.pupperclient.skia.context.SkiaContext;
 import cn.pupperclient.skia.image.ImageHelper;
-import io.github.humbleui.skija.Canvas;
+import cn.pupperclient.ui.render.UiCanvas;
+import com.mojang.blaze3d.textures.GpuTextureView;
 import io.github.humbleui.skija.ClipMode;
-import io.github.humbleui.skija.FilterTileMode;
 import io.github.humbleui.skija.Font;
 import io.github.humbleui.skija.FontMetrics;
-import io.github.humbleui.skija.ImageFilter;
 import io.github.humbleui.skija.Image;
 import io.github.humbleui.skija.Paint;
 import io.github.humbleui.skija.PaintMode;
 import io.github.humbleui.skija.Path;
-import io.github.humbleui.skija.Shader;
 import io.github.humbleui.skija.SurfaceOrigin;
 import io.github.humbleui.types.Point;
 import io.github.humbleui.types.RRect;
 import io.github.humbleui.types.Rect;
 
 /**
- * Skia Graphics Drawing Utility Class
- * Provides Skia-based 2D graphics drawing API for Pupper Client UI rendering
+ * UI Graphics Drawing Utility Class
+ * Provides Blaze3D 2D graphics drawing API for Pupper Client UI rendering
  * All methods get Canvas through SkiaContext
  */
 public class Skia {
@@ -33,9 +31,6 @@ public class Skia {
     private static final ImageHelper imageHelper = new ImageHelper();
     // Shared Paint object to avoid repeated creation and improve performance
     private static final Paint SHARED_PAINT = new Paint();
-    private static ImageFilter shadowBlur;
-    private static Paint shadowPaint;
-    private static final Paint[] IMAGE_BLUR_PAINTS = new Paint[25];
 
     /**
      * Draws a filled rectangle with the specified color.
@@ -119,16 +114,10 @@ public class Skia {
      * @param radius The corner radius
      */
     public static void drawShadow(float x, float y, float width, float height, float radius) {
-        if (shadowPaint == null) {
-            shadowBlur = ImageFilter.makeBlur(2.5F, 2.5F, FilterTileMode.DECAL);
-            shadowPaint = new Paint();
-            shadowPaint.setARGB(120, 0, 0, 0);
-            shadowPaint.setImageFilter(shadowBlur);
-        }
         save();
         try {
             clip(x, y, width, height, radius, ClipMode.DIFFERENCE);
-            getCanvas().drawRRect(RRect.makeXYWH(x, y, width, height, radius), shadowPaint);
+            getCanvas().drawShadow(RRect.makeXYWH(x, y, width, height, radius), 2.5f, 0x78000000);
         } finally {
             restore();
         }
@@ -194,8 +183,8 @@ public class Skia {
     }
 
     /**
-     * Draws an image from a texture ID with specified alpha and origin.
-     * @param textureId The OpenGL texture ID
+     * Draws an image from a texture view with specified alpha and origin.
+     * @param texture The borrowed Blaze3D texture view
      * @param x The x-coordinate of the image's top-left corner
      * @param y The y-coordinate of the image's top-left corner
      * @param width The width to draw the image
@@ -203,28 +192,25 @@ public class Skia {
      * @param alpha The alpha transparency (0.0 to 1.0)
      * @param origin The surface origin for the image
      */
-    public static void drawImage(int textureId, float x, float y, float width, float height, float alpha,
+    public static void drawImage(GpuTextureView texture, float x, float y, float width, float height, float alpha,
                                  SurfaceOrigin origin) {
-
-        if (imageHelper.load(textureId, width, height, origin)) {
-            try (Paint paint = new Paint()) {
-                paint.setAlpha((int) (255 * alpha));
-                getCanvas().drawImageRect(imageHelper.get(textureId), Rect.makeXYWH(x, y, width, height), paint);
-            }
-        }
+        if (texture == null || texture.isClosed()) return;
+        Rect source = origin == SurfaceOrigin.TOP_LEFT ? Rect.makeWH(texture.getWidth(0), texture.getHeight(0))
+                : Rect.makeLTRB(0, texture.getHeight(0), texture.getWidth(0), 0);
+        getCanvas().drawTexture(texture, source, Rect.makeXYWH(x, y, width, height), alpha);
     }
 
     /**
-     * Draws an image from a texture ID with specified alpha (default origin TOP_LEFT).
-     * @param textureId The OpenGL texture ID
+     * Draws an image from a texture view with specified alpha (default origin TOP_LEFT).
+     * @param texture The borrowed Blaze3D texture view
      * @param x The x-coordinate of the image's top-left corner
      * @param y The y-coordinate of the image's top-left corner
      * @param width The width to draw the image
      * @param height The height to draw the image
      * @param alpha The alpha transparency (0.0 to 1.0)
      */
-    public static void drawImage(int textureId, float x, float y, float width, float height, float alpha) {
-        drawImage(textureId, x, y, width, height, alpha, SurfaceOrigin.TOP_LEFT);
+    public static void drawImage(GpuTextureView texture, float x, float y, float width, float height, float alpha) {
+        drawImage(texture, x, y, width, height, alpha, SurfaceOrigin.TOP_LEFT);
     }
 
     /**
@@ -242,48 +228,45 @@ public class Skia {
     }
 
     /**
-     * Draws an image from a texture ID with specified origin.
-     * @param textureId The OpenGL texture ID
+     * Draws an image from a texture view with specified origin.
+     * @param texture The borrowed Blaze3D texture view
      * @param x The x-coordinate of the image's top-left corner
      * @param y The y-coordinate of the image's top-left corner
      * @param width The width to draw the image
      * @param height The height to draw the image
      * @param origin The surface origin for the image
      */
-    public static void drawImage(int textureId, float x, float y, float width, float height, SurfaceOrigin origin) {
-
-        if (imageHelper.load(textureId, width, height, origin)) {
-            getCanvas().drawImageRect(imageHelper.get(textureId), Rect.makeXYWH(x, y, width, height));
-        }
+    public static void drawImage(GpuTextureView texture, float x, float y, float width, float height, SurfaceOrigin origin) {
+        drawImage(texture, x, y, width, height, 1, origin);
     }
 
     /**
-     * Draws an image from a texture ID (default origin TOP_LEFT).
-     * @param textureId The OpenGL texture ID
+     * Draws an image from a texture view (default origin TOP_LEFT).
+     * @param texture The borrowed Blaze3D texture view
      * @param x The x-coordinate of the image's top-left corner
      * @param y The y-coordinate of the image's top-left corner
      * @param width The width to draw the image
      * @param height The height to draw the image
      */
-    public static void drawImage(int textureId, float x, float y, float width, float height) {
-        drawImage(textureId, x, y, width, height, SurfaceOrigin.TOP_LEFT);
+    public static void drawImage(GpuTextureView texture, float x, float y, float width, float height) {
+        drawImage(texture, x, y, width, height, SurfaceOrigin.TOP_LEFT);
     }
 
     /**
-     * Draws a rounded image from a texture ID.
-     * @param textureId The OpenGL texture ID
+     * Draws a rounded image from a texture view.
+     * @param texture The borrowed Blaze3D texture view
      * @param x The x-coordinate of the image's top-left corner
      * @param y The y-coordinate of the image's top-left corner
      * @param width The width to draw the image
      * @param height The height to draw the image
      * @param radius The corner radius for clipping
      */
-    public static void drawRoundedImage(int textureId, float x, float y, float width, float height, float radius) {
+    public static void drawRoundedImage(GpuTextureView texture, float x, float y, float width, float height, float radius) {
 
         try (Path path = Path.makeRRect(RRect.makeXYWH(x, y, width, height, radius))) {
             save();
             getCanvas().clipPath(path, ClipMode.INTERSECT, true);
-            drawImage(textureId, x, y, width, height);
+            drawImage(texture, x, y, width, height);
             restore();
         }
     }
@@ -327,8 +310,8 @@ public class Skia {
     }
 
     /**
-     * Draws a rounded image from a texture ID with alpha and origin.
-     * @param textureId The OpenGL texture ID
+     * Draws a rounded image from a texture view with alpha and origin.
+     * @param texture The borrowed Blaze3D texture view
      * @param x The x-coordinate of the image's top-left corner
      * @param y The y-coordinate of the image's top-left corner
      * @param width The width to draw the image
@@ -337,19 +320,19 @@ public class Skia {
      * @param alpha The alpha transparency (0.0 to 1.0)
      * @param origin The surface origin for the image
      */
-    public static void drawRoundedImage(int textureId, float x, float y, float width, float height, float radius,
+    public static void drawRoundedImage(GpuTextureView texture, float x, float y, float width, float height, float radius,
                                         float alpha, SurfaceOrigin origin) {
         try (Path path = Path.makeRRect(RRect.makeXYWH(x, y, width, height, radius))) {
             save();
             getCanvas().clipPath(path, ClipMode.INTERSECT, true);
-            drawImage(textureId, x, y, width, height, alpha, origin);
+            drawImage(texture, x, y, width, height, alpha, origin);
             restore();
         }
     }
 
     /**
-     * Draws a rounded image from a texture ID with alpha (default origin TOP_LEFT).
-     * @param textureId The OpenGL texture ID
+     * Draws a rounded image from a texture view with alpha (default origin TOP_LEFT).
+     * @param texture The borrowed Blaze3D texture view
      * @param x The x-coordinate of the image's top-left corner
      * @param y The y-coordinate of the image's top-left corner
      * @param width The width to draw the image
@@ -357,9 +340,9 @@ public class Skia {
      * @param radius The corner radius for clipping
      * @param alpha The alpha transparency (0.0 to 1.0)
      */
-    public static void drawRoundedImage(int textureId, float x, float y, float width, float height, float radius,
+    public static void drawRoundedImage(GpuTextureView texture, float x, float y, float width, float height, float radius,
                                         float alpha) {
-        drawRoundedImage(textureId, x, y, width, height, radius, alpha, SurfaceOrigin.TOP_LEFT);
+        drawRoundedImage(texture, x, y, width, height, radius, alpha, SurfaceOrigin.TOP_LEFT);
     }
 
     /**
@@ -534,29 +517,23 @@ public class Skia {
         double tick = (currentTime * speed) % (2 * Math.PI);
         float max = Math.max(width, height);
 
-        try (Path path = Path.makeRRect(RRect.makeXYWH(x, y, width, height, radius))) {
-            float startX = x + width / 2 - (max / 2) * (float) Math.cos(tick);
-            float startY = y + height / 2 - (max / 2) * (float) Math.sin(tick);
-            float endX = x + width / 2 + (max / 2) * (float) Math.cos(tick);
-            float endY = y + height / 2 + (max / 2) * (float) Math.sin(tick);
+        float startX = x + width / 2 - (max / 2) * (float) Math.cos(tick);
+        float startY = y + height / 2 - (max / 2) * (float) Math.sin(tick);
+        float endX = x + width / 2 + (max / 2) * (float) Math.cos(tick);
+        float endY = y + height / 2 + (max / 2) * (float) Math.sin(tick);
 
-            int skColor1 = io.github.humbleui.skija.Color.makeARGB(color1.getAlpha(), color1.getRed(), color1.getGreen(),
-                color1.getBlue());
-            int skColor2 = io.github.humbleui.skija.Color.makeARGB(color2.getAlpha(), color2.getRed(), color2.getGreen(),
-                color2.getBlue());
+        int skColor1 = io.github.humbleui.skija.Color.makeARGB(color1.getAlpha(), color1.getRed(), color1.getGreen(),
+            color1.getBlue());
+        int skColor2 = io.github.humbleui.skija.Color.makeARGB(color2.getAlpha(), color2.getRed(), color2.getGreen(),
+            color2.getBlue());
 
-            int skColorMid = io.github.humbleui.skija.Color.makeARGB(color1.getAlpha(),
-                (color1.getRed() + color2.getRed()) / 2, (color1.getGreen() + color2.getGreen()) / 2,
-                (color1.getBlue() + color2.getBlue()) / 2);
+        int skColorMid = io.github.humbleui.skija.Color.makeARGB(color1.getAlpha(),
+            (color1.getRed() + color2.getRed()) / 2, (color1.getGreen() + color2.getGreen()) / 2,
+            (color1.getBlue() + color2.getBlue()) / 2);
 
-            try (Paint paint = new Paint();
-                 Shader shader = Shader.makeLinearGradient(new Point(startX, startY), new Point(endX, endY),
-                     new int[] { skColor1, skColorMid, skColor2 }, new float[] { 0, 0.5f, 1 })) {
-
-                paint.setShader(shader);
-                getCanvas().drawPath(path, paint);
-            }
-        }
+        getCanvas().drawGradient(RRect.makeXYWH(x, y, width, height, radius),
+                new Point(startX, startY), new Point(endX, endY),
+                new int[] { skColor1, skColorMid, skColor2 }, new float[] { 0, .5f, 1 }, 0);
     }
 
     /**
@@ -847,52 +824,25 @@ public class Skia {
         }
     }
 
-    /** Bounded cover-art blur cache: quarter-pixel radii, at most six local pixels. */
+    /** Cover-art blur is evaluated by the UI shader, at most six local pixels. */
     public static void drawBlurredImage(Image image, float x, float y, float width, float height, float radius) {
         if (image == null || width <= 0 || height <= 0) return;
         float safeRadius = Float.isFinite(radius) ? Math.max(0, Math.min(6, radius)) : 0;
-        Paint paint = null;
-        if (safeRadius >= .5f) {
-            int index = Math.min(24, Math.round(safeRadius * 4));
-            paint = IMAGE_BLUR_PAINTS[index];
-            if (paint == null) {
-                try (ImageFilter blur = ImageFilter.makeBlur(index / 4f, index / 4f, FilterTileMode.CLAMP)) {
-                    // Paint retains its own filter reference; the temporary wrapper can close.
-                    paint = new Paint().setImageFilter(blur);
-                    IMAGE_BLUR_PAINTS[index] = paint;
-                }
-            }
-        }
-        getCanvas().drawImageRect(image, Rect.makeWH(image.getWidth(), image.getHeight()),
-                Rect.makeXYWH(x, y, width, height), paint, true);
+        getCanvas().drawBlurredImage(image, Rect.makeXYWH(x, y, width, height), safeRadius);
     }
 
     public static void releaseResources() {
         cn.pupperclient.management.mod.api.hud.design.HUDText.releaseResources();
         imageHelper.clear();
-        if (shadowPaint != null) {
-            shadowPaint.close();
-            shadowPaint = null;
-        }
-        if (shadowBlur != null) {
-            shadowBlur.close();
-            shadowBlur = null;
-        }
-        for (int index = 0; index < IMAGE_BLUR_PAINTS.length; index++) {
-            if (IMAGE_BLUR_PAINTS[index] != null) {
-                IMAGE_BLUR_PAINTS[index].close();
-                IMAGE_BLUR_PAINTS[index] = null;
-            }
-        }
         GlassRenderer.releaseResources();
         SHARED_PAINT.close();
     }
 
     /**
-     * Gets the current Skia Canvas for drawing.
-     * @return The Skia Canvas object
+     * Gets the active UI canvas.
+     * @return The UI canvas for the current frame
      */
-    public static Canvas getCanvas() {
+    public static UiCanvas getCanvas() {
         return SkiaContext.getCanvas();
     }
 
