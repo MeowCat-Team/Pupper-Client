@@ -41,9 +41,11 @@ class MetadataChecks(unittest.TestCase):
 
     def test_release_triggers(self):
         previous = PROPS | {"mod_version": "9.0.0-alpha.5"}
-        for branch in ("main", "master", "ver/26.2"):
+        for branch in ("main", "master", "ver/26.2", "architectury/26.2"):
             self.assertTrue(release.should_publish("push", branch, PROPS, previous))
             self.assertTrue(release.should_publish("push", branch, PROPS, None))
+            self.assertFalse(release.should_publish("push", branch, PROPS, PROPS))
+            self.assertTrue(release.should_publish("workflow_dispatch", branch, PROPS, PROPS))
         self.assertFalse(release.should_publish("push", "ver/26.2", PROPS, PROPS))
         self.assertFalse(release.should_publish("push", "ver/26.2", PROPS | {"loader_version": "new"}, PROPS))
         self.assertTrue(release.should_publish("push", "ver/26.2", PROPS, PROPS | {"minecraft_version": "26.1"}))
@@ -51,10 +53,20 @@ class MetadataChecks(unittest.TestCase):
             self.assertFalse(release.should_publish(event, "ver/26.2", PROPS, previous))
         self.assertTrue(release.should_publish("workflow_dispatch", "ver/26.2", PROPS, PROPS))
         self.assertFalse(release.should_publish("workflow_dispatch", "ver/26.2", PROPS, previous, False))
-        for branch in ("feature/music", "refactor/architectury", "ver/26.3", "ver/26.2/feature"):
+        for branch in ("feature/music", "refactor/architectury", "ver/26.3", "ver/26.2/feature",
+                       "architectury/26.3", "architectury/26.2/feature"):
             self.assertFalse(release.should_publish("push", branch, PROPS, previous))
             with self.assertRaises(ValueError):
                 release.should_publish("workflow_dispatch", branch, PROPS, previous)
+
+    def test_architectury_rename_push_keeps_existing_version_unpublished(self):
+        # The branch is renamed in place before pushing the CI update, so its push
+        # base already carries the same version and both loader declarations.
+        self.assertFalse(release.should_publish("push", "architectury/26.2", MULTI_PROPS, MULTI_PROPS))
+        self.assertFalse(release.should_publish("push", "architectury/26.2", MULTI_PROPS, PROPS))
+        self.assertFalse(release.should_publish("pull_request", "architectury/26.2", MULTI_PROPS, PROPS))
+        self.assertTrue(release.should_publish("push", "architectury/26.2",
+                                              MULTI_PROPS | {"mod_version": "9.0.0-alpha.7"}, MULTI_PROPS))
 
     def test_jar_requires_compiled_mod_and_matching_version(self):
         info = release.metadata(PROPS)
@@ -377,7 +389,7 @@ class RetryChecks(unittest.TestCase):
         self.jobs = [{"name": "build", "conclusion": "success"}, {"name": "release", "conclusion": "failure"}]
         self.artifacts = [{"name": f"pupper-client-{SHA}", "expired": False}]
 
-    def retry(self, run=None, jobs=None, artifacts=None, ancestor=True, props=None):
+    def retry(self, run=None, jobs=None, artifacts=None, ancestor=True, props=None, branch="ver/26.2"):
         responses = {"actions/runs/123": self.run if run is None else run,
                      "actions/runs/123/jobs?filter=latest&per_page=100": {"jobs": self.jobs if jobs is None else jobs},
                      "actions/runs/123/artifacts?per_page=100": {"artifacts": self.artifacts if artifacts is None else artifacts}}
@@ -393,7 +405,7 @@ class RetryChecks(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "output"
-            with patch.dict(os.environ, {"GITHUB_REPOSITORY": "owner/repo", "GITHUB_REF_NAME": "ver/26.2",
+            with patch.dict(os.environ, {"GITHUB_REPOSITORY": "owner/repo", "GITHUB_REF_NAME": branch,
                                          "GITHUB_OUTPUT": str(output)}, clear=True), \
                  patch.object(release, "github", side_effect=lambda repo, endpoint: responses[endpoint]), \
                  patch.object(release, "command", side_effect=command):
@@ -403,6 +415,14 @@ class RetryChecks(unittest.TestCase):
     def test_retry_uses_original_build_sha_and_artifact(self):
         self.assertEqual(self.retry(), {"run_id": "123", "sha": SHA, "version": "9.0.0-alpha.6+mc26.2"})
         self.assertEqual(self.retry(props=MULTI_PROPS), {"run_id": "123", "sha": SHA, "version": "9.0.0-alpha.6+mc26.2"})
+
+    def test_architectury_retry_preserves_original_build_and_exact_branch_gate(self):
+        self.assertEqual(self.retry(run=self.run | {"head_branch": "architectury/26.2"},
+                                    props=MULTI_PROPS, branch="architectury/26.2"),
+                         {"run_id": "123", "sha": SHA, "version": "9.0.0-alpha.6+mc26.2"})
+        for branch in ("architectury/26.3", "architectury/26.2/feature", "refactor/architectury-26.2"):
+            with self.subTest(branch=branch), self.assertRaises(ValueError):
+                self.retry(run=self.run | {"head_branch": branch}, props=MULTI_PROPS, branch=branch)
 
     def test_retry_rejects_untrusted_or_incomplete_runs(self):
         for update in ({"event": "pull_request"}, {"status": "in_progress"},

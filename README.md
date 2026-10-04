@@ -30,9 +30,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contributing
 
+The primary development and GitHub default branch is `architectury/26.2`.
+
 Build both distributions with `./gradlew build`. Run Fabric with `./gradlew :fabric:runClient` (or the `runClient` alias), and NeoForge with `./gradlew :neoforge:runClient`. Shared code and assets live in `common`; loader modules contain only their entrypoints and integrations.
 
-Maintainers can bump `mod_version` and push to the matching version branch to publish both loader builds automatically to GitHub Release and Modrinth. See [release setup and retries](docs/releases.md).
+Maintainers can bump `mod_version` and push to the exact `architectury/<minecraft_version>` branch to publish both loader builds automatically to GitHub Release and Modrinth. The historical matching `ver/<minecraft_version>` branches remain supported. See [release setup and retries](docs/releases.md).
 
 Contributions are welcome! Please fork the repository and submit a pull request with your changes. 
 

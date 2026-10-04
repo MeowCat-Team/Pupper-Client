@@ -139,6 +139,8 @@ The existing Skija dependency is `skija-windows-x64`, so this change retains the
 
 ## Publication
 
-The migration is developed on `refactor/architectury-26.2`. CI can build this branch, but release gating accepts only the normal release branches and rejects publishing from a refactor branch. The migration does not bump the already published `9.0.0-alpha.6` or replace its artifacts.
+The primary development and GitHub default branch is `architectury/26.2`, renamed in place from `refactor/architectury-26.2`. CI builds `architectury/**` branches. Publishing is allowed only from the exact `architectury/<minecraft_version>` or historical `ver/<minecraft_version>` branch, plus `main` and `master`; other game versions, nested feature branches and refactor branches cannot publish.
+
+The branch rename and CI adaptation retain `mod_version=9.0.0-alpha.6`. This push only builds because the version is unchanged; it does not republish or replace the existing Fabric-only alpha.6 artifacts.
 
 Select a new release version before publishing the new pair of loader artifacts; the existing Fabric-only release is immutable. See [release instructions](releases.md) for the normal GitHub Release and Modrinth workflow.

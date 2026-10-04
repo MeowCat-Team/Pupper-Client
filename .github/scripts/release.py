@@ -71,9 +71,9 @@ def should_publish(event, branch, current, previous, manual=True):
     requested = manual if event == "workflow_dispatch" else changed
     if not requested:
         return False
-    if branch not in ("main", "master", f"ver/{current['minecraft_version']}"):
+    if branch not in ("main", "master", f"ver/{current['minecraft_version']}", f"architectury/{current['minecraft_version']}"):
         if event == "workflow_dispatch":
-            raise ValueError("Publishing requires main/master or ver/<minecraft_version>; check branch and gradle.properties")
+            raise ValueError("Publishing requires main/master, ver/<minecraft_version> or architectury/<minecraft_version>; check branch and gradle.properties")
         return False
     return True
 

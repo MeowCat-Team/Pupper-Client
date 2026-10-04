@@ -5,11 +5,11 @@ permissions:
 
 on:
   push:
-    branches: [ main, master, 'ver/**', 'refactor/**' ]
+    branches: [ main, master, 'ver/**', 'architectury/**', 'refactor/**' ]
     paths-ignore:
       - '**/*.md'
   pull_request:
-    branches: [ main, master, 'ver/**', 'refactor/**' ]
+    branches: [ main, master, 'ver/**', 'architectury/**', 'refactor/**' ]
   workflow_dispatch:
     inputs:
       publish:

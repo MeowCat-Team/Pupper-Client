@@ -1,6 +1,8 @@
 # Releases
 
-The `Build and Release` workflow builds and checks pushes and pull requests targeting `main`, `master`, `ver/**` and `refactor/**`. Pull requests and refactor branches never publish. A push that changes `mod_version` or `minecraft_version` in `gradle.properties` automatically publishes after the build passes. Automatic publishing is limited to `main`, `master`, and the exact `ver/<minecraft_version>` branch; other version subbranches only build.
+The primary development and GitHub default branch is `architectury/26.2`. The `Build and Release` workflow builds and checks pushes and pull requests targeting `architectury/**`, `main`, `master`, `ver/**` and `refactor/**`. Pull requests and refactor branches never publish. A push that changes `mod_version` or `minecraft_version` in `gradle.properties` automatically publishes after the build passes. Publishing is limited to the exact `architectury/<minecraft_version>` or `ver/<minecraft_version>` branch, plus the historical `main` and `master` branches. Other Minecraft versions and nested feature branches only build.
+
+The migration branch was renamed in place from `refactor/architectury-26.2` to `architectury/26.2`. This rename and its CI adaptation keep `mod_version=9.0.0-alpha.6`, so their push only builds and does not publish. The existing Fabric-only alpha.6 release remains immutable; select a new version before releasing the two loader artifacts.
 
 ## Setup
 
@@ -13,7 +15,7 @@ Versions containing `beta` are Modrinth beta releases; other versions with a pre
 ## Publishing
 
 1. Bump `mod_version` and commit it with the changes to publish.
-2. Push the commits to `ver/26.2` (or the matching version branch). No local tag or separate tag push is needed.
+2. Push the commits to `architectury/26.2` (or the matching `architectury/<minecraft_version>` branch). The historical matching `ver/<minecraft_version>` branch is also supported. No local tag or separate tag push is needed.
 3. The workflow builds with Java 25, runs common and loader `build` checks and the release script's offline tests. It validates each JAR's loader metadata, exact game/mod version and compiled client class. Fabric uses `fabric.mod.json`; NeoForge uses `META-INF/neoforge.mods.toml`, whose Minecraft dependency is pinned to `[<minecraft_version>]`.
 4. The root build stages the two distributable Shadow JARs at `build/libs/Pupper Client-Fabric-<version>.jar` and `build/libs/Pupper Client-NeoForge-<version>.jar`. Only these exact paths and the release notes are uploaded as the verified Actions artifact.
 5. The release job downloads these same files and performs all tag, GitHub asset and Modrinth version conflict checks before writing to either platform. It creates a tag on the checked commit, creates a GitHub draft, uploads both JARs, publishes each file through its loader's Modrinth task, then publishes the GitHub draft after both loaders succeed.
