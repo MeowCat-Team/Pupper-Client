@@ -44,11 +44,11 @@ On Linux or macOS:
 ./gradlew build --console=plain -Ppython_executable=python3
 ```
 
-The root build compiles both loaders, runs the shared checks and loader-specific checks, stages the distributable JARs, and verifies their contents. With version `9.0.0-alpha.6`, the staged files are:
+The root build compiles both loaders, runs the shared checks and loader-specific checks, stages the distributable JARs, and verifies their contents. With version `9.0.0-alpha.7`, the staged files are:
 
 ```text
-build/libs/Pupper Client-Fabric-9.0.0-alpha.6+mc26.2.jar
-build/libs/Pupper Client-NeoForge-9.0.0-alpha.6+mc26.2.jar
+build/libs/Pupper Client-Fabric-9.0.0-alpha.7+mc26.2.jar
+build/libs/Pupper Client-NeoForge-9.0.0-alpha.7+mc26.2.jar
 ```
 
 Install the artifact for the loader you use. `common` and intermediate development JARs are not installable client distributions. Minecraft 26.2 uses official unobfuscated names; these builds use Architectury Loom's no-remap plugin.
@@ -141,6 +141,6 @@ The existing Skija dependency is `skija-windows-x64`, so this change retains the
 
 The primary development and GitHub default branch is `architectury/26.2`, renamed in place from `refactor/architectury-26.2`. CI builds `architectury/**` branches. Publishing is allowed only from the exact `architectury/<minecraft_version>` or historical `ver/<minecraft_version>` branch, plus `main` and `master`; other game versions, nested feature branches and refactor branches cannot publish.
 
-The branch rename and CI adaptation retain `mod_version=9.0.0-alpha.6`. This push only builds because the version is unchanged; it does not republish or replace the existing Fabric-only alpha.6 artifacts.
+The first dual-loader version is `9.0.0-alpha.7`. Its Fabric and NeoForge artifacts use a new release identity; the previously published Fabric-only `9.0.0-alpha.6` artifacts remain immutable.
 
-Select a new release version before publishing the new pair of loader artifacts; the existing Fabric-only release is immutable. See [release instructions](releases.md) for the normal GitHub Release and Modrinth workflow.
+Bump `mod_version` for subsequent releases rather than replacing published artifacts. See [release instructions](releases.md) for the normal GitHub Release and Modrinth workflow.

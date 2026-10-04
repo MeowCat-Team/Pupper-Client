@@ -2,7 +2,7 @@
 
 The primary development and GitHub default branch is `architectury/26.2`. The `Build and Release` workflow builds and checks pushes and pull requests targeting `architectury/**`, `main`, `master`, `ver/**` and `refactor/**`. Pull requests and refactor branches never publish. A push that changes `mod_version` or `minecraft_version` in `gradle.properties` automatically publishes after the build passes. Publishing is limited to the exact `architectury/<minecraft_version>` or `ver/<minecraft_version>` branch, plus the historical `main` and `master` branches. Other Minecraft versions and nested feature branches only build.
 
-The migration branch was renamed in place from `refactor/architectury-26.2` to `architectury/26.2`. This rename and its CI adaptation keep `mod_version=9.0.0-alpha.6`, so their push only builds and does not publish. The existing Fabric-only alpha.6 release remains immutable; select a new version before releasing the two loader artifacts.
+The first dual-loader version is `9.0.0-alpha.7`. The previously published Fabric-only `9.0.0-alpha.6` release remains immutable and must not be replaced with the new artifacts.
 
 ## Setup
 
@@ -10,7 +10,7 @@ Add the repository Actions Secret `MODRINTH_TOKEN`, using a Modrinth personal ac
 
 `gradle.properties` is the single source of truth. `enabled_platforms=fabric,neoforge` declares the published loaders, and `archives_base_name=Pupper Client` is their shared filename prefix. The root build always builds and checks both loader projects. The version inside both JARs includes the Minecraft version, for example `9.0.0-alpha.7+mc26.2`, with Git tag `v9.0.0-alpha.7+mc26.2`. Each GitHub Release contains both loader JARs under this one tag. Modrinth receives separate versions named `9.0.0-alpha.7+mc26.2-fabric` and `9.0.0-alpha.7+mc26.2-neoforge`, each declaring its own loader. The suffix prevents ambiguous version lookup and permits retrying either loader independently.
 
-Versions containing `beta` are Modrinth beta releases; other versions with a prerelease suffix are alpha releases. Both are GitHub prereleases and do not replace the latest stable release. Versions without a prerelease suffix are stable releases. Before the first release after the multiloader migration, bump `mod_version`; the already published Fabric-only version must not be replaced with different bytes.
+Versions containing `beta` are Modrinth beta releases; other versions with a prerelease suffix are alpha releases. Both are GitHub prereleases and do not replace the latest stable release. Versions without a prerelease suffix are stable releases. Each new release must bump `mod_version`; published versions must not be replaced with different bytes.
 
 ## Publishing
 
