@@ -5,11 +5,11 @@ permissions:
 
 on:
   push:
-    branches: [ main, master, 'ver/**' ]
+    branches: [ main, master, 'ver/**', 'refactor/**' ]
     paths-ignore:
       - '**/*.md'
   pull_request:
-    branches: [ main, master, 'ver/**' ]
+    branches: [ main, master, 'ver/**', 'refactor/**' ]
   workflow_dispatch:
     inputs:
       publish:
@@ -17,7 +17,7 @@ on:
         type: boolean
         default: true
       retry_run_id:
-        description: Original failed run ID (reuse its verified JAR with the current release scripts)
+        description: Original failed run ID (reuse its verified JARs with the current release scripts)
         type: string
         required: false
         default: ''
@@ -47,6 +47,9 @@ jobs:
       - name: Check release automation
         run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
 
+      - name: Check multiloader verification
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
@@ -69,7 +72,7 @@ jobs:
         with:
           name: pupper-client-${{ github.sha }}
           path: |
-            ${{ steps.metadata.outputs.jar }}
+            ${{ steps.metadata.outputs.jars }}
             build/release/notes.md
           if-no-files-found: error
 
@@ -137,7 +140,7 @@ jobs:
         with:
           cache-read-only: true
 
-      - name: Download the verified JAR and release notes
+      - name: Download the verified JARs and release notes
         uses: actions/download-artifact@v4
         with:
           name: pupper-client-${{ needs.retry.outputs.sha || github.sha }}

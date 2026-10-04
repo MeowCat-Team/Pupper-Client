@@ -1,6 +1,7 @@
 """Release checks use local archives and mock both platforms; never publish anything."""
 
 import json
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -14,7 +15,9 @@ import release
 
 PROPS = {"mod_version": "9.0.0-alpha.6", "minecraft_version": "26.2",
          "archives_base_name": "Pupper Client-Fabric", "modrinth_project_id": "pupper-client"}
+MULTI_PROPS = PROPS | {"archives_base_name": "Pupper Client", "enabled_platforms": "fabric,neoforge"}
 DIGEST = {"sha256": "a" * 64, "sha512": "b" * 128}
+NEO_DIGEST = {"sha256": "d" * 64, "sha512": "e" * 128}
 SHA = "c" * 40
 
 
@@ -48,7 +51,7 @@ class MetadataChecks(unittest.TestCase):
             self.assertFalse(release.should_publish(event, "ver/26.2", PROPS, previous))
         self.assertTrue(release.should_publish("workflow_dispatch", "ver/26.2", PROPS, PROPS))
         self.assertFalse(release.should_publish("workflow_dispatch", "ver/26.2", PROPS, previous, False))
-        for branch in ("feature/music", "ver/26.3", "ver/26.2/feature"):
+        for branch in ("feature/music", "refactor/architectury", "ver/26.3", "ver/26.2/feature"):
             self.assertFalse(release.should_publish("push", branch, PROPS, previous))
             with self.assertRaises(ValueError):
                 release.should_publish("workflow_dispatch", branch, PROPS, previous)
@@ -76,6 +79,7 @@ class PlatformChecks(unittest.TestCase):
     def setUp(self):
         self.info = release.metadata(PROPS)
         self.version = {"version_number": self.info["version"], "version_type": "alpha",
+                        "loaders": ["fabric"], "game_versions": [self.info["game"]],
                         "files": [{"primary": True, "hashes": {"sha512": DIGEST["sha512"]}}]}
         self.asset = {"name": release.asset_name(self.info), "digest": f"sha256:{DIGEST['sha256']}"}
 
@@ -83,12 +87,21 @@ class PlatformChecks(unittest.TestCase):
         self.assertTrue(release.needs_modrinth_upload([], self.info, DIGEST))
         self.assertFalse(release.needs_modrinth_upload([self.version], self.info, DIGEST))
         for version in (self.version | {"version_type": "release"},
+                        self.version | {"loaders": ["neoforge"]}, self.version | {"game_versions": ["26.1"]},
                         self.version | {"files": [{"primary": True, "hashes": {"sha512": "wrong"}}]},
                         self.version | {"files": [{"primary": False, "hashes": {"sha512": DIGEST["sha512"]}}]}):
             with self.assertRaises(ValueError):
                 release.needs_modrinth_upload([version], self.info, DIGEST)
         with self.assertRaises(ValueError):
             release.needs_modrinth_upload([self.version, self.version], self.info, DIGEST)
+
+    def test_modrinth_preflight_includes_other_loaders_and_game_versions(self):
+        with patch.dict(os.environ, {"MODRINTH_TOKEN": "fixture"}, clear=True), patch.object(release, "urlopen") as fetch:
+            fetch.return_value.__enter__.return_value = io.StringIO("[]")
+            self.assertEqual(release.versions(self.info), [])
+            request = fetch.call_args.args[0]
+            self.assertEqual(request.full_url, "https://api.modrinth.com/v2/project/pupper-client/version?include_changelog=false")
+            self.assertEqual(request.get_header("Authorization"), "fixture")
 
     def test_github_asset_digest(self):
         self.assertFalse(release.has_asset("owner/repo", {"assets": []}, self.info, DIGEST))
@@ -160,6 +173,7 @@ class PlatformChecks(unittest.TestCase):
             self.assertIn("-x", args)
             self.assertEqual(args[args.index("-x") + 1], "jar")
             self.assertIn("CHANGELOG_FILE", kwargs["env"])
+            self.assertEqual(kwargs["env"]["RELEASE_ARTIFACT_FILE"], str(Path(self.info["jar"]).resolve()))
             if upload_failure:
                 raise subprocess.CalledProcessError(1, args)
 
@@ -213,6 +227,149 @@ class PlatformChecks(unittest.TestCase):
             api.assert_not_called()
 
 
+class MultiLoaderChecks(unittest.TestCase):
+    def setUp(self):
+        self.info = release.metadata(MULTI_PROPS)
+        self.artifacts = release.artifacts(self.info)
+        self.digests = {"fabric": DIGEST, "neoforge": NEO_DIGEST}
+        self.versions = [{"version_number": artifact["modrinth_version"], "version_type": "alpha",
+                          "loaders": [artifact["loader"]], "game_versions": [self.info["game"]],
+                          "files": [{"primary": True, "hashes": {"sha512": self.digests[artifact["loader"]]["sha512"]}}]}
+                         for artifact in self.artifacts]
+        self.assets = [{"name": release.asset_name(artifact), "digest": f"sha256:{self.digests[artifact['loader']]['sha256']}"}
+                       for artifact in self.artifacts]
+
+    def test_shared_tag_and_separate_loader_identity(self):
+        self.assertEqual(self.info["tag"], "v9.0.0-alpha.6+mc26.2")
+        self.assertEqual([artifact["modrinth_version"] for artifact in self.artifacts],
+                         ["9.0.0-alpha.6+mc26.2-fabric", "9.0.0-alpha.6+mc26.2-neoforge"])
+        self.assertEqual([Path(artifact["jar"]).name for artifact in self.artifacts],
+                         ["Pupper Client-Fabric-9.0.0-alpha.6+mc26.2.jar", "Pupper Client-NeoForge-9.0.0-alpha.6+mc26.2.jar"])
+        legacy = release.artifacts(release.metadata(PROPS))[0]
+        self.assertEqual(legacy["modrinth_version"], legacy["version"])
+        self.assertTrue(legacy["legacy"])
+        for value in ("", "forge", "fabric,neoforge,fabric", "fabric,../neoforge"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                release.metadata(MULTI_PROPS | {"enabled_platforms": value})
+
+    def test_prepare_lists_only_exact_release_jars(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            props = Path(temporary) / "gradle.properties"
+            props.write_text("\n".join(f"{key}={value}" for key, value in MULTI_PROPS.items()), encoding="utf-8")
+            output = Path(temporary) / "output"
+            with patch.dict(os.environ, {"GITHUB_EVENT_NAME": "push", "GITHUB_REF_NAME": "refactor/architectury",
+                                        "GITHUB_OUTPUT": str(output)}, clear=True), \
+                 patch.object(release, "PROPERTIES", props), patch.object(release, "NOTES", Path(temporary) / "notes.md"), \
+                 patch.object(release, "command", side_effect=[subprocess.CompletedProcess([], 1, "", ""),
+                                                               subprocess.CompletedProcess([], 0, "- Fixture change", "")]):
+                release.prepare()
+            text = output.read_text(encoding="utf-8")
+            self.assertIn("publish=false\n", text)
+            self.assertIn("jars<<PUPPER_ARTIFACTS\n" + "\n".join(item["jar"] for item in self.artifacts) + "\nPUPPER_ARTIFACTS\n", text)
+
+    def test_neoforge_jar_requires_exact_loader_metadata_and_compiled_class(self):
+        artifact = self.artifacts[1]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / Path(artifact["jar"]).name
+            for version, game, compiled, valid in ((artifact["version"], "[26.2]", True, True),
+                    ("old", "[26.2]", True, False), (artifact["version"], "[26.1]", True, False),
+                    (artifact["version"], "[26.2]", False, False)):
+                with self.subTest(version=version, game=game, compiled=compiled):
+                    with zipfile.ZipFile(path, "w") as jar:
+                        jar.writestr("META-INF/neoforge.mods.toml", f'[[mods]]\nmodId="pupper"\nversion="{version}"\n'
+                                     f'[[dependencies.pupper]]\nmodId="minecraft"\nversionRange="{game}"\n')
+                        if compiled:
+                            jar.writestr("cn/pupperclient/PupperClient.class", b"compiled fixture")
+                    if valid:
+                        self.assertEqual(release.verify(artifact | {"jar": str(path)}), release.hashes(path))
+                    else:
+                        with self.assertRaises(ValueError):
+                            release.verify(artifact | {"jar": str(path)})
+            with zipfile.ZipFile(path, "w") as jar:
+                jar.writestr("fabric.mod.json", "{}")
+            with self.assertRaises(KeyError):
+                release.verify(artifact | {"jar": str(path)})
+
+    def publication(self, events, existing=None, published=None, fail_loader=None, invalid_loader=None):
+        published = list(published or [])
+        draft = existing or {"id": 1, "draft": True, "assets": [], "target_commitish": SHA, "body": "Original notes"}
+        present_assets = list(draft["assets"])
+
+        def verify(artifact):
+            if artifact["loader"] == invalid_loader:
+                raise ValueError("Invalid fixture metadata")
+            return self.digests[artifact["loader"]]
+
+        def api(repo, endpoint, data=None, **kwargs):
+            if data:
+                events.append((endpoint, data))
+                return draft
+            return draft | {"assets": list(present_assets)}
+
+        def upload(repo, artifact):
+            events.append(("asset", artifact["loader"]))
+            present_assets.append(next(asset for asset in self.assets if asset["name"] == release.asset_name(artifact)))
+
+        def gradle(args, **kwargs):
+            loader = args[1].split(":")[1]
+            events.append(("modrinth", loader))
+            self.assertEqual(args, ["./gradlew", f":{loader}:modrinth", "-x", f":{loader}:shadowJar", "--no-daemon", "--console=plain"])
+            artifact = next(item for item in self.artifacts if item["loader"] == loader)
+            self.assertEqual(kwargs["env"]["RELEASE_ARTIFACT_FILE"], str(Path(artifact["jar"]).resolve()))
+            self.assertTrue(Path(kwargs["env"]["CHANGELOG_FILE"]).is_file())
+            self.assertTrue(kwargs["check"])
+            if loader == fail_loader:
+                raise subprocess.CalledProcessError(1, args)
+            published.append(next(version for version in self.versions if version["loaders"] == [loader]))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            notes = Path(temporary) / "notes.md"
+            notes.write_text("Verified notes", encoding="utf-8")
+            with patch.dict(os.environ, {"GH_TOKEN": "fixture", "MODRINTH_TOKEN": "fixture",
+                                        "GITHUB_REPOSITORY": "owner/repo", "GITHUB_SHA": SHA}, clear=True), \
+                 patch.multiple(release, command=Mock(return_value=subprocess.CompletedProcess([], 0, SHA + "\n", "")),
+                                verify=verify, check_tag=Mock(return_value=existing is not None),
+                                find_release=Mock(return_value=existing), upload_asset=upload,
+                                versions=Mock(side_effect=lambda info: list(published)), github=api, NOTES=notes), \
+                 patch.object(release.subprocess, "run", side_effect=gradle):
+                release.publish(self.info)
+
+    def test_both_verified_assets_precede_loader_publication_and_draft_publication(self):
+        events = []
+        self.publication(events)
+        self.assertEqual([event[0] for event in events], ["git/refs", "releases", "asset", "asset", "modrinth", "modrinth", "releases/1"])
+        self.assertEqual(events[2:6], [("asset", "fabric"), ("asset", "neoforge"), ("modrinth", "fabric"), ("modrinth", "neoforge")])
+        self.assertEqual(events[0][1]["sha"], SHA)
+        self.assertFalse(events[-1][1]["draft"])
+
+    def test_second_artifact_conflicts_stop_all_external_writes(self):
+        events = []
+        with self.assertRaises(ValueError):
+            self.publication(events, invalid_loader="neoforge")
+        self.assertEqual(events, [])
+        with self.assertRaises(ValueError):
+            self.publication(events, published=[self.versions[1] | {"loaders": ["fabric"]}])
+        self.assertEqual(events, [])
+        draft = {"id": 1, "draft": True, "body": "Original notes", "assets": [self.assets[1] | {"digest": "sha256:wrong"}]}
+        with self.assertRaises(ValueError):
+            self.publication(events, existing=draft)
+        self.assertEqual(events, [])
+
+    def test_failed_second_loader_leaves_draft_and_retry_skips_completed_first_loader(self):
+        events = []
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.publication(events, fail_loader="neoforge")
+        self.assertNotIn("releases/1", [event[0] for event in events])
+        draft = {"id": 1, "draft": True, "assets": self.assets, "body": "Original notes"}
+        events = []
+        self.publication(events, existing=draft, published=[self.versions[0]])
+        self.assertEqual([event[0] for event in events], ["modrinth", "releases/1"])
+        self.assertEqual(events[0], ("modrinth", "neoforge"))
+        events = []
+        self.publication(events, existing=draft | {"draft": False}, published=self.versions)
+        self.assertEqual(events, [])
+
+
 class RetryChecks(unittest.TestCase):
     def setUp(self):
         self.run = {"event": "push", "status": "completed", "path": ".github/workflows/build.yml",
@@ -220,7 +377,7 @@ class RetryChecks(unittest.TestCase):
         self.jobs = [{"name": "build", "conclusion": "success"}, {"name": "release", "conclusion": "failure"}]
         self.artifacts = [{"name": f"pupper-client-{SHA}", "expired": False}]
 
-    def retry(self, run=None, jobs=None, artifacts=None, ancestor=True):
+    def retry(self, run=None, jobs=None, artifacts=None, ancestor=True, props=None):
         responses = {"actions/runs/123": self.run if run is None else run,
                      "actions/runs/123/jobs?filter=latest&per_page=100": {"jobs": self.jobs if jobs is None else jobs},
                      "actions/runs/123/artifacts?per_page=100": {"artifacts": self.artifacts if artifacts is None else artifacts}}
@@ -232,7 +389,7 @@ class RetryChecks(unittest.TestCase):
                     raise RuntimeError("Original commit is not an ancestor")
                 return subprocess.CompletedProcess(args, 0, "", "")
             self.assertEqual(args, ("git", "show", f"{SHA}:gradle.properties"))
-            return subprocess.CompletedProcess(args, 0, "\n".join(f"{key}={value}" for key, value in PROPS.items()), "")
+            return subprocess.CompletedProcess(args, 0, "\n".join(f"{key}={value}" for key, value in (props or PROPS).items()), "")
 
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "output"
@@ -245,6 +402,7 @@ class RetryChecks(unittest.TestCase):
 
     def test_retry_uses_original_build_sha_and_artifact(self):
         self.assertEqual(self.retry(), {"run_id": "123", "sha": SHA, "version": "9.0.0-alpha.6+mc26.2"})
+        self.assertEqual(self.retry(props=MULTI_PROPS), {"run_id": "123", "sha": SHA, "version": "9.0.0-alpha.6+mc26.2"})
 
     def test_retry_rejects_untrusted_or_incomplete_runs(self):
         for update in ({"event": "pull_request"}, {"status": "in_progress"},

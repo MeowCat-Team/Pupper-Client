@@ -9,7 +9,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from urllib.parse import quote, urlencode
+import tomllib
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 import zipfile
 
@@ -39,11 +40,28 @@ def metadata(props):
     project = props["modrinth_project_id"]
     if not re.fullmatch(r"[0-9A-Za-z_-]+", project):
         raise ValueError("Invalid modrinth_project_id")
+    legacy = "enabled_platforms" not in props
+    platforms = ["fabric"] if legacy else [item.strip() for item in props["enabled_platforms"].split(",")]
+    if not platforms or len(platforms) != len(set(platforms)) or any(item not in ("fabric", "neoforge") for item in platforms):
+        raise ValueError("enabled_platforms must list unique supported loaders: fabric,neoforge")
     version = f"{mod}+mc{game}"
     kind = "beta" if "beta" in mod.lower() else "alpha" if "-" in mod else "release"
-    return {"mod": mod, "game": game, "version": version, "tag": f"v{version}",
+    info = {"mod": mod, "game": game, "version": version, "tag": f"v{version}",
             "title": f"Pupper Client {mod} for Minecraft {game}", "kind": kind,
-            "project": project, "jar": str(Path("build/libs") / f"{archive}-{version}.jar")}
+            "project": project, "archive": archive, "legacy": legacy, "platforms": platforms}
+    info["jar"] = artifacts(info)[0]["jar"]
+    return info
+
+
+def artifacts(info):
+    """One shared game version/tag, with separate immutable files and Modrinth versions."""
+    if info["legacy"]:
+        return [info | {"loader": "fabric", "modrinth_version": info["version"],
+                        "jar": str(Path("build/libs") / f"{info['archive']}-{info['version']}.jar")}]
+    names = {"fabric": "Fabric", "neoforge": "NeoForge"}
+    return [info | {"loader": loader, "modrinth_version": f"{info['version']}-{loader}",
+                    "jar": str(Path("build/libs") / f"{info['archive']}-{names[loader]}-{info['version']}.jar")}
+            for loader in info["platforms"]]
 
 
 def should_publish(event, branch, current, previous, manual=True):
@@ -88,13 +106,16 @@ def prepare():
     revision = f"{previous_tag.stdout.strip()}..HEAD" if previous_tag.returncode == 0 else "HEAD"
     changes = command("git", "log", "--max-count=100", "--format=- %s (%h)", revision).stdout.strip()
     NOTES.parent.mkdir(parents=True, exist_ok=True)
-    NOTES.write_text(f"# {info['title']}\n\nMinecraft {info['game']} · Fabric Loader {props['loader_version']}+ · Java 25\n\n"
+    loaders = f"Fabric Loader {props['loader_version']}+" if info["legacy"] else "Fabric / NeoForge · Architectury API"
+    NOTES.write_text(f"# {info['title']}\n\nMinecraft {info['game']} · {loaders} · Java 25\n\n"
                      f"## Changes\n\n{changes or '- Maintenance update.'}\n", encoding="utf-8")
+    jars = "\n".join(artifact["jar"] for artifact in artifacts(info))
     output = os.getenv("GITHUB_OUTPUT")
     if output:
         with Path(output).open("a", encoding="utf-8") as stream:
-            stream.write(f"publish={str(publish).lower()}\nversion={info['version']}\njar={info['jar']}\n")
-    print(f"{info['version']}; publish={str(publish).lower()}; artifact={info['jar']}")
+            stream.write(f"publish={str(publish).lower()}\nversion={info['version']}\njar={info['jar']}\n"
+                         f"jars<<PUPPER_ARTIFACTS\n{jars}\nPUPPER_ARTIFACTS\n")
+    print(f"{info['version']}; publish={str(publish).lower()}; artifacts={jars.replace(chr(10), ', ')}")
 
 
 def retry(run_id):
@@ -139,12 +160,27 @@ def hashes(path):
 def verify(info):
     path = Path(info["jar"])
     with zipfile.ZipFile(path) as jar:
-        mod = json.loads(jar.read("fabric.mod.json"))
-        if mod.get("id") != "pupper" or mod.get("version") != info["version"] or mod.get("depends", {}).get("minecraft") != info["game"]:
-            raise ValueError("JAR metadata does not match the version being released")
+        loader = info.get("loader", "fabric")
+        if loader == "fabric":
+            mod = json.loads(jar.read("fabric.mod.json"))
+            valid = (mod.get("id") == "pupper" and mod.get("version") == info["version"]
+                     and mod.get("depends", {}).get("minecraft") == info["game"])
+        else:
+            descriptor = tomllib.loads(jar.read("META-INF/neoforge.mods.toml").decode("utf-8"))
+            mods = [mod for mod in descriptor.get("mods", []) if mod.get("modId") == "pupper"]
+            game_dependencies = [dependency for dependency in descriptor.get("dependencies", {}).get("pupper", [])
+                                 if dependency.get("modId") == "minecraft"]
+            valid = (len(mods) == 1 and mods[0].get("version") == info["version"] and len(game_dependencies) == 1
+                     and game_dependencies[0].get("versionRange") == f"[{info['game']}]")
+        if not valid:
+            raise ValueError(f"{loader} JAR metadata does not match the version being released")
         if "cn/pupperclient/PupperClient.class" not in jar.namelist():
             raise ValueError("Release artifact lacks compiled client classes")
     return hashes(path)
+
+
+def verify_artifacts(info):
+    return [(artifact, verify(artifact)) for artifact in artifacts(info)]
 
 
 def github(repo, endpoint, data=None, missing=False):
@@ -179,8 +215,9 @@ def find_release(repo, info):
 
 
 def versions(info):
-    filters = urlencode({"loaders": json.dumps(["fabric"]), "game_versions": json.dumps([info["game"]])})
-    request = Request(f"https://api.modrinth.com/v2/project/{quote(info['project'])}/version?{filters}",
+    # A conflicting version number must not be hidden by loader/game filters.
+    # New builds use unique loader suffixes; changelogs are not needed for hashes.
+    request = Request(f"https://api.modrinth.com/v2/project/{quote(info['project'])}/version?include_changelog=false",
                       headers={"User-Agent": "Pupper-Client-release/1.0 (github.com/MeowCat-Team/Pupper-Client)",
                                "Authorization": os.environ["MODRINTH_TOKEN"]})
     with urlopen(request, timeout=30) as response:
@@ -188,10 +225,13 @@ def versions(info):
 
 
 def needs_modrinth_upload(published, info, digest):
-    matches = [version for version in published if version["version_number"] == info["version"]]
+    number = info.get("modrinth_version", info["version"])
+    matches = [version for version in published if version["version_number"] == number]
     if not matches:
         return True
-    if len(matches) != 1 or matches[0].get("version_type") != info["kind"]:
+    if (len(matches) != 1 or matches[0].get("version_type") != info["kind"]
+            or set(matches[0].get("loaders", [])) != {info.get("loader", "fabric")}
+            or info["game"] not in matches[0].get("game_versions", [])):
         raise ValueError("Modrinth version conflict; bump mod_version rather than overwriting a release")
     if not any(file.get("primary") and file.get("hashes", {}).get("sha512") == digest["sha512"] for file in matches[0]["files"]):
         raise ValueError("Modrinth already has different bytes for this version; bump mod_version")
@@ -250,12 +290,13 @@ def publish(info):
         raise ValueError("Invalid repository or commit")
     if command("git", "rev-parse", "HEAD").stdout.strip() != sha:
         raise ValueError("Checkout does not match the verified workflow commit")
-    digest = verify(info)
+    verified = verify_artifacts(info)
     notes = NOTES.read_text(encoding="utf-8")
     tag_exists = check_tag(repo, info, sha)
-    upload = needs_modrinth_upload(versions(info), info, digest)
+    published = versions(info)
+    plan = [(artifact, digest, needs_modrinth_upload(published, artifact, digest)) for artifact, digest in verified]
     release = find_release(repo, info)
-    asset_exists = release is not None and has_asset(repo, release, info, digest)
+    assets_present = [release is not None and has_asset(repo, release, artifact, digest) for artifact, digest, _ in plan]
     if release is not None and not tag_exists and release.get("target_commitish") != sha:
         raise ValueError("Existing draft targets another commit; bump mod_version")
     if not tag_exists:
@@ -266,21 +307,27 @@ def publish(info):
     elif release.get("body"):
         notes = release["body"]
         NOTES.write_text(notes, encoding="utf-8")
-    if not asset_exists:
-        upload_asset(repo, info)
-        if not has_asset(repo, github(repo, f"releases/{release['id']}"), info, digest):
-            raise RuntimeError("GitHub upload could not be verified; rerun this failed release job")
-    if upload:
+    for (artifact, digest, _), asset_exists in zip(plan, assets_present):
+        if not asset_exists:
+            upload_asset(repo, artifact)
+            if not has_asset(repo, github(repo, f"releases/{release['id']}"), artifact, digest):
+                raise RuntimeError("GitHub upload could not be verified; rerun this failed release job")
+    for artifact, digest, upload in plan:
+        if not upload:
+            continue
         environment = os.environ.copy()
         environment["CHANGELOG_FILE"] = str(NOTES.resolve())
+        environment["RELEASE_ARTIFACT_FILE"] = str(Path(artifact["jar"]).resolve())
         # The verified artifact is downloaded from the build job. Never rebuild it here.
-        subprocess.run(["./gradlew", "modrinth", "-x", "jar", "--no-daemon", "--console=plain"], env=environment, check=True)
-        if needs_modrinth_upload(versions(info), info, digest):
+        task = "modrinth" if info["legacy"] else f":{artifact['loader']}:modrinth"
+        excluded = "jar" if info["legacy"] else f":{artifact['loader']}:shadowJar"
+        subprocess.run(["./gradlew", task, "-x", excluded, "--no-daemon", "--console=plain"], env=environment, check=True)
+        if needs_modrinth_upload(versions(artifact), artifact, digest):
             raise RuntimeError("Modrinth upload could not be verified; rerun this failed release job")
     if release["draft"]:
         github(repo, f"releases/{release['id']}", {"draft": False, "prerelease": info["kind"] != "release",
                                                "make_latest": "false" if info["kind"] != "release" else "legacy"})
-    summary = f"Published {info['version']} to GitHub Release and Modrinth."
+    summary = f"Published {info['version']} ({', '.join(info['platforms'])}) to GitHub Release and Modrinth."
     print(summary)
     if os.getenv("GITHUB_STEP_SUMMARY"):
         with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as stream:
@@ -300,8 +347,8 @@ if __name__ == "__main__":
             if action == "publish":
                 publish(info)
             else:
-                verify(info)
-                print(f"Verified release artifact: {info['jar']}")
+                for artifact, _ in verify_artifacts(info):
+                    print(f"Verified {artifact['loader']} release artifact: {artifact['jar']}")
         else:
             raise ValueError("Usage: release.py prepare|verify|publish|retry RUN_ID")
     except (KeyError, IndexError, ValueError, OSError, RuntimeError, subprocess.CalledProcessError, zipfile.BadZipFile) as failure:
