@@ -1,0 +1,37 @@
+def modVersion = rootProject.property('mod_version')
+def minecraftVersion = rootProject.property('minecraft_version')
+def releaseType = modVersion.toLowerCase().contains('beta') ? 'beta' : modVersion.contains('-') ? 'alpha' : 'release'
+def loader = project.name
+def releaseArtifact = providers.environmentVariable('RELEASE_ARTIFACT_FILE')
+
+modrinth {
+    token = providers.environmentVariable('MODRINTH_TOKEN')
+    projectId = rootProject.property('modrinth_project_id')
+    versionNumber = "${project.version}-${loader}"
+    versionName = "Pupper Client ${modVersion} for Minecraft ${minecraftVersion} (${loader})"
+    versionType = releaseType
+    uploadFile = releaseArtifact.isPresent() ? releaseArtifact.map { file(it) } : tasks.named('shadowJar')
+    // A CI artifact is already built and checked; do not wire archive tasks as inputs.
+    autoAddDependsOn = !releaseArtifact.isPresent()
+    gameVersions = [minecraftVersion]
+    loaders = [loader]
+    changelog = providers.environmentVariable('CHANGELOG_FILE').map { file(it).getText('UTF-8') }
+        .orElse(providers.environmentVariable('CHANGELOG')).orElse('No changelog was provided.')
+    dependencies {
+        required.project('architectury-api')
+        if (loader == 'fabric') {
+            required.project('fabric-api')
+            required.project('viafabricplus')
+        }
+    }
+}
+
+if (releaseArtifact.isPresent()) {
+    tasks.named('modrinth') {
+        // Minotaur 2.10 adds assemble unconditionally when registering this task.
+        // Remove that default only for a downloaded artifact, retaining other dependencies.
+        setDependsOn(getDependsOn().findAll { dependency ->
+            !(dependency instanceof org.gradle.api.tasks.TaskProvider && dependency.name == 'assemble')
+        })
+    }
+}

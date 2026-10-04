@@ -1,0 +1,25 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="MIT"
+
+[[mods]]
+modId="pupper_smoke"
+version="1.0.0"
+displayName="Pupper Startup Smoke Verification"
+
+[[mixins]]
+config="pupper-smoke.mixins.json"
+
+[[dependencies.pupper_smoke]]
+modId="pupper"
+type="required"
+versionRange="*"
+ordering="AFTER"
+side="CLIENT"
+
+[[dependencies.pupper_smoke]]
+modId="architectury"
+type="required"
+versionRange="*"
+ordering="AFTER"
+side="CLIENT"

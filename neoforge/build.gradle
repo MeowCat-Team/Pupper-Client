@@ -1,0 +1,81 @@
+plugins {
+    id 'java-library'
+    id 'architectury-plugin'
+    id 'dev.architectury.loom-no-remap'
+    id 'com.gradleup.shadow'
+    id 'com.modrinth.minotaur'
+}
+
+base { archivesName = "${rootProject.property('archives_base_name')}-NeoForge" }
+architectury {
+    platformSetupLoomIde()
+    neoForge()
+}
+loom {
+    accessWidenerPath = project(':common').file('src/main/resources/pupper.classtweaker')
+    neoForge {
+        convertAccessWideners(tasks.named('shadowJar', Jar), 'pupper.classtweaker')
+    }
+    runs {
+        client {
+            runDir = '../run/neoforge'
+            vmArgs '-Xms512M', '-Xmx4G', '-XX:HeapBaseMinAddress=34g', '--enable-native-access=ALL-UNNAMED'
+        }
+    }
+}
+configurations {
+    common
+    shadowCommon
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentNeoForge.extendsFrom common
+}
+apply from: rootProject.file('gradle/libraries.gradle.kts')
+
+dependencies {
+    minecraft "com.mojang:minecraft:${rootProject.property('minecraft_version')}"
+    neoForge "net.neoforged:neoforge:${rootProject.property('neoforge_version')}"
+    implementation libs.architectury.neoforge
+    runtimeOnly libs.sodium.neoforge
+    runtimeOnly libs.iris.neoforge
+    runtimeOnly libs.lithium.neoforge
+    runtimeOnly libs.immediatelyfast.neoforge
+    runtimeOnly libs.entityculling.neoforge
+    runtimeOnly libs.ias.neoforge
+    common(project(path: ':common')) { transitive = false }
+    shadowCommon(project(path: ':common', configuration: 'transformProductionNeoForge')) { transitive = false }
+}
+
+processResources {
+    def metadata = [version: project.version, minecraft_version: rootProject.property('minecraft_version'),
+        neoforge_version: rootProject.property('neoforge_version'),
+        architectury_api_version: rootProject.property('architectury_api_version')]
+    inputs.properties metadata
+    filesMatching('META-INF/neoforge.mods.toml') { expand metadata }
+}
+
+jar { archiveClassifier = 'raw' }
+shadowJar {
+    dependsOn jar
+    mainSpec.sourcePaths.clear()
+    from { zipTree(jar.archiveFile.get().asFile) }
+    configurations = [project.configurations.shadowCommon]
+    archiveClassifier = ''
+    exclude 'fabric.mod.json', 'architectury.common.json'
+    // JarJar identifiers omit classifiers; expose all NFD native resources directly.
+    from({ project.configurations.nfdNatives.collect { zipTree(it) } }) {
+        exclude '**/*.class'
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+    exclude 'META-INF/MANIFEST.MF', 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
+    from(rootProject.file('LICENSE'))
+}
+assemble.dependsOn shadowJar
+sourcesJar {
+    dependsOn project(':common').tasks.named('sourcesJar')
+    from { zipTree(project(':common').tasks.named('sourcesJar').get().archiveFile.get().asFile) }
+}
+
+apply from: rootProject.file('gradle/publishing.gradle')
+apply from: rootProject.file('gradle/smoke.gradle')
+apply from: rootProject.file('gradle/mixin-verification.gradle')

@@ -1,0 +1,16 @@
+// Resolve each loader's runtime in a task owned by that loader project.
+// Gradle 9 does not allow common's JavaExec task to resolve another project's configuration.
+def mixinRuntimeClasspath = configurations.runtimeClasspath
+def mixinRuntimeManifest = layout.buildDirectory.file('verification/mixin-runtime-classpath.txt')
+
+tasks.register('exportMixinRuntimeClasspath') {
+    group = 'verification'
+    description = 'Exports this loader runtime for the shared Mixin compatibility check.'
+    inputs.files(mixinRuntimeClasspath)
+    outputs.file(mixinRuntimeManifest)
+    doLast {
+        def manifest = mixinRuntimeManifest.get().asFile
+        manifest.parentFile.mkdirs()
+        manifest.setText(mixinRuntimeClasspath.asPath + System.lineSeparator(), 'UTF-8')
+    }
+}

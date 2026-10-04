@@ -1,0 +1,53 @@
+// Apply from each loader project. This creates a separate test mod and run;
+// no smoke classes/resources are part of main, jar or shadowJar.
+def smoke = sourceSets.create('smokeVerification') {
+    java.srcDir rootProject.file('common/src/smokeVerification/java')
+    resources.srcDir rootProject.file('common/src/smokeVerification/resources')
+    compileClasspath += sourceSets.main.output + configurations.compileClasspath
+    runtimeClasspath += sourceSets.main.output + configurations.runtimeClasspath
+}
+configurations.smokeVerificationImplementation.extendsFrom configurations.implementation
+configurations.smokeVerificationRuntimeOnly.extendsFrom configurations.runtimeOnly
+def smokeRequested = gradle.startParameter.taskNames.any { it.endsWith('runSmokeClient') }
+
+loom {
+    mods {
+        // Fabric needs the shared resources and classes grouped with its entrypoint.
+        // NeoForge already registers main and Architectury transforms common-dev.jar
+        // into a separate development mod. Grouping common's original output here
+        // would load the same packages twice and fail Java module resolution.
+        if (project.name == 'fabric') {
+            pupper {
+                sourceSet sourceSets.main
+                sourceSet('main', ':common')
+            }
+        }
+        // Ordinary development runs must not discover the test mod after it was compiled.
+        if (smokeRequested) {
+            pupper_smoke {
+                sourceSet smoke
+            }
+        }
+    }
+    runs {
+        smokeClient {
+            inherit client
+            client()
+            source smoke
+            runDir 'build/smoke'
+            vmArgs '-Dpupper.smoke=true', "-Dpupper.smoke.loader=${project.name}",
+                "-Dpupper.smoke.expectedVersion=${project.version}"
+            programArgs '--username', 'PupperSmoke'
+        }
+    }
+}
+
+tasks.named('runSmokeClient') {
+    dependsOn smoke.classesTaskName
+    doFirst {
+        def isolatedDir = layout.buildDirectory.dir('smoke').get().asFile
+        isolatedDir.mkdirs()
+        // A previous successful run must never satisfy a failed new attempt.
+        new File(isolatedDir, 'pupper-smoke-result.json').delete()
+    }
+}

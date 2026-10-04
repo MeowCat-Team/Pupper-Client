@@ -1,0 +1,191 @@
+package cn.pupperclient.management.command;
+
+import cn.pupperclient.PupperClient;
+import cn.pupperclient.management.command.impl.*;
+import cn.pupperclient.management.mod.Mod;
+import cn.pupperclient.management.mod.ModManager;
+import cn.pupperclient.utils.chat.ChatUtils;
+import cn.pupperclient.utils.minecraft.interfaces.IMinecraft;
+import cn.pupperclient.utils.language.I18n;
+import dev.architectury.event.EventResult;
+import dev.architectury.event.events.client.ClientChatEvent;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
+
+public class PupperCommand implements IMinecraft {
+    private static final String PREFIX = ".";
+    private static final ModManager modManager = PupperClient.getInstance().getModManager();
+
+    public static void register() {
+        ClientChatEvent.SEND.register((message, component) -> {
+            if (message.startsWith(PREFIX)) {
+                String command = message.substring(PREFIX.length()).trim();
+                runCommand(command);
+                return EventResult.interruptFalse();
+            }
+            return EventResult.pass();
+        });
+    }
+
+    public static void runCommand(String command) {
+        command = command.trim();
+        if (command.isEmpty()) {
+            showHelp();
+            return;
+        }
+
+        String[] args = command.split("\\s+");
+        String mainCommand = args[0].toLowerCase(java.util.Locale.ROOT);
+
+        switch (mainCommand) {
+            case "t":
+            case "toggle":
+                if (args.length >= 2) {
+                    String modName = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
+                    toggleMod(modName);
+                } else {
+                    ChatUtils.addChatMessage(I18n.get("command.help.toggle.usage"));
+                }
+                break;
+
+            case "help":
+                showHelp();
+                break;
+
+            case "l":
+            case "list":
+                listMods();
+                break;
+
+            case "b":
+            case "bind":
+                BindCommand.handleCommand(args);
+                break;
+
+            case "music", "m", "163":
+                if (args.length >= 2) {
+                    MusicCommand.handleCommand(args);
+                } else {
+                    MusicCommand.handleCommand(new String[]{"music", "help"});
+                }
+                break;
+
+            case "login":
+                if (args.length >= 2) {
+                    LoginCommand.handleCommand(args);
+                } else {
+                    LoginCommand.handleCommand(new String[]{"login", "help"});
+                }
+                break;
+
+            default:
+                ChatUtils.addChatMessage(I18n.get("command.help.unknown"));
+                break;
+        }
+    }
+
+    private static void toggleMod(String modName) {
+        Mod targetMod = modManager.getModByCommandName(modName);
+        if (targetMod == null) {
+            ChatUtils.addChatMessage("§c" + I18n.get("mod.notFound") + ": " + modName);
+            ChatUtils.addChatMessage("§6" + ".list " + " §7- " + I18n.get("command.help.modlist.description"));
+            return;
+        }
+
+        boolean newState = !targetMod.isEnabled();
+        targetMod.setEnabled(newState);
+
+        String status = newState ? "§a" + I18n.get("mod.enabled") : "§c" + I18n.get("mod.disabled");
+        ChatUtils.addChatMessage("Mod " + targetMod.getName() + " " + status);
+    }
+
+    private static void showHelp() {
+        ChatUtils.addChatMessage("§6=== " + I18n.get("command.help.title") + " ===");
+        ChatUtils.addChatMessage("§b.t <modName> §7- " + I18n.get("command.help.toggle"));
+        ChatUtils.addChatMessage("§b.toggle <modName> §7- " + I18n.get("command.help.toggle"));
+        ChatUtils.addChatMessage("§b.list §7- " + I18n.get("command.help.list"));
+        ChatUtils.addChatMessage("§b.help §7- " + I18n.get("command.help.help"));
+        ChatUtils.addChatMessage("§6" + I18n.get("command.help.example") + " §b.t FPSDisplayMod");
+    }
+
+    private static void listMods() {
+        if (modManager == null) {
+            ChatUtils.addChatMessage(Component.literal("§c" + I18n.get("modManager.notInitialized")));
+            return;
+        }
+
+        // 创建标题和刷新按钮
+        MutableComponent title = Component.literal("=== " + I18n.get("command.help.modlist.title") + " ===")
+            .withStyle(ChatFormatting.GOLD);
+
+        MutableComponent refreshButton = createClickableText(" [" + I18n.get("command.help.modlist.refresh") + "]", ".list",
+            I18n.get("command.help.modlist.refresh.tip"), ChatFormatting.GREEN);
+
+        title.append(refreshButton);
+        ChatUtils.addChatMessage(title);
+
+        int enabledCount = 0;
+        int totalCount = 0;
+
+        for (Mod mod : modManager.getMods()) {
+            totalCount++;
+            if (mod.isEnabled()) {
+                enabledCount++;
+            }
+
+            String modDisplayName = mod.getName();
+            boolean isEnabled = mod.isEnabled();
+            String shortModName = getShortModName(mod.getRawName());
+
+            MutableComponent modNameText = Component.literal("• " + modDisplayName)
+                .withStyle(ChatFormatting.AQUA);
+
+            MutableComponent statusText;
+            if (isEnabled) {
+                statusText = createClickableText(I18n.get("mod.enabled"),
+                    ".toggle " + shortModName,
+                    I18n.get("modNameText.d") + " " + modDisplayName, ChatFormatting.GREEN);
+            } else {
+                statusText = createClickableText(I18n.get("mod.disabled"),
+                    ".toggle " + shortModName,
+                    I18n.get("modNameText.c") + " " + modDisplayName, ChatFormatting.RED);
+            }
+
+            MutableComponent modLine = Component.empty()
+                .append(modNameText)
+                .append(Component.literal(" - ").withStyle(ChatFormatting.GRAY))
+                .append(statusText);
+
+            ChatUtils.addChatMessage(modLine);
+        }
+
+        // 统计信息行
+        MutableComponent stats = Component.literal(I18n.get("command.help.modlist.stats") + ": ")
+            .withStyle(ChatFormatting.GRAY)
+            .append(Component.literal(enabledCount + "/" + totalCount + " " + I18n.get("mod.enabled"))
+                .withStyle(enabledCount > 0 ? ChatFormatting.GREEN : ChatFormatting.RED));
+
+        ChatUtils.addChatMessage(stats);
+    }
+
+    private static MutableComponent createClickableText(String displayText, String command, String hoverText, ChatFormatting color) {
+        ClickEvent clickEvent = new ClickEvent.SuggestCommand(command);
+        HoverEvent hoverEvent = new HoverEvent.ShowText(Component.literal(hoverText));
+
+        return Component.literal(displayText)
+            .withStyle(color)
+            .withStyle(style -> style
+                .withClickEvent(clickEvent)
+                .withHoverEvent(hoverEvent));
+    }
+
+    private static String getShortModName(String fullName) {
+        if (fullName.startsWith("mod.") && fullName.endsWith(".name")) {
+            return fullName.substring(4, fullName.length() - 5);
+        }
+        return fullName;
+    }
+}

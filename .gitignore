@@ -1,5 +1,6 @@
 # Ignore Gradle project-specific cache directory
 .gradle
+.architectury-transformer/
 
 # Ignore Gradle build output directory
 build
@@ -13,6 +14,7 @@ bin
 .project
 
 run
+logs/
 .skidfuscator
 .idea
 

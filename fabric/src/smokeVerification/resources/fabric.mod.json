@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pupper_smoke",
+  "version": "1.0.0",
+  "name": "Pupper Startup Smoke Verification",
+  "environment": "client",
+  "entrypoints": {"client": ["cn.pupperclient.smoke.fabric.PupperFabricSmoke"]},
+  "mixins": ["pupper-smoke.mixins.json"],
+  "depends": {"pupper": "*", "architectury": "*", "viafabricplus": "*"}
+}

@@ -1,0 +1,35 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="MIT"
+
+[[mods]]
+modId="pupper"
+version="${version}"
+displayName="Pupper Client"
+iconFile="assets/pupper/logo.png"
+authors="EldoDebug, oneachina, DeepSeek"
+description='''Better, Faster Minecraft Client'''
+
+[[mixins]]
+config="pupper.mixins.json"
+
+[[dependencies.pupper]]
+modId="neoforge"
+type="required"
+versionRange="[${neoforge_version},)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.pupper]]
+modId="minecraft"
+type="required"
+versionRange="[${minecraft_version}]"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.pupper]]
+modId="architectury"
+type="required"
+versionRange="[${architectury_api_version},)"
+ordering="AFTER"
+side="CLIENT"
