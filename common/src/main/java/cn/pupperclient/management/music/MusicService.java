@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,18 +28,27 @@ public final class MusicService {
     private final MusicLibraryStore library;
     private final NeteaseMusicApi netease;
     private final MusicLoginService login;
+    private final MusicCloudLibrary cloud;
+    private final MusicDownloadTasks downloadTasks;
     private final MusicProviders providers;
     private final Map<String, MusicDownload> downloads = new ConcurrentHashMap<>();
     private final LyricsManager lyrics;
-    private final Map<String, Integer> progress = new ConcurrentHashMap<>();
     private final Map<String, MusicTrack> observedAccess = new ConcurrentHashMap<>();
     private final Set<String> coversLoading = ConcurrentHashMap.newKeySet();
     private final Set<String> favoritesLoading = ConcurrentHashMap.newKeySet();
+    private final Set<MusicPreparation.Cancellation> collectionRequests = ConcurrentHashMap.newKeySet();
+    private volatile boolean closed;
+    private record PlaybackPin(String prefix, AtomicInteger readers) { }
+    private final Map<MusicPreparation.Key, PlaybackPin> playbackPins = new ConcurrentHashMap<>();
+    private volatile String prefetchPrefix = "";
+    private final ExecutorService playbackWorker = Executors.newThreadPerTaskExecutor(
+        Thread.ofVirtual().name("Pupper Client music fetch-", 0).factory());
+    private final MusicPreparation<Music> preparation = new MusicPreparation<>(playbackWorker, Multithreading::runMainThread);
 
     public MusicService(MusicManager manager, MusicLibraryStore library) {
         this.manager = manager;
         this.library = library;
-        netease = new NeteaseMusicApi(NeteaseMusicApi.DEFAULT_ORIGIN);
+        netease = new NeteaseMusicApi(new MusicApiConfiguration(FileLocation.MAIN_DIR.toPath().resolve("music-api.json")));
         login = new MusicLoginService(netease,
             new MusicAccountStore(FileLocation.MAIN_DIR.toPath().resolve("login_status.json")),
             Multithreading::runAsync, Multithreading::runMainThread,
@@ -44,12 +56,51 @@ public final class MusicService {
         providers = new MusicProviders(library, new NeteaseMusicProvider(netease), new AudiusMusicProvider());
         for (MusicProvider provider : providers.all()) downloads.put(provider.id(), new MusicDownload(provider, library,
             FileLocation.MUSIC_DIR.toPath(), FileLocation.CACHE_DIR.toPath()));
+        cloud = new MusicCloudLibrary(netease, login, Multithreading::runAsync, Multithreading::runMainThread);
+        downloadTasks = new MusicDownloadTasks(playbackWorker, Multithreading::runMainThread,
+            (track, quality, credential, progress, cancellation) -> {
+                var downloader = downloads.get(track.provider());
+                if (downloader == null) throw new MusicError("music.error.provider");
+                var result = downloader.download(track, quality, credential, this::playingPath, progress, cancellation);
+                manager.load();
+                return result;
+            }, result -> observedAccess.put(account(result.track().provider()).owner() + ":" + result.track().key(), result.track()));
+        login.onSessionChange(() -> Multithreading.runMainThread(() -> {
+            observedAccess.clear(); favoritesLoading.clear(); manager.refreshPrefetch();
+        }));
         lyrics = new LyricsManager(track -> providers.get(track.provider()).lyrics(track),
             FileLocation.CACHE_DIR.toPath(), Multithreading::runAsync);
     }
 
     public LyricsManager lyrics() { return lyrics; }
     public MusicLoginService login() { return login; }
+    public MusicCloudLibrary cloud() { return cloud; }
+    public MusicDownloadTasks downloads() { return downloadTasks; }
+    public MusicApiConfiguration apiConfiguration() { return netease.configuration(); }
+    public void configureApi(java.net.URI endpoint, boolean trusted) throws IOException {
+        endpoint = MusicApiConfiguration.validate(endpoint);
+        var current = netease.configuration().snapshot();
+        if (endpoint.equals(current.endpoint()) && trusted == current.trustedAccounts()) return;
+        downloadTasks.list().forEach(task -> downloadTasks.cancel(task.id()));
+        netease.configure(endpoint, trusted);
+        manager.refreshPrefetch();
+        observedAccess.clear(); cloud.invalidate(); coversLoading.clear();
+    }
+    public boolean retryDownload(long id) {
+        var selected = downloadTasks.list().stream().filter(task -> task.id() == id).findFirst().orElse(null);
+        return selected != null && downloadTasks.retry(id, account(selected.track().provider()).cookie());
+    }
+    public void retryDownloads() {
+        downloadTasks.list().stream().filter(task -> task.state() == MusicDownloadTasks.State.FAILED).forEach(task -> retryDownload(task.id()));
+    }
+    public List<Long> downloadBatch(List<MusicQueue.Entry> entries, String quality) {
+        Map<String, MusicTrack> unique = new java.util.LinkedHashMap<>();
+        entries.stream().map(MusicQueue.Entry::track).filter(MusicTrack::remote).filter(MusicTrack::downloadable)
+            .forEach(track -> unique.putIfAbsent(track.key(), track));
+        return unique.values().stream().filter(track -> local(track) == null || local(track).getTrack().preview())
+            .map(track -> downloadTasks.submit(track, track.provider().equals(provider().id()) ? quality : defaultQuality(track),
+                account(track.provider()).cookie())).toList();
+    }
     public List<Music> libraryTracks() { return manager.getMusics(); }
     public MusicProvider provider() { return providers.selected(); }
     public List<MusicProvider> providers() { return providers.all(); }
@@ -78,13 +129,37 @@ public final class MusicService {
         MusicProvider selected = provider();
         task(() -> selected.search(keyword, type, 30, offset), success, failure);
     }
-    public void collectionTracks(MusicCollection collection, int offset, Consumer<MusicProvider.SearchResult> success,
+    public MusicPreparation.Registration collectionTracks(MusicCollection collection, int offset, Consumer<MusicProvider.SearchResult> success,
             Consumer<MusicError> failure) {
         MusicProvider source;
         try { source = providers.get(collection.provider()); }
-        catch (MusicError invalid) { failure.accept(invalid); return; }
+        catch (MusicError invalid) { failure.accept(invalid); return () -> { }; }
         String cookie = account(source.id()).cookie();
-        task(() -> source.collectionTracks(collection, 30, offset, cookie), success, failure);
+        var cancellation = new MusicPreparation.Cancellation();
+        collectionRequests.add(cancellation);
+        if (closed) { collectionRequests.remove(cancellation); cancellation.cancel(); return () -> { }; }
+        long session = login.sessionVersion(), revision = apiConfiguration().snapshot().revision();
+        var task = new java.util.concurrent.FutureTask<Void>(() -> {
+            try {
+                var result = source.collectionTracks(collection, 50, offset, cookie, cancellation);
+                Multithreading.runMainThread(() -> {
+                    collectionRequests.remove(cancellation);
+                    if (closed || cancellation.isCancelled()) return;
+                    if (source.id().equals("audius") || session == login.sessionVersion() && revision == apiConfiguration().snapshot().revision())
+                        success.accept(result);
+                    else failure.accept(new MusicError("music.api.error.changed"));
+                });
+            } catch (Exception error) {
+                MusicError translated = error instanceof MusicError musicError ? musicError : new MusicError("music.error.network");
+                Multithreading.runMainThread(() -> {
+                    collectionRequests.remove(cancellation);
+                    if (!closed && !cancellation.isCancelled()) failure.accept(translated);
+                });
+            }
+            return null;
+        });
+        Multithreading.runAsync(task);
+        return () -> { collectionRequests.remove(cancellation); cancellation.cancel(); task.cancel(true); };
     }
 
     public void download(long id, String quality, boolean play, Consumer<Music> success, Consumer<MusicError> failure) {
@@ -122,42 +197,97 @@ public final class MusicService {
     }
 
     public void download(MusicTrack track, String quality, boolean play, Consumer<Music> success, Consumer<MusicError> failure) {
-        acquire(track, quality, play, false, success, failure);
+        acquire(track, quality, play, success, failure);
     }
     public void play(MusicTrack track, String quality, Consumer<Music> success, Consumer<MusicError> failure) {
         manager.playFrom(List.of(new MusicQueue.Entry(track, "")), 0, quality, success, failure);
     }
     /** Playback buffers never publish a library entry; saving is an explicit download action. */
-    public void prepare(MusicTrack track, String quality, Consumer<Music> success, Consumer<MusicError> failure) {
+    public MusicPreparation.Registration prepare(MusicTrack track, String quality, Consumer<Music> success, Consumer<MusicError> failure) {
         Music local = local(track);
-        if (local != null) { success.accept(local); return; }
-        acquire(track, quality, false, true, success, failure);
-    }
-    private void acquire(MusicTrack track, String quality, boolean play, boolean temporary, Consumer<Music> success,
-            Consumer<MusicError> failure) {
-        MusicDownload download = downloads.get(track.provider());
-        if (download == null) { failure.accept(new MusicError("music.error.provider")); return; }
-        if (progress.putIfAbsent(track.key(), 0) != null) { failure.accept(new MusicError("music.error.busy")); return; }
+        if (local != null) { success.accept(local); return () -> { }; }
         Account account = account(track.provider());
-        Music playing = manager.getCurrentMusic();
-        Path playingFile = playing == null ? null : playing.getAudio().toPath().toAbsolutePath().normalize();
-        task(() -> {
-            try {
-                MusicDownload.Result result = temporary
-                    ? download.playback(track, quality, account.cookie(), playingFile, value -> progress.put(track.key(), value))
-                    : download.download(track, quality, account.cookie(), playingFile, value -> progress.put(track.key(), value));
-                observedAccess.put(account.owner() + ":" + result.track().key(), result.track());
-                if (temporary) return new Music(result.audio().toFile(), result.track().title(), result.track().artist(),
-                    java.nio.file.Files.isRegularFile(download.cover(track)) ? download.cover(track).toFile() : null,
-                    Color.BLACK, result.track());
-                manager.load();
-                return manager.getMusics().stream().filter(m -> m.getAudio().toPath().toAbsolutePath().normalize()
-                    .equals(result.audio())).findFirst().orElseThrow(() -> new MusicError("music.error.file"));
-            } finally { progress.remove(track.key()); }
-        }, music -> { if (play) manager.play(music); success.accept(music); }, failure);
+        var key = playbackKey(track, quality, account);
+        playbackPins.compute(key, (_, pin) -> {
+            if (pin == null) pin = new PlaybackPin(MusicDownload.playbackPrefix(track, quality), new AtomicInteger());
+            pin.readers().incrementAndGet(); return pin;
+        });
+        var released = new java.util.concurrent.atomic.AtomicBoolean();
+        Runnable release = () -> { if (released.compareAndSet(false, true)) releasePlaybackPin(key); };
+        try {
+            var subscription = preparation.prepare(key, cancellation -> prepareAudio(track, quality, account, cancellation), music -> {
+                try {
+                    observedAccess.put(account.owner() + ":" + music.getTrack().key(), music.getTrack());
+                    success.accept(music);
+                } finally { release.run(); }
+            }, error -> {
+                try { failure.accept(translate(error)); }
+                finally { release.run(); }
+            });
+            return () -> { try { subscription.close(); } finally { release.run(); } };
+        } catch (RuntimeException failureToStart) { release.run(); throw failureToStart; }
+    }
+    /** Only the selected upcoming song is fetched; it remains an ordinary temporary playback cache. */
+    public void prefetch(MusicTrack track, String quality) {
+        if (local(track) != null) { cancelPrefetch(); return; }
+        Account account = account(track.provider());
+        prefetchPrefix = MusicDownload.playbackPrefix(track, quality);
+        preparation.prefetch(playbackKey(track, quality, account),
+            cancellation -> prepareAudio(track, quality, account, cancellation));
+    }
+    public void cancelPrefetch() { prefetchPrefix = ""; preparation.cancelPrefetch(); }
+    public void close() {
+        closed = true;
+        collectionRequests.forEach(MusicPreparation.Cancellation::cancel); collectionRequests.clear();
+        prefetchPrefix = ""; downloadTasks.close(); cloud.close(); preparation.close(); playbackPins.clear(); playbackWorker.shutdownNow();
+    }
+    private Music prepareAudio(MusicTrack track, String quality, Account account, MusicPreparation.Cancellation cancellation)
+            throws Exception {
+        MusicDownload download = downloads.get(track.provider());
+        if (download == null) throw new MusicError("music.error.provider");
+        MusicDownload.Result result = download.playback(track, quality, account.cookie(), this::playingPath,
+            this::protectedPlaybackPrefixes, _ -> { }, cancellation);
+        return new Music(result.audio().toFile(), result.track().title(), result.track().artist(),
+            java.nio.file.Files.isRegularFile(download.cover(track)) ? download.cover(track).toFile() : null,
+            Color.BLACK, result.track());
+    }
+    private Path playingPath() {
+        Music music = manager.getCurrentMusic();
+        return music == null ? null : music.getAudio().toPath().toAbsolutePath().normalize();
+    }
+    private Set<String> protectedPlaybackPrefixes() {
+        Set<String> prefixes = new java.util.HashSet<>();
+        String next = prefetchPrefix; if (!next.isEmpty()) prefixes.add(next);
+        playbackPins.values().forEach(pin -> prefixes.add(pin.prefix()));
+        return prefixes;
+    }
+    private void releasePlaybackPin(MusicPreparation.Key key) {
+        playbackPins.computeIfPresent(key, (_, pin) -> pin.readers().decrementAndGet() == 0 ? null : pin);
+    }
+    private static MusicPreparation.Key playbackKey(MusicTrack track, String quality, Account account) {
+        try {
+            byte[] credential = (account.cookie() == null ? "" : account.cookie()).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            String fingerprint = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(credential));
+            return new MusicPreparation.Key(track.key(), quality, account.owner() + ":" + fingerprint);
+        } catch (java.security.NoSuchAlgorithmException impossible) { throw new AssertionError(impossible); }
+    }
+    private static MusicError translate(Throwable error) {
+        return error instanceof MusicError musicError ? musicError
+            : new MusicError(error instanceof IOException ? "music.error.file" : "music.error.network");
+    }
+    private void acquire(MusicTrack track, String quality, boolean play, Consumer<Music> success,
+            Consumer<MusicError> failure) {
+        if (!downloads.containsKey(track.provider())) { failure.accept(new MusicError("music.error.provider")); return; }
+        downloadTasks.submit(track, quality, account(track.provider()).cookie(), result -> {
+            Music music = manager.getMusics().stream().filter(item -> item.getAudio().toPath().toAbsolutePath().normalize()
+                .equals(result.audio())).findFirst().orElse(null);
+            if (music == null) { failure.accept(new MusicError("music.error.file")); return; }
+            if (play) manager.play(music);
+            success.accept(music);
+        }, failure);
     }
 
-    public int downloadProgress(MusicTrack track) { return progress.getOrDefault(track.key(), -1); }
+    public int downloadProgress(MusicTrack track) { return downloadTasks.progress(track); }
     public Music local(MusicTrack track) {
         return manager.getMusics().stream().filter(m -> m.getTrack().sameSong(track)).findFirst().orElse(null);
     }

@@ -1,0 +1,132 @@
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
+def loomClasses = project.plugins.getPlugin('dev.architectury.loom-no-remap').class.classLoader
+def runTaskType = loomClasses.loadClass('net.fabricmc.loom.task.AbstractRunTask')
+def serviceFactoryType = loomClasses.loadClass('net.fabricmc.loom.util.service.ScopedServiceFactory')
+
+// Running clients must never load or watch archives rewritten by a later build.
+def snapshotRuntime = { run ->
+    def session = rootProject.file(".local/dev-sessions/${project.name}-${UUID.randomUUID()}")
+    def root = rootProject.projectDir.toPath().toAbsolutePath().normalize()
+    def sessionRoot = session.toPath().toAbsolutePath().normalize()
+    if (!sessionRoot.startsWith(root.resolve('.local/dev-sessions'))) throw new GradleException('Invalid development snapshot directory')
+    Files.createDirectories(sessionRoot)
+    def originals = run.classpath.files.toList()
+    def candidates = new LinkedHashSet(originals)
+    [project, project(':common')].each { module ->
+        ['main', 'smokeVerification'].each { source ->
+            def output = module.sourceSets.findByName(source)?.output
+            if (output != null) candidates.addAll(output.files)
+        }
+    }
+    def replacements = new LinkedHashMap<String, String>()
+    candidates.each { source ->
+        def path = source.toPath().toAbsolutePath().normalize()
+        def mutable = [project.layout.buildDirectory.get().asFile, project(':common').layout.buildDirectory.get().asFile]
+            .any { path.startsWith(it.toPath().toAbsolutePath().normalize()) }
+        if (mutable && source.exists()) {
+            def target = sessionRoot.resolve(root.relativize(path))
+            if (source.isDirectory()) project.copy { from source; into target.toFile() }
+            else { Files.createDirectories(target.parent); Files.copy(path, target, StandardCopyOption.COPY_ATTRIBUTES) }
+            replacements[path.toString()] = target.toString()
+        }
+    }
+    def rewrite = { String value ->
+        replacements.each { original, target ->
+            value = value.replace(original, target).replace(original.replace('\\', '/'), target.replace('\\', '/'))
+        }
+        value
+    }
+    def rewriteArgs = { arguments ->
+        arguments.collect { argument ->
+            def text = argument.toString()
+            def prefix = ['-Darchitectury.runtime.transformer=', '-Darchitectury.properties=',
+                '-Darchitectury.main.class=', '-Dfabric.dli.config='].find { text.startsWith(it) }
+            if (prefix == null) return rewrite(text)
+            def source = new File(text.substring(prefix.length()).replace('@@', ' '))
+            if (!source.isFile()) throw new GradleException("Missing development launch file: $source")
+            def target = new File(session, "launch/${source.name}")
+            target.parentFile.mkdirs()
+            if (prefix == '-Darchitectury.properties=') {
+                def properties = new Properties()
+                source.withInputStream { properties.load(it) }
+                properties.stringPropertyNames().each { key -> properties.setProperty(key, rewrite(properties.getProperty(key))) }
+                target.withOutputStream { properties.store(it, 'Isolated Architectury development runtime') }
+            } else if (prefix == '-Darchitectury.main.class=') {
+                def main = source.getText('UTF-8').trim()
+                // Architectury shares this file between inherited Loom run configurations.
+                // Configuring both runs can replace DLI with the transformer itself.
+                if (main == 'dev.architectury.transformer.TransformerRuntime') {
+                    if (!run.internalJvmArgs.get().any { it.startsWith('-Dfabric.dli.config=') })
+                        throw new GradleException('Recursive Architectury entrypoint without a Loom launch configuration')
+                    main = 'net.fabricmc.devlaunchinjector.Main'
+                }
+                target.setText(main, 'UTF-8')
+            } else target.setText(rewrite(source.getText('UTF-8')), 'UTF-8')
+            prefix + target.absolutePath
+        }
+    }
+    run.classpath = files(originals.collect { new File(rewrite(it.absolutePath)) })
+    run.internalJvmArgs.set(rewriteArgs(run.internalJvmArgs.get()))
+    run.jvmArgs = rewriteArgs(run.jvmArgs ?: [])
+    def launchEnvironment = new LinkedHashMap(run.internalEnvironmentVars.get())
+    if (launchEnvironment.get('MOD_CLASSES', run.environment['MOD_CLASSES']) == '{source_roots}') {
+        // Loom applies its internal environment at exec(), after the JavaExec environment.
+        // Resolve and replace that input so it cannot restore mutable source directories.
+        def services = serviceFactoryType.getDeclaredConstructor().newInstance()
+        try {
+            def sourceGroups = services.getOrNull(run.modClassesOptions)
+            if (sourceGroups != null) launchEnvironment['MOD_CLASSES'] = sourceGroups.getModClasses(run.runConfigName.get())
+        } finally { services.close() }
+    }
+    launchEnvironment = launchEnvironment.collectEntries { key, value -> [(key): rewrite(value.toString())] }
+    run.internalEnvironmentVars.set(launchEnvironment)
+    run.environment.keySet().toList().each { key -> run.environment(key, rewrite(run.environment[key].toString())) }
+    logger.lifecycle("[Pupper Client] Isolated development runtime: ${root.relativize(sessionRoot)}")
+    [directory: session, replacements: replacements]
+}
+
+def snapshots = [:]
+afterEvaluate {
+    tasks.withType(runTaskType).each { run ->
+        // Prepare after compilation, before JavaExec finalizes its input file collection.
+        def preparation = tasks.register("${run.name}Snapshot") {
+            group = 'internal'
+            dependsOn { run.taskDependencies.getDependencies(run).findAll { it.name != "${run.name}Snapshot" } }
+            doLast { snapshots[run.name] = snapshotRuntime(run) }
+        }
+        run.dependsOn preparation
+    }
+}
+
+tasks.register('verifyDevRuntimeSnapshot') {
+    group = 'verification'
+    description = 'Checks isolation of development classes, Architectury inputs and loader source groups.'
+    def run = tasks.named('runClient')
+    dependsOn { tasks.named('runClientSnapshot') }
+    doLast {
+        def task = run.get()
+        def snapshot = snapshots[task.name]
+        if (snapshot.replacements.isEmpty()) throw new GradleException('No development outputs were isolated')
+        task.internalClasspath.files.each { entry ->
+            if (snapshot.replacements.containsKey(entry.absolutePath)) throw new GradleException("Mutable classpath entry retained: $entry")
+        }
+        def properties = new Properties()
+        new File(snapshot.directory, 'launch/.properties').withInputStream { properties.load(it) }
+        def launchInputs = [new File(snapshot.directory, 'launch/.transforms').getText('UTF-8'),
+            new File(snapshot.directory, 'launch/launch.cfg').getText('UTF-8'), task.environment.toString(),
+            task.internalEnvironmentVars.get().toString()]
+        if (task.internalEnvironmentVars.get()['MOD_CLASSES'] == '{source_roots}')
+            throw new GradleException('Unresolved loader source groups retained')
+        launchInputs.addAll(properties.values())
+        if (new File(snapshot.directory, 'launch/.main_class').getText('UTF-8').trim()
+                == 'dev.architectury.transformer.TransformerRuntime')
+            throw new GradleException('Recursive Architectury entrypoint retained')
+        snapshot.replacements.keySet().each { original ->
+            if (launchInputs.any { it.contains(original) || it.contains(original.replace('\\', '/')) })
+                throw new GradleException("Mutable development launch input retained: $original")
+        }
+        logger.lifecycle("[Pupper Client] Verified ${snapshot.replacements.size()} isolated development outputs for ${project.name}.")
+    }
+}

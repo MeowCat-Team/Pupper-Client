@@ -18,10 +18,14 @@ public class EntityRenderOptimizerMod extends Mod {
         Icon.INVENTORY_2, this, true);
     private final BooleanSetting optimizeItemShadows = new BooleanSetting(
         "setting.entityoptimizer.shadows", "setting.entityoptimizer.shadows.description",
-        Icon.PERFORMANCE_MAX, this, true);
+        Icon.PERFORMANCE_MAX, this, true) {
+        @Override public boolean isVisible() { return optimizeItems.isEnabled(); }
+    };
     private final NumberSetting itemThreshold = new NumberSetting(
         "setting.entityoptimizer.threshold", "setting.entityoptimizer.threshold.description",
-        Icon.PERFORMANCE_MAX, this, 64, 16, 256, 16);
+        Icon.PERFORMANCE_MAX, this, 64, 16, 256, 16) {
+        @Override public boolean isVisible() { return optimizeItems.isEnabled() && optimizeItemShadows.isEnabled(); }
+    };
 
     public EntityRenderOptimizerMod() {
         super("mod.entityoptimizer.name", "mod.entityoptimizer.description",

@@ -6,11 +6,9 @@ import cn.pupperclient.management.music.MusicTrack;
 import cn.pupperclient.management.music.MusicRepeatMode;
 import cn.pupperclient.management.music.MusicSearchType;
 import cn.pupperclient.management.music.MusicCollection;
-import cn.pupperclient.management.music.lyric.LyricsManager;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.skia.font.Icon;
-import cn.pupperclient.ui.theme.MaterialControls;
 import cn.pupperclient.ui.theme.MaterialTheme;
 import java.io.File;
 
@@ -23,34 +21,30 @@ public final class MusicUi {
     public static void sidebar(String page, String provider, String quality, double mx, double my, ColorPalette palette) {
         Skia.drawFullCenteredText(Icon.MUSIC_NOTE, 40, 44, palette.getPrimary(), Fonts.getIconFill(24));
         Skia.drawText(MusicText.get("music.player.title"), 64, 30, palette.getOnSurface(), Fonts.getMedium(22));
-        tab(16, 116, 208, Icon.SEARCH, MusicText.get("music.tab.search"), page.equals("search") || page.equals("browse"),
-            inside(mx, my, 16, 116, 208, 48), palette);
-        Skia.drawText(MusicText.get("music.sidebar.library"), 28, 192, palette.getOnSurfaceVariant(), Fonts.getMedium(14));
-        tab(16, 224, 208, Icon.LIBRARY_MUSIC, MusicText.get("music.tab.library"), page.equals("library"),
-            inside(mx, my, 16, 224, 208, 48), palette);
-        tab(16, 280, 208, Icon.FAVORITE, MusicText.get("music.tab.liked"), page.equals("liked"),
-            inside(mx, my, 16, 280, 208, 48), palette);
-        tab(16, 336, 208, Icon.QUEUE_MUSIC, MusicText.get("music.tab.playlists"), page.equals("playlists") || page.equals("playlist"),
-            inside(mx, my, 16, 336, 208, 48), palette);
-        Skia.drawText(MusicText.get("music.sidebar.sources"), 28, 400, palette.getOnSurfaceVariant(), Fonts.getMedium(14));
-        String[] sources = { "netease", "audius" };
-        for (int i = 0; i < sources.length; i++) tab(16, 424 + i * 56, 208, Icon.MUSIC_NOTE,
-            MusicText.get("music.provider." + sources[i]), provider.equals(sources[i]),
-            inside(mx, my, 16, 424 + i * 56, 208, 48), palette);
-        tab(16, 548, 208, Icon.GRAPHIC_EQ, Skia.getLimitText(MusicText.get("music.quality.button", MusicText.get("music.quality." + quality)), Fonts.getMedium(14), 120),
-            false, inside(mx, my, 16, 548, 208, 48), palette);
-        Skia.drawFullCenteredText(Icon.EXPAND_MORE, 200, 572, palette.getOnSurfaceVariant(), Fonts.getIcon(18));
-        Skia.drawLine(232, 24, 232, 600, 1, MaterialTheme.alpha(palette.getOutlineVariant(), .4f));
+        String[] pages = { "search", "library", "liked", "playlists", "cloud", "recent", "downloads" };
+        String[] icons = { Icon.SEARCH, Icon.LIBRARY_MUSIC, Icon.FAVORITE, Icon.QUEUE_MUSIC, Icon.CLOUD, Icon.HISTORY, Icon.DOWNLOAD };
+        for (int i = 0; i < pages.length; i++) {
+            var box = MusicPlayerLayout.navBox(pages[i]);
+            boolean selected = page.equals(pages[i]) || pages[i].equals("search") && page.equals("browse")
+                || pages[i].equals("playlists") && page.equals("playlist");
+            tab(box.x(), box.y(), box.width(), icons[i], MusicText.get("music.tab." + pages[i]), selected, box.contains(mx, my), palette);
+        }
+        Skia.drawText(MusicText.get("music.sidebar.library"), 24, 170, palette.getOnSurfaceVariant(), Fonts.getMedium(12));
+        Skia.drawText(MusicText.get("music.sidebar.sources"), 24, 506, palette.getOnSurfaceVariant(), Fonts.getMedium(12));
+        for (String source : new String[] { "netease", "audius" }) {
+            var box = MusicPlayerLayout.navBox(source);
+            tab(box.x(), box.y(), box.width(), Icon.MUSIC_NOTE, MusicText.get("music.provider." + source), provider.equals(source), box.contains(mx, my), palette);
+        }
+        var settings = MusicPlayerLayout.settingsButton();
+        iconButton(settings.x(), settings.y(), Icon.SETTINGS, page.equals("settings"), true, settings.contains(mx, my), palette);
+        if (settings.contains(mx, my)) tooltip(MusicText.get("music.tab.settings"), mx, my, MusicPlayerLayout.WIDTH, palette);
+        Skia.drawLine(208, 24, 208, MusicPlayerLayout.transport().y() - 16, 1, MaterialTheme.alpha(palette.getOutlineVariant(), .3f));
     }
 
     public static void browserHeader(String page, String subtitle, MusicPlayerLayout.Panel panel,
             double mx, double my, ColorPalette palette) {
-        Skia.drawText(Skia.getLimitText(page.equals("playlist") || page.equals("browse") ? subtitle : MusicText.get("music.tab." + page), Fonts.getMedium(28), 728),
-            248, 36, palette.getOnSurface(), Fonts.getMedium(28));
-        iconButton(992, 24, Icon.LYRICS, panel == MusicPlayerLayout.Panel.LYRICS, true,
-            inside(mx, my, 992, 24, 48, 48), palette);
-        iconButton(1044, 24, Icon.QUEUE_MUSIC, panel == MusicPlayerLayout.Panel.QUEUE, true,
-            inside(mx, my, 1044, 24, 48, 48), palette);
+        Skia.drawText(Skia.getLimitText(page.equals("playlist") || page.equals("browse") ? subtitle : MusicText.get("music.tab." + page), Fonts.getMedium(28), MusicPlayerLayout.WIDTH - 264),
+            MusicPlayerLayout.content(MusicPlayerLayout.Panel.NONE).x(), 36, palette.getOnSurface(), Fonts.getMedium(28));
     }
 
     public static void searchTypes(float x, float y, MusicSearchType selected, double mx, double my, ColorPalette palette) {
@@ -177,98 +171,99 @@ public final class MusicUi {
 
     public static void playback(float x, float y, float width, Playback state, double mouseX, double mouseY,
             ColorPalette palette) {
-        MaterialTheme.card(x, y, width, 88, 24, palette);
-        artwork(state.cover(), x + 12, y + 12, 48, palette);
-        float titleWidth = Math.max(80, Math.min(180, width / 2 - 224));
-        Skia.drawText(Skia.getLimitText(state.title(), Fonts.getMedium(14), titleWidth), x + 72, y + 18,
-            palette.getOnSurface(), Fonts.getMedium(14));
-        Skia.drawText(Skia.getLimitText(state.artist(), Fonts.getRegular(14), titleWidth), x + 72, y + 42,
-            palette.getOnSurfaceVariant(), Fonts.getRegular(14));
-        iconButton(x + 64 + titleWidth, y + 12, Icon.FAVORITE, state.liked(), state.enabled(),
-            inside(mouseX, mouseY, x + 64 + titleWidth, y + 12, 48, 48), palette);
-        float center = x + width / 2;
+        playback(x, y, width, state, mouseX, mouseY, palette, false, false);
+    }
+    public static void playback(float x, float y, float width, Playback state, double mouseX, double mouseY,
+            ColorPalette palette, boolean immersive, boolean queueOpen) {
+        var bounds = new MusicPlayerLayout.Box(x, y, width, immersive ? 176 : 88);
+        if (!immersive) {
+            Skia.drawRoundedRect(x, y + 8, width, 72, 12, MaterialTheme.alpha(palette.getSurfaceContainer(), .65f));
+            artwork(state.cover(), x + 12, y + 12, 48, palette);
+            float titleWidth = Math.max(80, Math.min(180, width / 2 - 224));
+            Skia.drawText(Skia.getLimitText(state.title(), Fonts.getMedium(14), titleWidth), x + 72, y + 18,
+                palette.getOnSurface(), Fonts.getMedium(14));
+            Skia.drawText(Skia.getLimitText(state.artist(), Fonts.getRegular(14), titleWidth), x + 72, y + 42,
+                palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+            iconButton(x + 64 + titleWidth, y + 12, Icon.FAVORITE, state.liked(), state.enabled(),
+                inside(mouseX, mouseY, x + 64 + titleWidth, y + 12, 48, 48), palette);
+        }
         String[] icons = { state.repeat() == MusicRepeatMode.ONE ? Icon.REPEAT_ONE : Icon.REPEAT, Icon.SKIP_PREVIOUS, state.playing() ? Icon.PAUSE : Icon.PLAY_ARROW,
             Icon.SKIP_NEXT, Icon.SHUFFLE };
         for (int i = 0; i < icons.length; i++) {
             boolean selected = i == 0 && state.repeat() != MusicRepeatMode.OFF || i == 4 && state.shuffle() || i == 2;
-            float buttonX = center - 120 + i * 48;
-            iconButton(buttonX, y + 4, icons[i], selected, i == 0 || i == 4 || state.enabled(),
-                inside(mouseX, mouseY, buttonX, y + 4, 48, 48), palette);
+            var button = MusicPlayerLayout.playbackAction(bounds, i, immersive);
+            if (i == 2) {
+                Skia.drawCircle(button.x() + 24, button.y() + 24, 20, immersive
+                    ? MaterialTheme.alpha(palette.getOnSurface(), state.enabled() ? .14f : .06f)
+                    : MaterialTheme.alpha(palette.getPrimary(), state.enabled() ? 1 : .38f));
+                if (state.enabled() && button.contains(mouseX, mouseY)) Skia.drawCircle(button.x() + 24, button.y() + 24, 20,
+                    MaterialTheme.alpha(immersive ? palette.getOnSurface() : palette.getOnPrimary(), .08f));
+                Skia.drawFullCenteredText(icons[i], button.x() + 24, button.y() + 24,
+                    MaterialTheme.alpha(immersive ? palette.getOnSurface() : palette.getOnPrimary(), state.enabled() ? 1 : .38f),
+                    Fonts.getIconFill(26));
+            } else iconButton(button.x(), button.y(), icons[i], selected, i == 0 || i == 4 || state.enabled(),
+                button.contains(mouseX, mouseY), palette);
         }
         float progress = state.end() > 0 && Float.isFinite(state.current())
             ? Math.clamp(state.current() / state.end(), 0, 1) : 0;
-        float trackWidth = Math.min(256, width / 3);
-        float trackX = center - trackWidth / 2;
-        Skia.drawRoundedRect(trackX, y + 65, trackWidth, 4, 2, MaterialTheme.surface(palette.getSecondaryContainer()));
-        Skia.drawRoundedRect(trackX, y + 65, progress * trackWidth, 4, 2, palette.getPrimary());
-        Skia.drawHeightCenteredText(MusicText.time(state.current()), trackX - 42, y + 67,
-            palette.getOnSurfaceVariant(), Fonts.getRegular(14));
-        Skia.drawHeightCenteredText(MusicText.time(state.end()), trackX + trackWidth + 10, y + 67,
-            palette.getOnSurfaceVariant(), Fonts.getRegular(14));
-        iconButton(x + width - 164, y + 12, state.volume() == 0 ? Icon.VOLUME_OFF : Icon.VOLUME_UP,
-            false, true, inside(mouseX, mouseY, x + width - 164, y + 12, 48, 48), palette);
-        MaterialControls.slider(x + width - 108, y + 18, 84, palette, MaterialTheme.opacity(), state.volume(),
-            inside(mouseX, mouseY, x + width - 116, y + 8, 104, 60) ? 1 : 0, Math.round(state.volume() * 100) + "%");
-    }
-
-    public static void lyrics(float x, float y, float width, float height, String title, LyricsManager.Result result,
-            int active, float focus, double mx, double my, ColorPalette palette) {
-        Skia.drawText(MusicText.get("music.lyrics.title"), x + 12, y + 12, palette.getOnSurface(), Fonts.getMedium(22));
-        iconButton(x + width - 48, y, Icon.REFRESH, false, title != null,
-            inside(mx, my, x + width - 48, y, 48, 48), palette);
-        float top = y + 64, bodyHeight = height - 108;
-        var document = result.lyrics();
-        if (title == null || document.isEmpty()) {
-            String key = title == null ? "music.lyrics.choose" : switch (result.state()) {
-                case LOADING -> "music.lyrics.loading";
-                case ERROR -> "music.lyrics.error";
-                default -> "music.lyrics.empty";
-            };
-            Skia.drawFullCenteredText(Icon.LYRICS, x + width / 2, top + bodyHeight / 2 - 28,
-                palette.getPrimary(), Fonts.getIcon(36));
-            Skia.drawCenteredText(Skia.getLimitText(MusicText.get(key), Fonts.getRegular(14), width - 32), x + width / 2, top + bodyHeight / 2 + 30,
+        var seek = MusicPlayerLayout.seekTrack(bounds, immersive);
+        float trackWidth = seek.width(), trackX = seek.x();
+        Skia.drawRoundedRect(trackX, seek.y(), trackWidth, seek.height(), 2, MaterialTheme.surface(palette.getSecondaryContainer()));
+        Skia.drawRoundedRect(trackX, seek.y(), progress * trackWidth, seek.height(), 2, palette.getPrimary());
+        if (immersive) {
+            Skia.drawText(MusicText.time(state.current()), x, y + 25, palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+            String remaining = "−" + MusicText.time(Math.max(0, state.end() - state.current()));
+            Skia.drawText(remaining, x + width - Skia.getTextBounds(remaining, Fonts.getRegular(14)).getWidth(), y + 25,
                 palette.getOnSurfaceVariant(), Fonts.getRegular(14));
         } else {
-            int count = document.synced() ? document.lines().size() : document.plainText().size();
-            float rowHeight = 80;
-            Skia.save();
-            try {
-                Skia.clip(x, top, width, bodyHeight, 16);
-                int first = Math.max(0, (int) Math.floor(focus - bodyHeight / rowHeight / 2) - 1);
-                int last = Math.min(count, (int) Math.ceil(focus + bodyHeight / rowHeight / 2) + 2);
-                for (int i = first; i < last; i++) {
-                    float lineY = top + bodyHeight / 2 + (i - focus) * rowHeight - 28;
-                    boolean selected = document.synced() && i == active;
-                    if (selected) Skia.drawRoundedRect(x + 4, lineY - 8, width - 8, 72, 16,
-                        MaterialTheme.alpha(palette.getSecondaryContainer(), .5f));
-                    String text = document.synced() ? document.lines().get(i).getText() : document.plainText().get(i);
-                    var font = selected ? Fonts.getMedium(24) : Fonts.getRegular(20);
-                    Skia.drawText(Skia.getLimitText(text.isBlank() ? "♪" : text, font, width - 48), x + 24, lineY,
-                        selected ? palette.getPrimary() : palette.getOnSurfaceVariant(), font);
-                    if (document.synced() && !document.lines().get(i).getTranslation().isBlank())
-                        Skia.drawText(Skia.getLimitText(document.lines().get(i).getTranslation(), Fonts.getRegular(14), width - 48),
-                            x + 24, lineY + 34, palette.getOnSurfaceVariant(), Fonts.getRegular(14));
-                }
-            } finally { Skia.restore(); }
+            Skia.drawHeightCenteredText(MusicText.time(state.current()), trackX - 42, y + 67,
+                palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+            Skia.drawHeightCenteredText(MusicText.time(state.end()), trackX + trackWidth + 10, y + 67,
+                palette.getOnSurfaceVariant(), Fonts.getRegular(14));
         }
+        if (immersive) {
+            var like = MusicPlayerLayout.playbackAction(bounds, 5, true);
+            iconButton(like.x(), like.y(), Icon.FAVORITE, state.liked(), state.enabled(), like.contains(mouseX, mouseY), palette);
+        } else {
+            var lyrics = MusicPlayerLayout.playbackAction(bounds, 8, false);
+            iconButton(lyrics.x(), lyrics.y(), Icon.LYRICS, false, true, lyrics.contains(mouseX, mouseY), palette);
+        }
+        var queue = MusicPlayerLayout.playbackAction(bounds, 9, immersive);
+        iconButton(queue.x(), queue.y(), Icon.QUEUE_MUSIC, queueOpen, true, queue.contains(mouseX, mouseY), palette);
+        var mute = MusicPlayerLayout.playbackAction(bounds, 6, immersive);
+        iconButton(mute.x(), mute.y(), state.volume() == 0 ? Icon.VOLUME_OFF : Icon.VOLUME_UP,
+            false, true, mute.contains(mouseX, mouseY), palette);
+        float volume = Float.isFinite(state.volume()) ? Math.clamp(state.volume(), 0, 1) : 0;
+        var volumeTrack = MusicPlayerLayout.volumeTrack(bounds, immersive);
+        float volumeX = volumeTrack.x(), volumeY = volumeTrack.y() + 2, volumeWidth = volumeTrack.width();
+        float thumbX = volumeX + volume * volumeWidth;
+        boolean volumeHovered = MusicPlayerLayout.volumeHit(bounds, immersive).contains(mouseX, mouseY);
+        Skia.drawRoundedRect(volumeX, volumeY - 2, volumeWidth, 4, 2,
+            MaterialTheme.surface(palette.getSecondaryContainer()));
+        if (volume > 0) Skia.drawRoundedRect(volumeX, volumeY - 2, volumeWidth * volume, 4, 2, palette.getPrimary());
+        if (volumeHovered) Skia.drawCircle(thumbX, volumeY, 16, MaterialTheme.alpha(palette.getPrimary(), .08f));
+        Skia.drawCircle(thumbX, volumeY, 5, palette.getPrimary());
+        if (volumeHovered) tooltip(Math.round(volume * 100) + "%", mouseX, mouseY, x + width, palette);
     }
 
     public static void nameDialog(String title, String error, double mx, double my, ColorPalette palette) {
+        var box = MusicPlayerLayout.nameDialog();
+        var cancel = MusicPlayerLayout.nameCancel(); var save = MusicPlayerLayout.nameSave();
         Skia.drawRect(0, 0, MusicPlayerLayout.WIDTH, MusicPlayerLayout.HEIGHT, MaterialTheme.alpha(java.awt.Color.BLACK, .35f));
-        Skia.drawRoundedRect(320, 224, 480, 248, 28, MaterialTheme.alpha(java.awt.Color.BLACK, .18f));
-        Skia.drawRoundedRect(320, 220, 480, 248, 28, palette.getSurfaceContainerHigh());
-        Skia.drawText(title, 344, 248, palette.getOnSurface(), Fonts.getMedium(24));
-        Skia.drawText(MusicText.get("music.playlist.name"), 344, 284, palette.getOnSurfaceVariant(), Fonts.getRegular(14));
-        if (!error.isEmpty()) Skia.drawText(MusicText.get(error), 344, 361, palette.getError(), Fonts.getRegular(14));
-        button(492, 396, 136, MusicText.get("music.action.cancel"), false, inside(mx, my, 492, 396, 136, 48), palette);
-        button(640, 396, 136, MusicText.get("music.action.save"), true, inside(mx, my, 640, 396, 136, 48), palette);
+        Skia.drawRoundedRect(box.x(), box.y() + 4, box.width(), box.height(), 28, MaterialTheme.alpha(java.awt.Color.BLACK, .18f));
+        Skia.drawRoundedRect(box.x(), box.y(), box.width(), box.height(), 28, palette.getSurfaceContainerHigh());
+        Skia.drawText(title, box.x() + 24, box.y() + 28, palette.getOnSurface(), Fonts.getMedium(24));
+        Skia.drawText(MusicText.get("music.playlist.name"), box.x() + 24, box.y() + 64, palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+        if (!error.isEmpty()) Skia.drawText(MusicText.get(error), box.x() + 24, box.y() + 141, palette.getError(), Fonts.getRegular(14));
+        button(cancel.x(), cancel.y(), cancel.width(), MusicText.get("music.action.cancel"), false, cancel.contains(mx, my), palette);
+        button(save.x(), save.y(), save.width(), MusicText.get("music.action.save"), true, save.contains(mx, my), palette);
     }
 
     public static void iconButton(float x, float y, String icon, boolean selected, boolean enabled,
             boolean hovered, ColorPalette palette) {
-        if (selected) Skia.drawRoundedRect(x + 4, y + 4, 40, 40, 20,
+        if (selected) Skia.drawRoundedRect(x + 8, y + 8, 32, 32, 10,
             MaterialTheme.surface(palette.getSecondaryContainer()));
-        if (hovered && enabled) Skia.drawCircle(x + 24, y + 24, 20,
+        if (hovered && enabled) Skia.drawRoundedRect(x + 6, y + 6, 36, 36, 12,
             MaterialTheme.alpha(palette.getOnSurface(), .08f));
         Skia.drawFullCenteredText(icon, x + 24, y + 24,
             MaterialTheme.alpha(selected ? palette.getPrimary() : palette.getOnSurfaceVariant(), enabled ? 1 : .38f),
@@ -277,9 +272,9 @@ public final class MusicUi {
 
     public static void tab(float x, float y, float width, String icon, String label, boolean selected,
             boolean hovered, ColorPalette palette) {
-        if (selected) Skia.drawRoundedRect(x, y, width, 48, 24,
+        if (selected) Skia.drawRoundedRect(x, y + 4, width, 40, 12,
             MaterialTheme.surface(palette.getSecondaryContainer()));
-        if (hovered) Skia.drawRoundedRect(x, y, width, 48, 24,
+        if (hovered) Skia.drawRoundedRect(x, y + 4, width, 40, 12,
             MaterialTheme.alpha(palette.getOnSurface(), .08f));
         var color = selected ? palette.getOnSecondaryContainer() : palette.getOnSurfaceVariant();
         Skia.drawFullCenteredText(icon, x + 26, y + 24, color,
@@ -301,8 +296,11 @@ public final class MusicUi {
 
     public static void button(float x, float y, float width, String label, boolean primary, boolean hovered,
             ColorPalette palette) {
-        MaterialControls.button(x, y, width, 48, Skia.getLimitText(label, Fonts.getRegular(16), width - 24), palette, MaterialTheme.opacity(),
-            primary ? MaterialControls.ButtonStyle.FILLED : MaterialControls.ButtonStyle.TONAL, hovered ? 1 : 0);
+        var fill = primary ? palette.getPrimary() : palette.getSecondaryContainer();
+        var text = primary ? palette.getOnPrimary() : palette.getOnSecondaryContainer();
+        Skia.drawRoundedRect(x, y + 4, width, 40, 12, MaterialTheme.surface(fill));
+        if (hovered) Skia.drawRoundedRect(x, y + 4, width, 40, 12, MaterialTheme.alpha(text, .08f));
+        Skia.drawFullCenteredText(Skia.getLimitText(label, Fonts.getRegular(16), width - 24), x + width / 2, y + 24, text, Fonts.getRegular(16));
     }
 
     public static void tooltip(String text, double mouseX, double mouseY, float right, ColorPalette palette) {

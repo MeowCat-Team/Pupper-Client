@@ -8,10 +8,15 @@ import org.lwjgl.glfw.GLFW;
 
 /** A modal name editor; typing, Escape and outside clicks never reach playback controls. */
 public final class MusicNameDialog {
-    private final TextField input = new TextField(344, 310, 432, "");
+    private final TextField input = createInput();
     private String title, error = "";
     private Function<String, String> save;
     private int pressed = -1;
+
+    private static TextField createInput() {
+        var box = MusicPlayerLayout.nameInput();
+        return new TextField(box.x(), box.y(), box.width(), "");
+    }
 
     public boolean isOpen() { return save != null; }
     public void open(String titleKey, String name, Function<String, String> action) {
@@ -30,15 +35,15 @@ public final class MusicNameDialog {
     public void mousePressed(double mx, double my, int button) {
         input.mousePressed(mx, my, button); pressed = -1;
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-            if (MusicUi.inside(mx, my, 492, 396, 136, 48)) pressed = 0;
-            else if (MusicUi.inside(mx, my, 640, 396, 136, 48)) pressed = 1;
+            if (MusicPlayerLayout.nameCancel().contains(mx, my)) pressed = 0;
+            else if (MusicPlayerLayout.nameSave().contains(mx, my)) pressed = 1;
         }
     }
     public void mouseReleased(double mx, double my, int button) {
         int action = pressed; pressed = -1;
         if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) return;
-        if (action == 0 && MusicUi.inside(mx, my, 492, 396, 136, 48)) close();
-        else if (action == 1 && MusicUi.inside(mx, my, 640, 396, 136, 48)) submit();
+        if (action == 0 && MusicPlayerLayout.nameCancel().contains(mx, my)) close();
+        else if (action == 1 && MusicPlayerLayout.nameSave().contains(mx, my)) submit();
     }
     private void submit() {
         String name = input.getText().strip();

@@ -79,3 +79,4 @@ sourcesJar {
 apply from: rootProject.file('gradle/publishing.gradle')
 apply from: rootProject.file('gradle/smoke.gradle')
 apply from: rootProject.file('gradle/mixin-verification.gradle')
+apply from: rootProject.file('gradle/dev-runtime.gradle')

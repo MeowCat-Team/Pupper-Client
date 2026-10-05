@@ -32,7 +32,9 @@ public class ZoomMod extends Mod {
 	private BooleanSetting smoothZoomSetting = new BooleanSetting("setting.smoothzoom",
 			"setting.smoothzoom.description", Icon.MOTION_BLUR, this, false);
 	private NumberSetting zoomSpeedSetting = new NumberSetting("setting.zoomspeed", "setting.zoomspeed.description",
-			Icon.SPEED, this, 0.6F, 0, 1, 0.1F);
+			Icon.SPEED, this, 0.6F, 0, 1, 0.1F) {
+        @Override public boolean isVisible() { return smoothZoomSetting.isEnabled(); }
+    };
 	private NumberSetting factorSetting = new NumberSetting("setting.zoomfactor", "setting.zoomfactor.description",
 			Icon.ZOOM_OUT, this, 4, 2, 15, 1);
 	private BooleanSetting smoothCameraSetting = new BooleanSetting("setting.smoothcamera",

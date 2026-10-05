@@ -197,6 +197,7 @@ tasks.register<JavaExec>("previewMusicPlayer") {
     classpath = hudVerification.runtimeClasspath
     mainClass.set("cn.pupperclient.music.MusicPlayerPreview")
     args(layout.buildDirectory.dir("reports/music").get().asFile.absolutePath)
+    args(providers.gradleProperty("music_preview_views").orElse("").get())
 }
 
 tasks.register<JavaExec>("benchmarkItemVertices") {

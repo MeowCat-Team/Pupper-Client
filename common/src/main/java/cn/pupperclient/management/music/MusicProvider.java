@@ -29,8 +29,30 @@ public interface MusicProvider {
     default SearchResult collectionTracks(MusicCollection collection, int limit, int offset, String cookie) throws MusicError {
         throw new MusicError("music.error.unsupported");
     }
+    default SearchResult collectionTracks(MusicCollection collection, int limit, int offset, String cookie,
+            MusicPreparation.Cancellation cancellation) throws MusicError {
+        try {
+            cancellation.check();
+            SearchResult result = collectionTracks(collection, limit, offset, cookie);
+            cancellation.check(); return result;
+        } catch (java.io.InterruptedIOException cancelled) { throw new MusicError("music.error.network"); }
+    }
     MusicTrack track(String id) throws MusicError;
+    default MusicTrack track(String id, MusicPreparation.Cancellation cancellation) throws MusicError {
+        try {
+            cancellation.check(); MusicTrack track = track(id); cancellation.check(); return track;
+        } catch (java.io.InterruptedIOException cancelled) { throw new MusicError("music.error.network"); }
+    }
     AudioSource audio(MusicTrack track, String quality, String cookie, boolean download) throws MusicError;
+    /** Older adapters remain compatible; network adapters should override to release their in-flight metadata I/O. */
+    default AudioSource audio(MusicTrack track, String quality, String cookie, boolean download,
+            MusicPreparation.Cancellation cancellation) throws MusicError {
+        try {
+            cancellation.check();
+            AudioSource source = audio(track, quality, cookie, download);
+            cancellation.check(); return source;
+        } catch (java.io.InterruptedIOException cancelled) { throw new MusicError("music.error.network"); }
+    }
     default Lyrics lyrics(MusicTrack track) throws MusicError { return new Lyrics("", ""); }
     default boolean cloudLikes() { return false; }
     default List<MusicTrack> likes(String userId, String cookie) throws MusicError { throw new MusicError("music.error.unsupported"); }

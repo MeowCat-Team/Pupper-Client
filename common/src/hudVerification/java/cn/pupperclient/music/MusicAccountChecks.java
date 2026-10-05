@@ -52,6 +52,11 @@ final class MusicAccountChecks {
                 try { if (!fixture.release.await(10, TimeUnit.SECONDS)) throw new IOException("Fixture timeout"); }
                 catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new IOException(interrupted); }
             }
+            if (path.equals("/login/cellphone") && params.get("phone").equals("13800000002") && fixture.cancelBlock) {
+                fixture.cancelEntered.countDown();
+                try { if (!fixture.cancelRelease.await(10, TimeUnit.SECONDS)) throw new IOException("Fixture timeout"); }
+                catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new IOException(interrupted); }
+            }
             String response = switch (path) {
                 case "/captcha/sent", "/logout" -> "{\"code\":200}";
                 case "/login/cellphone" -> fixture.reject ? "{\"code\":502,\"message\":\"private response\"}" :
@@ -94,7 +99,7 @@ final class MusicAccountChecks {
             expect("music.login.error.response", () -> api.checkLoginQr("fixture-key"));
             fixture.noCookie = false;
 
-            var store = new MusicAccountStore(root.resolve("service/login_status.json")); store.save(OLD);
+            var store = new MusicAccountStore(root.resolve("service/login_status.json"), api.configuration()); store.save(OLD);
             var scheduled = new ArrayDeque<Runnable>();
             var errors = new ArrayList<String>();
             var sessions = new ArrayList<MusicAccount>();
@@ -143,11 +148,14 @@ final class MusicAccountChecks {
             require(fixture.requests.get() == before && errors.isEmpty(), "Shutdown dispatched stale login work");
 
             raceChecks(api, fixture, root);
+            attemptChecks(api, fixture, root);
             requestChecks(api, root);
+            MusicAccountDialogChecks.run();
+            MusicCloudLibraryChecks.run();
             System.out.println("Music account/request checks passed: " + checks.get() + " assertions; legacy sessions, "
                 + "POST auth, refresh, offline logout, QR lifecycle and stale in-flight login replies.");
         } finally {
-            fixture.release.countDown(); fixture.statusRelease.countDown(); server.stop(0); executor.close();
+            fixture.release.countDown(); fixture.statusRelease.countDown(); fixture.cancelRelease.countDown(); server.stop(0); executor.close();
             try (var paths = Files.walk(root)) {
                 for (Path path : paths.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
             }
@@ -155,7 +163,7 @@ final class MusicAccountChecks {
     }
 
     private static void raceChecks(NeteaseMusicApi api, Fixture fixture, Path root) throws Exception {
-        var store = new MusicAccountStore(root.resolve("race/login_status.json")); store.save(OLD);
+        var store = new MusicAccountStore(root.resolve("race/login_status.json"), api.configuration()); store.save(OLD);
         var completions = new AtomicInteger(); var errors = new AtomicInteger();
         var workers = new ArrayDeque<Runnable>(); var callbacks = new ArrayDeque<Runnable>();
         var service = new MusicLoginService(api, store, workers::add, callbacks::add, (task, delay) -> { });
@@ -212,6 +220,58 @@ final class MusicAccountChecks {
         require(!new MusicAccountStore(malformed).snapshot().authenticated(), "Malformed session prevented guest fallback");
     }
 
+    private static void attemptChecks(NeteaseMusicApi api, Fixture fixture, Path root) throws Exception {
+        var store = new MusicAccountStore(root.resolve("attempts/login_status.json"), api.configuration()); store.save(OLD);
+        var workers = new ArrayDeque<Runnable>(); var callbacks = new ArrayDeque<Runnable>(); var scheduled = new ArrayDeque<Runnable>();
+        var successes = new AtomicInteger(); var failures = new AtomicInteger();
+        var service = new MusicLoginService(api, store, workers::add, callbacks::add, (task, delay) -> scheduled.add(task));
+        var beforeDispatch = service.qrLogin(code -> successes.incrementAndGet(), state -> { },
+            account -> successes.incrementAndGet(), error -> failures.incrementAndGet());
+        beforeDispatch.close(); beforeDispatch.close();
+        int before = fixture.requests.get(); workers.remove().run();
+        require(fixture.requests.get() == before && callbacks.isEmpty(), "Closed dialog QR attempt still contacted the provider");
+
+        fixture.qrCode = 801;
+        var polling = service.qrLogin(code -> successes.incrementAndGet(), state -> { },
+            account -> successes.incrementAndGet(), error -> failures.incrementAndGet());
+        workers.remove().run(); while (!callbacks.isEmpty()) callbacks.remove().run();
+        require(scheduled.size() == 1, "Dialog QR did not schedule its expected pending poll");
+        polling.close(); before = fixture.requests.get(); scheduled.remove().run();
+        while (!workers.isEmpty()) workers.remove().run();
+        require(fixture.requests.get() == before && callbacks.isEmpty(), "Closing the dialog left its QR poll running");
+
+        var oldDialog = service.qrLogin(code -> successes.incrementAndGet(), state -> { },
+            account -> successes.incrementAndGet(), error -> failures.incrementAndGet());
+        var newerCommand = service.phoneLogin("13800000000", "123456", account -> successes.incrementAndGet(), error -> failures.incrementAndGet());
+        oldDialog.close(); before = successes.get();
+        while (!workers.isEmpty()) workers.remove().run(); while (!callbacks.isEmpty()) callbacks.remove().run();
+        require(service.account().userId().equals("201") && successes.get() == before + 1 && failures.get() == 0,
+            "Closing an old dialog attempt cancelled a newer command phone login");
+        long completedVersion = service.sessionVersion(); newerCommand.close();
+        require(service.sessionVersion() == completedVersion, "Closing a completed login attempt invalidated unrelated account work");
+
+        var oldPhone = service.phoneLogin("13800000000", "123456", account -> successes.incrementAndGet(), error -> failures.incrementAndGet());
+        service.qrLogin(code -> successes.incrementAndGet(), state -> { }, account -> successes.incrementAndGet(), error -> failures.incrementAndGet());
+        oldPhone.close(); before = successes.get();
+        while (!workers.isEmpty()) workers.remove().run(); while (!callbacks.isEmpty()) callbacks.remove().run();
+        require(successes.get() == before + 1 && scheduled.size() == 1,
+            "Closing an old phone attempt cancelled a newer command QR login");
+        service.logout(_ -> { }, error -> failures.incrementAndGet()); workers.remove().run();
+        while (!callbacks.isEmpty()) callbacks.remove().run(); scheduled.remove().run(); while (!workers.isEmpty()) workers.remove().run();
+
+        store.save(OLD); fixture.cancelBlock = true;
+        var inFlight = service.phoneLogin("13800000002", "123456", account -> successes.incrementAndGet(), error -> failures.incrementAndGet());
+        Thread pending = Thread.ofVirtual().start(workers.remove());
+        try {
+            require(fixture.cancelEntered.await(5, TimeUnit.SECONDS), "Attempt cancellation fixture did not reach the pending HTTP login");
+            before = successes.get(); inFlight.close(); fixture.cancelRelease.countDown(); pending.join(5_000);
+            require(!pending.isAlive(), "Cancelled login fixture did not finish its bounded response");
+            while (!callbacks.isEmpty()) callbacks.remove().run();
+            require(service.account().equals(OLD) && successes.get() == before && failures.get() == 0,
+                "A dismissed in-flight login changed the saved session or emitted a stale reply");
+        } finally { fixture.cancelBlock = false; fixture.cancelRelease.countDown(); service.close(); }
+    }
+
     private static void requestChecks(NeteaseMusicApi api, Path root) throws Exception {
         var providers = new MusicProviders(new MusicLibraryStore(root.resolve("requests")), new NeteaseMusicProvider(api), new AudiusMusicProvider());
         I18n.setLanguage(Language.ENGLISH);
@@ -249,9 +309,10 @@ final class MusicAccountChecks {
         final AtomicInteger requests = new AtomicInteger();
         final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
         final CountDownLatch statusEntered = new CountDownLatch(1), statusRelease = new CountDownLatch(1);
+        final CountDownLatch cancelEntered = new CountDownLatch(1), cancelRelease = new CountDownLatch(1);
         volatile Map<String, String> last = Map.of();
         volatile String failure = "";
-        volatile boolean anonymous, reject, fallback, noCookie, block, blockStatus;
+        volatile boolean anonymous, reject, fallback, noCookie, block, blockStatus, cancelBlock;
         volatile int qrCode = 801;
     }
 }

@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -15,6 +14,17 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** One API origin for search, metadata, audio URLs and account favorites. */
 public final class NeteaseMusicApi {
@@ -22,16 +32,47 @@ public final class NeteaseMusicApi {
     public record SearchResult(List<MusicTrack> tracks, int total, int offset) { }
     public record AudioSource(URI uri, String extension, int fee, long previewMillis) { }
     public record Lyrics(String original, String translated) { }
+    public record PlaylistPage(List<MusicCollection> created, List<MusicCollection> subscribed,
+            int offset, int nextOffset, boolean more) { }
     public record QrCode(String key, String url, String image) {
         @Override public String toString() { return "QrCode[generated]"; }
     }
     public record QrCheck(int code, String cookie) {
         @Override public String toString() { return "QrCheck[code=" + code + "]"; }
     }
-    private final URI base;
+    private static final HttpClient CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+        .followRedirects(HttpClient.Redirect.NEVER).build();
+    private static final HttpClient PUBLIC_CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+        .followRedirects(HttpClient.Redirect.NORMAL).build();
+    private static final ScheduledExecutorService TIMEOUTS = Executors.newSingleThreadScheduledExecutor(
+        Thread.ofPlatform().daemon().name("Pupper Client music API timeout").factory());
+    private final MusicApiConfiguration configuration;
+    private final Map<String, URI> credentialOrigins = new ConcurrentHashMap<>();
+    private final Map<String, URI> qrOrigins = new ConcurrentHashMap<>();
+    private final java.util.Set<Transfer> transfers = ConcurrentHashMap.newKeySet();
 
     public NeteaseMusicApi(URI base) {
-        this.base = URI.create(base.toString().replaceAll("/+$", "") + "/");
+        this(new MusicApiConfiguration(base, MusicApiConfiguration.loopback(base)));
+    }
+    public NeteaseMusicApi(MusicApiConfiguration configuration) {
+        this.configuration = java.util.Objects.requireNonNull(configuration);
+        configuration.onChange(() -> { for (Transfer transfer : transfers) transfer.cancel(); });
+    }
+    public MusicApiConfiguration configuration() { return configuration; }
+    public void configure(URI endpoint, boolean trustedAccounts) throws IOException { configuration.configure(endpoint, trustedAccounts); }
+    void rememberCookie(String cookie, MusicApiConfiguration.Snapshot endpoint) {
+        rememberCookie(cookie, endpoint.endpoint());
+    }
+    void rememberCookie(String cookie, URI endpoint) {
+        if (cookie != null && !cookie.isBlank() && endpoint != null) credentialOrigins.putIfAbsent(cookie, endpoint);
+    }
+    private void current(MusicApiConfiguration.Snapshot endpoint) throws MusicError {
+        if (configuration.snapshot().revision() != endpoint.revision()) throw new MusicError("music.api.error.changed");
+    }
+    private MusicApiConfiguration.Snapshot trusted() throws MusicError {
+        var endpoint = configuration.snapshot();
+        if (!endpoint.trustedAccounts()) throw new MusicError("music.api.error.untrusted");
+        return endpoint;
     }
 
     public SearchResult search(String keyword, int limit, int offset) throws MusicError {
@@ -61,11 +102,16 @@ public final class NeteaseMusicApi {
     }
 
     public MusicProvider.SearchResult collectionTracks(MusicCollection collection, int limit, int offset, String cookie) throws MusicError {
+        return collectionTracks(collection, limit, offset, cookie, new MusicPreparation.Cancellation());
+    }
+    public MusicProvider.SearchResult collectionTracks(MusicCollection collection, int limit, int offset, String cookie,
+            MusicPreparation.Cancellation cancellation) throws MusicError {
         if (!collection.provider().equals("netease") || !collection.id().matches("[1-9][0-9]{0,18}")) throw new MusicError("music.error.metadata");
         limit = Math.clamp(limit, 1, 50); offset = Math.max(0, offset);
         Map<String, String> parameters = new LinkedHashMap<>(Map.of("id", collection.id(), "limit", String.valueOf(limit), "offset", String.valueOf(offset)));
         if (collection.type() == MusicSearchType.ARTISTS) parameters.put("order", "hot");
-        JsonObject response = request(collection.type() == MusicSearchType.ARTISTS ? "artist/songs" : "playlist/track/all", parameters, cookie);
+        JsonObject response = request(collection.type() == MusicSearchType.ARTISTS ? "artist/songs" : "playlist/track/all",
+            parameters, cookie, cookie != null && !cookie.isBlank(), false, configuration.snapshot(), cancellation);
         JsonArray data = array(response, "songs");
         return new MusicProvider.SearchResult(parseTracks(data, array(response, "privileges")),
             (int) number(response, "total", pageTotal(response, limit, offset, data.size())), offset, offset + data.size());
@@ -93,18 +139,33 @@ public final class NeteaseMusicApi {
     }
 
     public List<MusicTrack> details(List<Long> ids) throws MusicError {
+        return details(ids, configuration.snapshot().revision(), new MusicPreparation.Cancellation());
+    }
+    public List<MusicTrack> details(List<Long> ids, MusicPreparation.Cancellation cancellation) throws MusicError {
+        return details(ids, configuration.snapshot().revision(), cancellation);
+    }
+    public List<MusicTrack> details(List<Long> ids, long expectedRevision) throws MusicError {
+        return details(ids, expectedRevision, new MusicPreparation.Cancellation());
+    }
+    private List<MusicTrack> details(List<Long> ids, long expectedRevision, MusicPreparation.Cancellation cancellation) throws MusicError {
+        var endpoint = configuration.snapshot();
+        if (endpoint.revision() != expectedRevision) throw new MusicError("music.api.error.changed");
         List<MusicTrack> tracks = new ArrayList<>();
         for (int start = 0; start < ids.size(); start += 100) {
             String joined = String.join(",", ids.subList(start, Math.min(start + 100, ids.size()))
                 .stream().map(String::valueOf).toList());
-            JsonObject response = request("song/detail", Map.of("ids", joined), null);
+            JsonObject response = request("song/detail", Map.of("ids", joined), null, false, false, endpoint, cancellation);
             tracks.addAll(parseTracks(array(response, "songs"), array(response, "privileges")));
         }
-        return List.copyOf(tracks);
+        current(endpoint); return List.copyOf(tracks);
     }
 
     public AudioSource audio(long id, String quality, String cookie) throws MusicError {
-        JsonArray data = array(request("song/url/v1", Map.of("id", String.valueOf(id), "level", quality), cookie), "data");
+        return audio(id, quality, cookie, new MusicPreparation.Cancellation());
+    }
+    public AudioSource audio(long id, String quality, String cookie, MusicPreparation.Cancellation cancellation) throws MusicError {
+        JsonArray data = array(request("song/url/v1", Map.of("id", String.valueOf(id), "level", quality), cookie,
+            cookie != null && !cookie.isBlank(), false, configuration.snapshot(), cancellation), "data");
         if (data.isEmpty() || !data.get(0).isJsonObject()) throw new MusicError("music.error.unavailable");
         JsonObject song = data.get(0).getAsJsonObject();
         String url = string(song, "url");
@@ -125,6 +186,33 @@ public final class NeteaseMusicApi {
             .asList().stream().map(JsonElement::getAsLong).toList();
     }
 
+    /** One raw account page contains both owned and followed playlists; offsets count raw server entries. */
+    public PlaylistPage userPlaylists(MusicAccount account, int limit, int offset,
+            MusicPreparation.Cancellation cancellation) throws MusicError {
+        if (account == null || !account.authenticated() || !account.userId().matches("[1-9][0-9]{0,18}"))
+            throw new MusicError("music.error.login");
+        limit = Math.clamp(limit, 1, 50); offset = Math.max(0, offset);
+        var response = request("user/playlist", Map.of("uid", account.userId(), "limit", Integer.toString(limit),
+            "offset", Integer.toString(offset), "timestamp", Long.toString(System.currentTimeMillis())),
+            account.cookie(), true, false, trusted(), cancellation);
+        var data = array(response, "playlist");
+        var created = new ArrayList<MusicCollection>(); var subscribed = new ArrayList<MusicCollection>();
+        for (JsonElement element : data) if (element.isJsonObject()) {
+            JsonObject item = element.getAsJsonObject();
+            var parsed = parseCollections(single(item), MusicSearchType.PLAYLISTS);
+            if (parsed.isEmpty()) continue;
+            if (string(object(item, "creator"), "userId").equals(account.userId())) created.add(parsed.getFirst());
+            else subscribed.add(parsed.getFirst());
+        }
+        boolean more = response.has("more") && response.get("more").isJsonPrimitive()
+            ? response.get("more").getAsBoolean() : data.size() == limit;
+        return new PlaylistPage(List.copyOf(created), List.copyOf(subscribed), offset, offset + data.size(), more);
+    }
+    public PlaylistPage userPlaylists(MusicAccount account, int limit, int offset) throws MusicError {
+        return userPlaylists(account, limit, offset, new MusicPreparation.Cancellation());
+    }
+    private static JsonArray single(JsonObject item) { var data = new JsonArray(); data.add(item); return data; }
+
     public Lyrics lyrics(long id) throws MusicError {
         JsonObject response = request("lyric", Map.of("id", String.valueOf(id)), null);
         return new Lyrics(string(object(response, "lrc"), "lyric"), string(object(response, "tlyric"), "lyric"));
@@ -143,11 +231,16 @@ public final class NeteaseMusicApi {
     public MusicAccount phoneLogin(String phone, String captcha) throws MusicError {
         validatePhone(phone);
         if (captcha == null || !captcha.matches("[0-9]{4,8}")) throw new MusicError("music.login.error.input");
-        JsonObject response = authRequest("login/cellphone", Map.of("phone", phone, "captcha", captcha), null, false);
+        var endpoint = trusted();
+        JsonObject response = authRequest("login/cellphone", Map.of("phone", phone, "captcha", captcha), null, false, endpoint);
         String cookie = string(response, "cookie");
         if (cookie.isBlank()) throw new MusicError("music.login.error.response");
+        rememberCookie(cookie, endpoint);
         MusicAccount account = parseAccount(response, cookie, phone);
-        return account.authenticated() ? account : loginAccount(cookie, phone);
+        if (!account.authenticated()) account = parseAccount(authRequest("user/account", Map.of(), cookie, false, endpoint), cookie, phone);
+        current(endpoint);
+        if (!account.authenticated()) throw new MusicError("music.login.error.response");
+        return account;
     }
     public MusicAccount loginAccount(String cookie, String phone) throws MusicError {
         MusicAccount account = parseAccount(authRequest("user/account", Map.of(), cookie, false), cookie, phone);
@@ -169,31 +262,43 @@ public final class NeteaseMusicApi {
         }
     }
     public String refreshLogin(String cookie) throws MusicError {
-        String refreshed = string(authRequest("login/refresh", Map.of(), cookie, false), "cookie");
+        var endpoint = trusted();
+        String refreshed = string(authRequest("login/refresh", Map.of(), cookie, false, endpoint), "cookie");
+        current(endpoint); if (!refreshed.isBlank()) rememberCookie(refreshed, endpoint);
         return refreshed.isBlank() ? cookie : refreshed;
     }
     public void logout(String cookie) throws MusicError { authRequest("logout", Map.of(), cookie, false); }
     public QrCode createLoginQr() throws MusicError {
-        JsonObject keyData = object(authRequest("login/qr/key", Map.of(), null, false), "data");
+        var endpoint = trusted();
+        JsonObject keyData = object(authRequest("login/qr/key", Map.of(), null, false, endpoint), "data");
         if (number(keyData, "code", -1) != 200) throw new MusicError("music.login.error.response");
         String key = string(keyData, "unikey");
         if (key.isBlank()) throw new MusicError("music.login.error.response");
-        JsonObject data = object(authRequest("login/qr/create", Map.of("key", key, "qrimg", "1"), null, false), "data");
+        qrOrigins.putIfAbsent(key, endpoint.endpoint());
+        JsonObject data = object(authRequest("login/qr/create", Map.of("key", key, "qrimg", "1"), null, false, endpoint), "data");
         String url = string(data, "qrurl"), image = string(data, "qrimg");
         if (url.isBlank() || image.isBlank()) throw new MusicError("music.login.error.response");
-        return new QrCode(key, url, image);
+        current(endpoint); return new QrCode(key, url, image);
     }
     public QrCheck checkLoginQr(String key) throws MusicError {
-        JsonObject response = authRequest("login/qr/check", Map.of("key", key), null, true);
+        var endpoint = trusted();
+        URI origin = qrOrigins.get(key);
+        if (origin == null || !origin.equals(endpoint.endpoint())) throw new MusicError("music.api.error.changed");
+        JsonObject response = authRequest("login/qr/check", Map.of("key", key), null, true, endpoint);
         int code = (int) number(response, "code", -1);
         String cookie = string(response, "cookie");
         if (code < 800 || code > 803 || (code == 803 && cookie.isBlank())) throw new MusicError("music.login.error.response");
+        current(endpoint); if (code == 803) rememberCookie(cookie, endpoint);
         return new QrCheck(code, cookie);
     }
     private JsonObject authRequest(String path, Map<String, String> parameters, String cookie, boolean qr) throws MusicError {
+        return authRequest(path, parameters, cookie, qr, trusted());
+    }
+    private JsonObject authRequest(String path, Map<String, String> parameters, String cookie, boolean qr,
+            MusicApiConfiguration.Snapshot endpoint) throws MusicError {
         Map<String, String> params = new LinkedHashMap<>(parameters);
         params.put("timestamp", String.valueOf(System.currentTimeMillis()));
-        return request(path, params, cookie, true, qr);
+        return request(path, params, cookie, true, qr, endpoint, new MusicPreparation.Cancellation());
     }
     private static void validatePhone(String phone) throws MusicError {
         if (phone == null || !phone.matches("[0-9]{5,20}")) throw new MusicError("music.login.error.input");
@@ -208,40 +313,100 @@ public final class NeteaseMusicApi {
         return request(path, parameters, cookie, cookie != null && !cookie.isBlank(), false);
     }
     private JsonObject request(String path, Map<String, String> parameters, String cookie, boolean post, boolean qr) throws MusicError {
-        HttpURLConnection connection = null;
+        return request(path, parameters, cookie, post, qr, configuration.snapshot(), new MusicPreparation.Cancellation());
+    }
+    private JsonObject request(String path, Map<String, String> parameters, String cookie, boolean post, boolean qr,
+            MusicApiConfiguration.Snapshot endpoint, MusicPreparation.Cancellation cancellation) throws MusicError {
+        current(endpoint);
+        boolean authenticated = cookie != null && !cookie.isBlank();
+        if (authenticated) {
+            if (!endpoint.trustedAccounts()) throw new MusicError("music.api.error.untrusted");
+            URI known = credentialOrigins.get(cookie);
+            // Explicit loopback fixtures may supply a fresh test cookie; remote cookies must come from a bound session/login.
+            if (known == null && MusicApiConfiguration.loopback(endpoint.endpoint())) {
+                rememberCookie(cookie, endpoint); known = credentialOrigins.get(cookie);
+            }
+            if (known == null || !known.equals(endpoint.endpoint())) throw new MusicError("music.api.error.changed");
+        }
+        Transfer transfer = new Transfer(); transfers.add(transfer);
+        var cancel = cancellation.onCancel(transfer::cancel);
+        var timeout = TIMEOUTS.schedule(transfer::cancel, 30, TimeUnit.SECONDS);
         try {
+            current(endpoint); cancellation.check();
             Map<String, String> params = new LinkedHashMap<>(parameters);
-            boolean authenticated = cookie != null && !cookie.isBlank();
             if (authenticated) params.put("cookie", cookie);
             String body = form(params);
-            URI endpoint = base.resolve(path + (post ? "" : "?" + body));
-            connection = open(endpoint);
+            URI address = endpoint.endpoint().resolve(path + (post ? "" : "?" + body));
+            var request = HttpRequest.newBuilder(address).timeout(Duration.ofSeconds(30)).header("User-Agent", "Pupper Client");
             if (post) {
                 // Keep cookies, phone numbers, captcha and QR keys out of request URLs/access logs.
-                connection.setRequestMethod("POST");
-                connection.setDoOutput(true);
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
-                try (OutputStream stream = connection.getOutputStream()) {
-                    stream.write(body.getBytes(StandardCharsets.UTF_8));
-                }
+                request.header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
             }
-            int status = connection.getResponseCode();
+            var pending = CLIENT.sendAsync(request.build(), HttpResponse.BodyHandlers.ofInputStream());
+            transfer.future.set(pending); if (transfer.cancelled.get()) pending.cancel(true);
+            var responseData = pending.get(35, TimeUnit.SECONDS);
+            transfer.body.set(responseData.body());
+            if (transfer.cancelled.get()) { responseData.body().close(); throw new IOException("Cancelled API request"); }
+            int status = responseData.statusCode();
             if (status == 401 || status == 403) throw new MusicError("music.error.login");
             if (status != 200) throw new MusicError("music.error.network");
-            try (InputStream stream = connection.getInputStream()) {
-                JsonObject response = JsonParser.parseString(new String(stream.readNBytes(8 * 1024 * 1024),
-                    StandardCharsets.UTF_8)).getAsJsonObject();
+            // Redirects are rejected, including same-origin redirects, so no private POST can be replayed elsewhere.
+            try (InputStream stream = responseData.body()) {
+                byte[] bytes = stream.readNBytes(8 * 1024 * 1024 + 1);
+                if (bytes.length > 8 * 1024 * 1024) throw new IOException("Oversized API response");
+                current(endpoint); cancellation.check();
+                JsonObject response = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
                 long code = number(response, "code", 200);
                 if (code == 301 || code == 401 || code == 403) throw new MusicError("music.error.login");
                 if (code != 200 && !(qr && code >= 800 && code <= 803))
                     throw new MusicError(post && path.startsWith("login/") ? "music.login.error.response" : "music.error.network");
                 return response;
             }
-        } catch (IOException | RuntimeException failure) {
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt(); transfer.cancel(); current(endpoint);
+            throw new MusicError("music.error.network");
+        } catch (IOException | java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException | RuntimeException failure) {
+            current(endpoint);
             throw new MusicError("music.error.network");
         } finally {
-            if (connection != null) connection.disconnect();
+            timeout.cancel(false); cancel.close(); transfer.cancel(); transfers.remove(transfer);
         }
+    }
+
+    private static final class Transfer {
+        final AtomicBoolean cancelled = new AtomicBoolean();
+        final AtomicReference<CompletableFuture<HttpResponse<InputStream>>> future = new AtomicReference<>();
+        final AtomicReference<InputStream> body = new AtomicReference<>();
+        void cancel() {
+            cancelled.set(true); var pending = future.get(); if (pending != null) pending.cancel(true);
+            var stream = body.get(); if (stream != null) try { stream.close(); } catch (IOException ignored) { }
+        }
+    }
+
+    /** Anonymous discovery JSON only. No caller credentials/headers are forwarded, including through redirects. */
+    static JsonObject publicJson(URI address, MusicPreparation.Cancellation cancellation,
+            java.util.function.IntFunction<String> errorKey) throws MusicError {
+        Transfer transfer = new Transfer(); var registration = cancellation.onCancel(transfer::cancel);
+        var timeout = TIMEOUTS.schedule(transfer::cancel, 30, TimeUnit.SECONDS);
+        try {
+            cancellation.check();
+            var request = HttpRequest.newBuilder(address).timeout(Duration.ofSeconds(30)).header("User-Agent", "Pupper Client").build();
+            var pending = PUBLIC_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream());
+            transfer.future.set(pending); if (transfer.cancelled.get()) pending.cancel(true);
+            var response = pending.get(35, TimeUnit.SECONDS); transfer.body.set(response.body());
+            if (transfer.cancelled.get()) { response.body().close(); throw new IOException("Cancelled discovery request"); }
+            if (response.statusCode() != 200) throw new MusicError(errorKey.apply(response.statusCode()));
+            try (var input = response.body()) {
+                byte[] bytes = input.readNBytes(8 * 1024 * 1024 + 1);
+                if (bytes.length > 8 * 1024 * 1024) throw new IOException("Oversized discovery response");
+                cancellation.check(); return JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt(); throw new MusicError("music.error.network");
+        } catch (IOException | java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException | RuntimeException failure) {
+            throw new MusicError("music.error.network");
+        } finally { timeout.cancel(false); registration.close(); transfer.cancel(); }
     }
 
     public static HttpURLConnection open(URI uri) throws IOException {

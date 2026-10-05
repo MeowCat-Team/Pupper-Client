@@ -167,6 +167,25 @@ final class MusicCatalogChecks {
         var last = state.begin(true); state.back(); require(!state.accept(last, songs) && !state.loading(), "Late detail page appeared after returning to search");
         state.reset("audius", MusicSearchType.PLAYLISTS, "Other"); var cancelled = state.begin(false); state.cancel();
         require(!state.searched() && !state.fail(cancelled) && state.begin(false) != null, "Navigation cancelled search permanently or let a stale error through");
+        state.reset("netease", MusicSearchType.PLAYLISTS, "Large list"); state.open(artist);
+        var all = new java.util.ArrayList<MusicTrack>();
+        int pages = 0;
+        do {
+            var request = state.begin(pages > 0); int offset = request.offset(), end = Math.min(offset + 50, 1243);
+            var tracks = java.util.stream.IntStream.range(offset, end)
+                .mapToObj(i -> new MusicTrack(i + 1, "Track " + i, "Artist", "", "", 1000)).toList();
+            all.addAll(tracks);
+            require(state.accept(request, new MusicProvider.SearchResult(tracks, 1243, offset, end)),
+                "Automatic paging rejected a valid collection page");
+            pages++;
+        } while (state.hasMore());
+        require(pages == 25 && state.tracks().equals(all) && state.nextOffset() == 1243 && !state.loading(),
+            "Automatic paging lost the tail or order of a large playlist");
+        state.open(artist); pending = state.begin(false);
+        require(state.accept(pending, new MusicProvider.SearchResult(songs.tracks(), -1, 0, 2)), "Unknown-size first page failed");
+        pending = state.begin(true);
+        require(state.accept(pending, new MusicProvider.SearchResult(List.of(), -1, 2, 2)) && !state.hasMore(),
+            "An empty collection page would create an endless background request loop");
     }
     private static String neteaseSong(int id) { return "{\"id\":" + id + ",\"name\":\"Song " + id + "\",\"dt\":120000,\"ar\":[{\"name\":\"Artist\"}]}"; }
     private static String audiusSong(int id, boolean gated) { return "{\"id\":\"T" + id + "\",\"title\":\"Song " + id + "\",\"is_streamable\":true,\"is_stream_gated\":" + gated + ",\"user\":{\"name\":\"Artist\"}}"; }

@@ -2,6 +2,8 @@ package cn.pupperclient.music;
 
 import cn.pupperclient.gui.modmenu.component.MusicPlayerLayout;
 import cn.pupperclient.gui.modmenu.component.MusicPopupMenu;
+import cn.pupperclient.gui.modmenu.component.MusicSettingsUi;
+import cn.pupperclient.gui.modmenu.component.MusicCloudUi;
 import cn.pupperclient.management.music.MusicQueue;
 import cn.pupperclient.management.music.MusicTrack;
 import java.util.List;
@@ -63,8 +65,10 @@ public final class MusicInteractionChecks {
         require(full.width() > compact.width() && compact.x() == full.x(), "Opening a side panel moved navigation or failed to reserve space");
         require(compact.x() + compact.width() < side.x() && side.x() + side.width() <= MusicPlayerLayout.WIDTH, "Side panel overlaps songs or exceeds window");
         require(!side.contains(side.x() + side.width(), side.y()), "Adjacent hit targets share their border");
-        var popup = MusicPlayerLayout.popup(1119, 719, 288, 9);
-        require(popup.x() >= 8 && popup.x() + popup.width() <= 1112 && popup.y() + popup.height() <= 608, "Quality menu crosses window or covers transport");
+        var popup = MusicPlayerLayout.popup(MusicPlayerLayout.WIDTH - 1, MusicPlayerLayout.HEIGHT - 1, 288, 9);
+        require(popup.x() >= 8 && popup.x() + popup.width() <= MusicPlayerLayout.WIDTH - 8
+            && popup.y() + popup.height() <= MusicPlayerLayout.transport().y() - 8, "Quality menu crosses window or covers transport");
+        layoutChecks();
 
         AtomicInteger calls = new AtomicInteger();
         var items = List.of(new MusicPopupMenu.Item("Disabled", "", false, false, () -> calls.addAndGet(100)),
@@ -90,20 +94,121 @@ public final class MusicInteractionChecks {
         require(!menu.isOpen() && calls.get() == 12, "Secondary press unexpectedly activated a menu action");
         AtomicInteger choice = new AtomicInteger(-1);
         var many = java.util.stream.IntStream.range(0, 24).mapToObj(i -> new MusicPopupMenu.Item("Playlist " + i, "", true, false, () -> choice.set(i))).toList();
+        var longPopup = MusicPlayerLayout.popup(100, 100, 288, 10);
+        double firstRowY = longPopup.y() + 32, lastRowY = firstRowY + 9 * 48;
         menu.open(100, 100, many);
-        for (int i = 0; i < 18; i++) menu.mouseScrolled(120, 160, -1);
-        menu.mousePressed(120, 144, GLFW.GLFW_MOUSE_BUTTON_LEFT); menu.mouseReleased(120, 144, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        for (int i = 0; i < 18; i++) menu.mouseScrolled(120, firstRowY, -1);
+        menu.mousePressed(120, firstRowY, GLFW.GLFW_MOUSE_BUTTON_LEFT); menu.mouseReleased(120, firstRowY, GLFW.GLFW_MOUSE_BUTTON_LEFT);
         require(choice.get() == 14, "Scrolling a long playlist picker activated the wrong song list");
         menu.open(100, 100, many); menu.keyPressed(GLFW.GLFW_KEY_UP); menu.keyPressed(GLFW.GLFW_KEY_ENTER);
         require(choice.get() == 23, "Long-menu keyboard wrap lost the last playlist");
         var disabledPrefix = java.util.stream.IntStream.range(0, 16).mapToObj(i -> new MusicPopupMenu.Item("Playlist " + i, "", i == 15, false, () -> choice.set(i))).toList();
         menu.open(100, 100, disabledPrefix);
-        menu.mousePressed(120, 576, GLFW.GLFW_MOUSE_BUTTON_LEFT); menu.mouseReleased(120, 576, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        menu.mousePressed(120, lastRowY, GLFW.GLFW_MOUSE_BUTTON_LEFT); menu.mouseReleased(120, lastRowY, GLFW.GLFW_MOUSE_BUTTON_LEFT);
         require(choice.get() == 15 && !menu.isOpen(), "Initial menu focus hid the first enabled action beyond ten rows");
-        menu.open(100, 100, many); menu.mousePressed(120, 144, GLFW.GLFW_MOUSE_BUTTON_LEFT);
-        menu.mouseScrolled(120, 160, -1); menu.mouseReleased(120, 144, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        menu.open(100, 100, many); menu.mousePressed(120, firstRowY, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        menu.mouseScrolled(120, firstRowY, -1); menu.mouseReleased(120, firstRowY, GLFW.GLFW_MOUSE_BUTTON_LEFT);
         require(choice.get() == 15 && menu.isOpen(), "Scrolling between press and release activated another playlist");
         System.out.println("Music interaction checks passed: " + checks + " assertions; list context, queue editing, stale requests, popup geometry and pointer/keyboard actions.");
+    }
+    private static void layoutChecks() {
+        var transport = MusicPlayerLayout.transport();
+        var cover = MusicPlayerLayout.coverArtwork(transport);
+        require(contained(transport, cover) && cover.width() == 48 && cover.height() == 48,
+            "Now Playing artwork lost its touch target or extends outside transport");
+        var seek = MusicPlayerLayout.seekTrack(transport); var seekHit = MusicPlayerLayout.seekHit(transport);
+        require(contained(transport, seekHit) && contained(seekHit, seek)
+            && close(seek.x() + seek.width() / 2, transport.x() + transport.width() / 2), "Playback seek line does not match its pointer target");
+        var content = MusicPlayerLayout.content(MusicPlayerLayout.Panel.NONE);
+        require(content.y() + content.height() < transport.y(), "Song list covers playback controls");
+        var account = MusicPlayerLayout.accountButton();
+        require(account.y() > MusicPlayerLayout.navBox("audius").y() + 48 && account.y() + account.height() < transport.y(),
+            "Account launcher overlaps providers or playback controls");
+        List<MusicPlayerLayout.Box> navigation = java.util.stream.Stream.of("search", "library", "liked", "playlists", "cloud", "recent", "downloads", "netease", "audius", "settings", "account")
+            .map(MusicPlayerLayout::navBox).toList();
+        for (int i = 0; i < navigation.size(); i++) {
+            var target = navigation.get(i);
+            require(target.height() == 48 && target.x() + target.width() < content.x()
+                && target.y() + target.height() < transport.y(), "Compact navigation crosses the browser or playback controls");
+            for (int j = i + 1; j < navigation.size(); j++) require(!overlap(target, navigation.get(j)), "Two sidebar actions share a click region");
+        }
+        for (boolean connection : new boolean[] { false, true }) {
+            var controls = java.util.Arrays.stream(MusicSettingsUi.Control.values())
+                .filter(control -> MusicSettingsUi.visible(control, connection))
+                .map(control -> MusicSettingsUi.control(content, control, connection)).toList();
+            for (int i = 0; i < controls.size(); i++) {
+                require(contained(content, controls.get(i)), "Settings control crosses its page boundary");
+                if (connection) require(!overlap(MusicSettingsUi.endpoint(content), controls.get(i)), "Service input overlaps an action");
+                for (int j = i + 1; j < controls.size(); j++) require(!overlap(controls.get(i), controls.get(j)), "Settings actions overlap");
+            }
+        }
+        var preferences = new cn.pupperclient.management.music.MusicExperienceStore.Settings(38, false, -.5f, true, 0, true);
+        var cycling = preferences;
+        for (int i = 0; i < 3; i++) cycling = MusicSettingsUi.nextTransition(cycling);
+        require(cycling.equals(preferences), "Transition presets changed unrelated preferences or failed to cycle");
+        require(contained(content, MusicCloudUi.login(content)) && contained(content, MusicCloudUi.more(content))
+            && !overlap(MusicCloudUi.tab(content, MusicCloudUi.Tab.CREATED), MusicCloudUi.tab(content, MusicCloudUi.Tab.SUBSCRIBED)),
+            "Cloud filters, login or page controls overlap or leave the page");
+        var lyrics = MusicPlayerLayout.lyricsButton(); var queue = MusicPlayerLayout.queueButton();
+        require(lyrics.width() >= 48 && queue.width() >= 48 && lyrics.x() + lyrics.width() < queue.x()
+            && contained(MusicPlayerLayout.transport(), lyrics) && contained(MusicPlayerLayout.transport(), queue),
+            "Playback-strip utilities overlap or exceed the transport");
+        var dialog = MusicPlayerLayout.nameDialog();
+        require(close(dialog.x() + dialog.width() / 2, MusicPlayerLayout.WIDTH / 2)
+            && close(dialog.y() + dialog.height() / 2, MusicPlayerLayout.HEIGHT / 2), "Playlist dialog is not centered");
+        require(contained(dialog, MusicPlayerLayout.nameInput()) && contained(dialog, MusicPlayerLayout.nameCancel())
+            && contained(dialog, MusicPlayerLayout.nameSave()) && MusicPlayerLayout.nameCancel().x() + MusicPlayerLayout.nameCancel().width()
+                < MusicPlayerLayout.nameSave().x(), "Playlist input or actions overlap the modal boundary");
+        for (int[] size : new int[][] { {800, 600}, {1366, 768}, {1920, 1080}, {3840, 2160}, {3440, 1440}, {1200, 1920} }) {
+            for (boolean fullscreen : new boolean[] {false, true}) {
+                var viewport = MusicPlayerLayout.fit(size[0], size[1], fullscreen);
+                require(viewport.scale() > 0 && viewport.offsetX() >= 0 && viewport.offsetY() >= 0,
+                    "Music viewport uses a negative scale or origin");
+                require(viewport.screenX(viewport.width()) <= size[0] + .001
+                    && viewport.screenY(viewport.height()) <= size[1] + .001, "Music viewport extends outside framebuffer");
+                if (fullscreen) {
+                    require(viewport.offsetX() == 0 && viewport.offsetY() == 0
+                        && close(viewport.screenX(viewport.width()), size[0]) && close(viewport.screenY(viewport.height()), size[1]),
+                        "Fullscreen lyrics leave an unused framebuffer margin");
+                    var playing = MusicPlayerLayout.nowPlaying(viewport.width(), viewport.height());
+                    var frame = new MusicPlayerLayout.Box(0, 0, viewport.width(), viewport.height());
+                    for (var box : List.of(playing.artwork(), playing.metadata(), playing.lyrics(), playing.back(), playing.transport()))
+                        require(contained(frame, box), "Fullscreen artwork, lyrics or controls exceed framebuffer");
+                    require(playing.artwork().x() + playing.artwork().width() < playing.lyrics().x()
+                        && !overlap(playing.lyrics(), playing.transport()) && !overlap(playing.artwork(), playing.metadata())
+                        && !overlap(playing.metadata(), playing.transport()),
+                        "Fullscreen lyrics overlap artwork or transport");
+                    for (int action : new int[] {0, 1, 2, 3, 4, 5, 6, 9}) {
+                        var hit = MusicPlayerLayout.playbackAction(playing.transport(), action, true);
+                        require(contained(playing.transport(), hit), "Immersive action exceeds its control column");
+                        require(!overlap(hit, MusicPlayerLayout.seekHit(playing.transport(), true))
+                            && !overlap(hit, MusicPlayerLayout.volumeHit(playing.transport(), true)),
+                            "Immersive buttons steal slider input");
+                    }
+                } else {
+                    require(viewport.scale() <= 1.35f && viewport.width() == MusicPlayerLayout.WIDTH
+                        && viewport.height() == MusicPlayerLayout.HEIGHT, "Main viewport changed logical hit targets or exceeded scale cap");
+                    if (size[0] >= 1920 && size[1] >= 1080) require(viewport.scale() > 1, "Large displays keep the player unnecessarily small");
+                }
+                for (var box : List.of(cover, account, lyrics, queue, MusicPlayerLayout.nameInput(), MusicPlayerLayout.nameSave())) {
+                    double centerX = box.x() + box.width() / 2, centerY = box.y() + box.height() / 2;
+                    require(close(viewport.localX(viewport.screenX(centerX)), centerX)
+                        && close(viewport.localY(viewport.screenY(centerY)), centerY)
+                        && box.contains(viewport.localX(viewport.screenX(centerX)), viewport.localY(viewport.screenY(centerY))),
+                        "Scaled pointer cannot reach the painted cover, header, account or modal action");
+                }
+            }
+        }
+    }
+    private static boolean contained(MusicPlayerLayout.Box outer, MusicPlayerLayout.Box inner) {
+        return inner.width() > 0 && inner.height() > 0 && inner.x() >= outer.x() && inner.y() >= outer.y()
+            && inner.x() + inner.width() <= outer.x() + outer.width() + .001
+            && inner.y() + inner.height() <= outer.y() + outer.height() + .001;
+    }
+    private static boolean close(double first, double second) { return Math.abs(first - second) < .001; }
+    private static boolean overlap(MusicPlayerLayout.Box first, MusicPlayerLayout.Box second) {
+        return first.x() < second.x() + second.width() && first.x() + first.width() > second.x()
+            && first.y() < second.y() + second.height() && first.y() + first.height() > second.y();
     }
     private static void require(boolean condition, String message) { checks++; if (!condition) throw new AssertionError(message); }
 }

@@ -6,6 +6,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntConsumer;
+import java.util.function.DoubleConsumer;
 import java.util.function.Supplier;
 
 /** A single daemon MTA owns SMTC. Rendering never calls native APIs, and unsupported hosts are inert. */
@@ -16,6 +17,9 @@ public final class MediaSession implements AutoCloseable {
     private boolean failed;
 
     public MediaSession(long window, Supplier<WindowsSmtc.Snapshot> state, IntConsumer action) {
+        this(window, state, action, null);
+    }
+    public MediaSession(long window, Supplier<WindowsSmtc.Snapshot> state, IntConsumer action, DoubleConsumer seek) {
         if (window == 0 || !supported()) { worker = null; return; }
         worker = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().name("Pupper Client SMTC").factory());
         worker.scheduleWithFixedDelay(() -> {
@@ -23,7 +27,8 @@ public final class MediaSession implements AutoCloseable {
             try {
                 var snapshot = state.get();
                 if (nativeSession == null && snapshot.hasTrack()) nativeSession = new WindowsSmtc(window,
-                    button -> { if (!closed) action.accept(button); });
+                    button -> { if (!closed) action.accept(button); },
+                    seek == null ? null : seconds -> { if (!closed) seek.accept(seconds); });
                 if (nativeSession != null) nativeSession.publish(snapshot);
             } catch (RuntimeException | LinkageError unavailable) {
                 failed = true;

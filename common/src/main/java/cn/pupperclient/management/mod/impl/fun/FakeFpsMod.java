@@ -58,7 +58,12 @@ public class FakeFpsMod extends SimpleHUDMod {
             0.1f,
             10.0f,
             0.1f
-        );
+        ) {
+            @Override public boolean isVisible() {
+                return modeSetting.getOption().equals("setting.fakefps.mode.multiplied")
+                    || modeSetting.getOption().equals("setting.fakefps.mode.fixed");
+            }
+        };
 
         randomDigitsSetting = new NumberSetting(
             "setting.fakefps.randomdigits",
@@ -69,7 +74,9 @@ public class FakeFpsMod extends SimpleHUDMod {
             1,  // 最小1位
             5,   // 最大5位
             1
-        );
+        ) {
+            @Override public boolean isVisible() { return modeSetting.getOption().equals("setting.fakefps.mode.random"); }
+        };
     }
 
     public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {

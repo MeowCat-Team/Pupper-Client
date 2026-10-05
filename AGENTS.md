@@ -14,6 +14,8 @@
 - **Mod Initialization**: `ModManager.init()` registers all mods and settings
 
 ## Project Conventions
+- **Mandatory Local Documentation Policy**: Never create or add implementation plans, architecture/design documents, research notes, internal verification reports, or other private working documents in a Git-visible directory. Store them only under `.local/` (for example `.local/docs/`), which must remain ignored by Git. Before writing any such document, run `git check-ignore` on its intended path and confirm that it is ignored. Never use `git add -f` to commit these files. Existing tracked internal documents must be moved into `.local/` and removed from the tracked tree. `AGENTS.md` contains agent instructions, not working plans; public user documentation belongs in the tracked tree only when explicitly requested by the user.
+- **Settings Simplicity**: Preserve the existing product design and choose sensible defaults. Expose only common, meaningful user choices; combine related technical parameters into clear presets, avoid duplicate controls, and keep connection/maintenance configuration behind a separate optional entry.
 - **Package**: `cn.pupperclient` with subpackages by feature (animation, event, gui, management, mixin, shader, skia, ui, utils)
 - **Managers**: Singleton pattern for core systems (e.g., `EventBus.getInstance()`)
 - **Events**: Extend `Event` class, post via `EventBus.getInstance().post(event)`

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntConsumer;
+import java.util.function.DoubleConsumer;
 import static java.lang.foreign.ValueLayout.*;
 
 /** SMTC belongs to our top-level GLFW window. All COM operations live on one platform/MTA thread. */
@@ -17,12 +18,15 @@ public final class WindowsSmtc implements AutoCloseable {
     }
     private final WinRt runtime;
     private WinRt.Com controls, controls2, updater, music, music2, timeline;
-    private ButtonHandler buttons;
-    private long token;
-    private boolean registered;
+    private ButtonHandler buttons, positions;
+    private long token, positionToken;
+    private boolean registered, positionRegistered;
     private Snapshot previous;
 
     public WindowsSmtc(long hwnd, IntConsumer onButton) {
+        this(hwnd, onButton, null);
+    }
+    public WindowsSmtc(long hwnd, IntConsumer onButton, DoubleConsumer onSeek) {
         runtime = new WinRt();
         try {
             try (Arena arena = Arena.ofConfined(); WinRt.Com factory = runtime.factory(
@@ -44,6 +48,15 @@ public final class WindowsSmtc implements AutoCloseable {
                 WinRt.check(controls.call(32, new MemoryLayout[] { ADDRESS, ADDRESS }, buttons.pointer, out));
                 token = out.get(JAVA_LONG, 0);
                 registered = true;
+            }
+            if (onSeek != null) {
+                positions = ButtonHandler.position(runtime, onSeek);
+                try (Arena arena = Arena.ofConfined()) {
+                    MemorySegment out = arena.allocate(JAVA_LONG);
+                    // Windows SDK ISystemMediaTransportControls2: UpdateTimelineProperties=12, add/remove position=13/14.
+                    WinRt.check(controls2.call(13, new MemoryLayout[] { ADDRESS, ADDRESS }, positions.pointer, out));
+                    positionToken = out.get(JAVA_LONG, 0); positionRegistered = true;
+                }
             }
             publish(Snapshot.EMPTY);
         } catch (RuntimeException failed) { close(); throw failed; }
@@ -77,9 +90,10 @@ public final class WindowsSmtc implements AutoCloseable {
         long end = ticks(state.duration()), position = Math.min(ticks(state.position()), end);
         timeline.time(7, 0);
         timeline.time(9, end);
-        // Seeking is not advertised: these decoders currently support transport, not arbitrary seek.
-        timeline.time(11, position);
-        timeline.time(13, position);
+        boolean canSeek = positions != null && state.hasTrack() && end > 0;
+        if (positions != null) positions.active = canSeek;
+        timeline.time(11, canSeek ? 0 : position);
+        timeline.time(13, canSeek ? end : position);
         timeline.time(15, position);
         WinRt.check(controls2.call(12, new MemoryLayout[] { ADDRESS }, timeline.pointer));
         previous = state;
@@ -89,6 +103,12 @@ public final class WindowsSmtc implements AutoCloseable {
 
     @Override public void close() {
         if (buttons != null) buttons.active = false;
+        if (positions != null) positions.active = false;
+        if (controls2 != null && positionRegistered) try (Arena arena = Arena.ofConfined()) {
+            MemorySegment value = arena.allocate(WinRt.TOKEN); value.set(JAVA_LONG, 0, positionToken);
+            WinRt.check(controls2.call(14, new MemoryLayout[] { WinRt.TOKEN }, value));
+        } catch (RuntimeException ignored) { }
+        positionRegistered = false;
         if (controls != null) {
             try { controls.bool(11, false); } catch (RuntimeException ignored) { }
             if (registered) try (Arena arena = Arena.ofConfined()) {
@@ -102,6 +122,7 @@ public final class WindowsSmtc implements AutoCloseable {
             if (value != null) value.close();
         timeline = music2 = music = updater = controls2 = controls = null;
         if (buttons != null) { buttons.release(buttons.pointer); buttons = null; }
+        if (positions != null) { positions.release(positions.pointer); positions = null; }
         runtime.close();
     }
 
@@ -113,15 +134,23 @@ public final class WindowsSmtc implements AutoCloseable {
         private final AtomicInteger references = new AtomicInteger(1);
         private final WinRt runtime;
         private final IntConsumer listener;
+        private final DoubleConsumer seek;
         private final MemorySegment unknown, agile, event;
         final MemorySegment pointer;
         volatile boolean active = true;
 
         ButtonHandler(WinRt runtime, IntConsumer listener) {
-            this.runtime = runtime; this.listener = listener;
+            this(runtime, listener, null, "0557e996-7b23-5bae-aa81-ea0d671143a4");
+        }
+        static ButtonHandler position(WinRt runtime, DoubleConsumer seek) {
+            // IID is the typed event specialization in the installed official Windows SDK windows.media.h.
+            return new ButtonHandler(runtime, null, seek, "44e34f15-bdc0-50a7-ace4-39e91fb753f1");
+        }
+        private ButtonHandler(WinRt runtime, IntConsumer listener, DoubleConsumer seek, String iid) {
+            this.runtime = runtime; this.listener = listener; this.seek = seek;
             unknown = WinRt.guid(arena, "00000000-0000-0000-c000-000000000046");
             agile = WinRt.guid(arena, "94ea2b94-e9cc-49e0-c0ff-ee64ca8f5b90");
-            event = WinRt.guid(arena, "0557e996-7b23-5bae-aa81-ea0d671143a4");
+            event = WinRt.guid(arena, iid);
             pointer = arena.allocate(ADDRESS);
             MemorySegment table = arena.allocate(4 * ADDRESS.byteSize(), ADDRESS.byteAlignment());
             pointer.set(ADDRESS, 0, table);
@@ -158,11 +187,15 @@ public final class WindowsSmtc implements AutoCloseable {
         int invoke(MemorySegment self, MemorySegment sender, MemorySegment args) {
             if (!active) return 0;
             try (Arena scratch = Arena.ofConfined()) {
-                MemorySegment out = scratch.allocate(JAVA_INT);
+                MemorySegment out = scratch.allocate(seek == null ? JAVA_INT : JAVA_LONG);
                 // Event arguments are borrowed for Invoke's duration; never Release the caller's reference.
                 WinRt.Com borrowed = runtime.new Com(args);
                 WinRt.check(borrowed.call(6, new MemoryLayout[] { ADDRESS }, out));
-                listener.accept(out.get(JAVA_INT, 0));
+                if (seek == null) listener.accept(out.get(JAVA_INT, 0));
+                else {
+                    long ticks = out.get(JAVA_LONG, 0);
+                    if (ticks >= 0) seek.accept(ticks / 10_000_000d);
+                }
                 return 0;
             } catch (Throwable failed) { return 0x80004005; }
         }

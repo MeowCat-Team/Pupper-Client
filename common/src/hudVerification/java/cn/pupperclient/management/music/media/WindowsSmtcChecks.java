@@ -15,6 +15,7 @@ import static java.lang.foreign.ValueLayout.*;
 public final class WindowsSmtcChecks {
     private static int checks;
     private static int button;
+    private static long requestedTicks;
 
     public static void main(String[] args) throws Throwable {
         if (!MediaSession.supported()) { System.out.println("Windows SMTC native checks skipped on this host."); return; }
@@ -33,6 +34,7 @@ public final class WindowsSmtcChecks {
             try (var resource = WindowsSmtcChecks.class.getResourceAsStream("/assets/pupper/logo.png")) {
                 Files.copy(resource, cover, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
+            try {
             try (WindowsSmtc smtc = new WindowsSmtc(window.address(), actions::add)) {
                 WinRt.Com controls = field(smtc, "controls"), music = field(smtc, "music"), album = field(smtc, "music2");
                 smtc.publish(new WindowsSmtc.Snapshot("fixture:1", "原生测试 ♪", "Pupper Client", "FFM fixture", cover.toUri().toString(),
@@ -78,15 +80,64 @@ public final class WindowsSmtcChecks {
                 }
                 smtc.publish(WindowsSmtc.Snapshot.EMPTY);
                 require(readInt(controls, 6) == 2, "Empty player did not stop the system session");
+            }
+            checkPositionRequests(window.address(), arena);
             } finally {
                 int ignored = (int) destroy.invokeExact(window);
                 Files.deleteIfExists(cover);
             }
         }
-        System.out.println("Windows SMTC FFM checks passed: " + checks + " assertions; hidden HWND, metadata, timeline structs and native button upcalls.");
+        System.out.println("Windows SMTC FFM checks passed: " + checks + " assertions; hidden HWND, metadata, seek timeline structs and native button/position upcalls with cleanup.");
+    }
+
+    private static void checkPositionRequests(long window, Arena arena) throws Throwable {
+        List<Double> seeks = new ArrayList<>();
+        WindowsSmtc smtc = new WindowsSmtc(window, _ -> { }, seeks::add);
+        Field field = WindowsSmtc.class.getDeclaredField("positions"); field.setAccessible(true);
+        var callback = (WindowsSmtc.ButtonHandler) field.get(smtc);
+        MemorySegment fakeArgs = arena.allocate(ADDRESS), table = arena.allocate(7 * ADDRESS.byteSize(), ADDRESS.byteAlignment());
+        fakeArgs.set(ADDRESS, 0, table);
+        var getter = MethodHandles.lookup().findStatic(WindowsSmtcChecks.class, "getPosition",
+            MethodType.methodType(int.class, MemorySegment.class, MemorySegment.class));
+        table.setAtIndex(ADDRESS, 6, Linker.nativeLinker().upcallStub(getter, FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS), arena));
+        var delegate = callback.pointer.reinterpret(ADDRESS.byteSize()).get(ADDRESS, 0).reinterpret(4 * ADDRESS.byteSize());
+        var invoke = Linker.nativeLinker().downcallHandle(delegate.getAtIndex(ADDRESS, 3),
+            FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS));
+        try {
+            smtc.publish(new WindowsSmtc.Snapshot("seek:1", "Seek fixture", "", "", "", true, true, false, 5, 120));
+            require(readTime(field(smtc, "timeline"), 10) == 0 && readTime(field(smtc, "timeline"), 12) == 1_200_000_000L,
+                "Seek-capable session did not advertise its real zero-to-duration timeline");
+            var query = Linker.nativeLinker().downcallHandle(delegate.getAtIndex(ADDRESS, 0),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS));
+            MemorySegment out = arena.allocate(ADDRESS);
+            int queryResult = (int) query.invokeExact(callback.pointer,
+                WinRt.guid(arena, "44e34f15-bdc0-50a7-ace4-39e91fb753f1"), out);
+            require(queryResult == 0 && out.get(ADDRESS, 0).address() == callback.pointer.address(),
+                "Position delegate QueryInterface rejects the official SDK typed-event IID");
+            callback.release(callback.pointer);
+            for (long ticks : new long[] { 0, 125_000_000L, 599_999_999L }) {
+                requestedTicks = ticks;
+                int result = (int) invoke.invokeExact(callback.pointer, MemorySegment.NULL, fakeArgs);
+                require(result == 0 && Math.abs(seeks.getLast() - ticks / 10_000_000d) < .0000001,
+                    "Native TimeSpan position event lost a requested sample time");
+            }
+            requestedTicks = -1;
+            int negative = (int) invoke.invokeExact(callback.pointer, MemorySegment.NULL, fakeArgs);
+            require(negative == 0 && seeks.size() == 3, "Negative WinRT position request reached the playback engine");
+            smtc.publish(WindowsSmtc.Snapshot.EMPTY);
+            requestedTicks = 20_000_000L;
+            int empty = (int) invoke.invokeExact(callback.pointer, MemorySegment.NULL, fakeArgs);
+            require(empty == 0 && seeks.size() == 3, "Empty media session still accepts seek events");
+        } finally { smtc.close(); }
+        requestedTicks = 40_000_000L;
+        int closed = (int) invoke.invokeExact(callback.pointer, MemorySegment.NULL, fakeArgs);
+        require(closed == 0 && seeks.size() == 3 && !callback.active, "Closed native session dispatches stale seek callbacks");
+        Field registered = WindowsSmtc.class.getDeclaredField("positionRegistered"); registered.setAccessible(true);
+        require(!(boolean) registered.get(smtc) && field.get(smtc) == null, "Closing SMTC retains the position registration/delegate");
     }
 
     private static int getButton(MemorySegment self, MemorySegment out) { out.reinterpret(4).set(JAVA_INT, 0, button); return 0; }
+    private static int getPosition(MemorySegment self, MemorySegment out) { out.reinterpret(8).set(JAVA_LONG, 0, requestedTicks); return 0; }
     private static WinRt.Com field(WindowsSmtc smtc, String name) throws Exception {
         Field field = WindowsSmtc.class.getDeclaredField(name); field.setAccessible(true); return (WinRt.Com) field.get(smtc);
     }

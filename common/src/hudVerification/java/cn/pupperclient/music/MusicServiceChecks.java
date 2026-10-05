@@ -137,10 +137,16 @@ public final class MusicServiceChecks {
             System.out.println("Music HTTP/filesystem checks passed: " + checks + " assertions; search fallback, Unicode queries, "
                 + "title persistence, legacy repair, MP3/FLAC, partial cleanup and account-isolated favorites.");
             MusicPlaybackChecks.run();
+            MusicAudioChecks.run();
+            MusicExperienceChecks.run();
             MusicLyricsChecks.run();
+            MusicNowPlayingChecks.run();
             MusicProviderChecks.run();
             MusicInteractionChecks.run();
             MusicPlaylistChecks.run();
+            MusicPrefetchChecks.run();
+            MusicDownloadPrefetchChecks.run();
+            MusicDownloadTasksChecks.run();
             MusicAccessChecks.run();
             MusicCatalogChecks.run();
             MusicAccountChecks.run();

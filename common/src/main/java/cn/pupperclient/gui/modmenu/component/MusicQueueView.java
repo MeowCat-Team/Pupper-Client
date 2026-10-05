@@ -22,9 +22,17 @@ public final class MusicQueueView extends Component {
         this.add = add; this.save = save;
     }
     @Override public void draw(double mx, double my) {
+        draw(mx, my, PupperClient.getInstance().getColorManager().getPalette());
+    }
+    public void layout(MusicPlayerLayout.Box box) {
+        if (x != box.x() || y != box.y() || width != box.width() || height != box.height()) {
+            pressed = drop = -1; clearPressed = dragging = addPressed = savePressed = false;
+        }
+        x = box.x(); y = box.y(); width = box.width(); height = box.height();
+    }
+    public void draw(double mx, double my, cn.pupperclient.management.color.api.ColorPalette palette) {
         var manager = PupperClient.getInstance().getMusicManager();
         var snapshot = manager.getQueue().snapshot();
-        var palette = PupperClient.getInstance().getColorManager().getPalette();
         var current = snapshot.current();
         var playing = manager.getCurrentMusic();
         MusicUi.queueHeader(x, y, width, current == null ? null : playing != null && current.key().equals(MusicQueue.Entry.of(playing).key())

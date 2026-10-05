@@ -43,7 +43,9 @@ public class ModMenuSettings extends Mod {
 	private final BooleanSetting blurSetting = new BooleanSetting("setting.blur", "setting.blur.description", Icon.LENS_BLUR,
 			this, true);
 	private final NumberSetting blurIntensitySetting = new NumberSetting("setting.blurintensity",
-			"setting.blurintensity.description", Icon.BLUR_LINEAR, this, 5, 1, 20, 1);
+			"setting.blurintensity.description", Icon.BLUR_LINEAR, this, 5, 1, 20, 1) {
+        @Override public boolean isVisible() { return blurSetting.isEnabled(); }
+    };
 	private final NumberSetting backgroundOpacitySetting = new NumberSetting("setting.ui.backgroundopacity",
 			"setting.ui.backgroundopacity.description", Icon.PALETTE, this,
 			MaterialTokens.DEFAULT_OPACITY * 100, 0, 100, 1);

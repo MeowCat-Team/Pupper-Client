@@ -3,9 +3,6 @@ package cn.pupperclient.management.music;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -41,6 +38,12 @@ public final class AudiusMusicProvider implements MusicProvider {
     }
 
     @Override public SearchResult collectionTracks(MusicCollection collection, int limit, int offset, String cookie) throws MusicError {
+        return collectionTracks(collection, limit, offset, cookie, new MusicPreparation.Cancellation());
+    }
+    @Override public SearchResult collectionTracks(MusicCollection collection, int limit, int offset, String cookie,
+            MusicPreparation.Cancellation cancellation) throws MusicError {
+        try { cancellation.check(); }
+        catch (java.io.InterruptedIOException cancelled) { throw new MusicError("music.error.network"); }
         if (!collection.provider().equals(id())) throw new MusicError("music.error.metadata");
         validId(collection.id()); limit = Math.clamp(limit, 1, 50); offset = Math.max(0, offset);
         JsonArray data; int start = 0, end, total;
@@ -48,12 +51,12 @@ public final class AudiusMusicProvider implements MusicProvider {
             // The official playlist-tracks route has no limit/offset parameters. Keep one snapshot for its subsequent pages.
             PlaylistTracks cached = playlistTracks;
             if (offset == 0 || cached == null || !cached.id().equals(collection.id())) {
-                cached = new PlaylistTracks(collection.id(), array(request("playlists/" + collection.id() + "/tracks"), "data"));
+                cached = new PlaylistTracks(collection.id(), array(request("playlists/" + collection.id() + "/tracks", cancellation), "data"));
                 playlistTracks = cached;
             }
             data = cached.songs(); start = Math.min(offset, data.size()); end = Math.min(start + limit, data.size()); total = data.size();
         } else {
-            data = array(request("users/" + collection.id() + "/tracks?limit=" + limit + "&offset=" + offset), "data");
+            data = array(request("users/" + collection.id() + "/tracks?limit=" + limit + "&offset=" + offset, cancellation), "data");
             end = data.size(); total = data.size() == limit ? -1 : offset + data.size();
         }
         var tracks = new ArrayList<MusicTrack>();
@@ -80,34 +83,37 @@ public final class AudiusMusicProvider implements MusicProvider {
     }
 
     @Override public MusicTrack track(String id) throws MusicError {
+        return track(id, new MusicPreparation.Cancellation());
+    }
+    @Override public MusicTrack track(String id, MusicPreparation.Cancellation cancellation) throws MusicError {
         validId(id);
-        MusicTrack track = parse(object(request("tracks/" + id), "data"));
+        MusicTrack track = parse(object(request("tracks/" + id, cancellation), "data"));
         if (track == null) throw new MusicError("music.error.metadata");
         return track;
     }
 
     @Override public AudioSource audio(MusicTrack searched, String quality, String cookie, boolean download) throws MusicError {
+        return audio(searched, quality, cookie, download, new MusicPreparation.Cancellation());
+    }
+    @Override public AudioSource audio(MusicTrack searched, String quality, String cookie, boolean download,
+            MusicPreparation.Cancellation cancellation) throws MusicError {
         // Refresh access at the time of use: artist permissions may have changed since the search or favorite.
-        MusicTrack current = track(searched.providerId());
+        MusicTrack current = track(searched.providerId(), cancellation);
         if (download ? !current.downloadable() : !current.playable())
             throw new MusicError(download ? "music.error.downloadrestricted" : "music.error.playrestricted");
         return new AudioSource(endpoint("tracks/" + current.providerId() + (download ? "/download" : "/stream")), ".mp3");
     }
 
     private JsonObject request(String path) throws MusicError {
-        HttpURLConnection connection = null;
-        try {
-            connection = NeteaseMusicApi.open(endpoint(path));
-            int status = connection.getResponseCode();
-            if (status == 429) throw new MusicError("music.error.ratelimit");
-            if (status == 401 || status == 403) throw new MusicError("music.error.playrestricted");
-            if (status == 404) throw new MusicError("music.error.unavailable");
-            if (status != 200) throw new MusicError("music.error.network");
-            try (var input = connection.getInputStream()) {
-                return JsonParser.parseString(new String(input.readNBytes(8 * 1024 * 1024), StandardCharsets.UTF_8)).getAsJsonObject();
-            }
-        } catch (IOException | RuntimeException invalid) { throw new MusicError("music.error.network"); }
-        finally { if (connection != null) connection.disconnect(); }
+        return request(path, new MusicPreparation.Cancellation());
+    }
+    private JsonObject request(String path, MusicPreparation.Cancellation cancellation) throws MusicError {
+        return NeteaseMusicApi.publicJson(endpoint(path), cancellation, status -> switch (status) {
+            case 429 -> "music.error.ratelimit";
+            case 401, 403 -> "music.error.playrestricted";
+            case 404 -> "music.error.unavailable";
+            default -> "music.error.network";
+        });
     }
 
     private URI endpoint(String path) {
