@@ -77,6 +77,8 @@ public class ModManager {
         mods.add(new CloudMusicHudMod());
         mods.add(new CooldownHudMod());
         mods.add(new PotionHudMod());
+        mods.add(new ItemInfoMod());
+        mods.add(new LookInfoMod());
     }
 
     private void initPlayerMods(){

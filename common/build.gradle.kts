@@ -120,6 +120,26 @@ val verifyItemRendering = tasks.register<JavaExec>("verifyItemRendering") {
 }
 tasks.check { dependsOn(verifyItemRendering) }
 
+val verifyItemInfo = tasks.register<JavaExec>("verifyItemInfo") {
+    group = "verification"
+    description = "Checks held-item expiry, component-aware inventory totals, enchantment formatting and bilingual layouts."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.ItemInfoChecks")
+    workingDir(layout.buildDirectory.dir("verification"))
+    doFirst { workingDir.mkdirs() }
+}
+tasks.check { dependsOn(verifyItemInfo) }
+
+tasks.register<JavaExec>("previewContextInfo") {
+    group = "verification"
+    description = "Renders Item Info and Look Info with the shared production painter in English and Chinese."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.ContextInfoPreview")
+    args(layout.buildDirectory.file("reports/hud/context-info.png").get().asFile.absolutePath)
+}
+
 val verifyStartupRendering = tasks.register<JavaExec>("verifyStartupRendering") {
     group = "verification"
     description = "Checks early Globals initialization, atlas deferral and Minecraft render hook compatibility."

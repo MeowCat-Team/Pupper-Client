@@ -76,7 +76,7 @@ public final class MixinCompatibilityChecks {
             }
         }
         System.out.println("Common Mixin compatibility passed: " + redirects
-            + " production redirects, scalar at/slice and shared HUD anchor accepted by Fabric and NeoForge runtimes.");
+            + " production redirects, scalar at/slice, shared HUD anchor and item-name hooks accepted by Fabric and NeoForge runtimes.");
     }
 
     private static void checkSharedHudMixin(List<byte[]> classes) {
@@ -85,18 +85,27 @@ public final class MixinCompatibilityChecks {
             ClassNode node = new ClassNode();
             new ClassReader(bytes).accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
             if (!node.name.equals(mixin)) continue;
+            boolean effects = false, itemName = false;
             for (var method : node.methods) {
                 if (method.visibleAnnotations == null) continue;
                 for (AnnotationNode annotation : method.visibleAnnotations) {
                     if (!annotation.desc.equals("Lorg/spongepowered/asm/mixin/injection/Inject;")) continue;
-                    require(value(annotation, "method").equals(List.of("extractEffects")), "HUD mixin uses a loader-specific dispatcher");
+                    var target = value(annotation, "method");
+                    if (target.equals(List.of("extractEffects"))) effects = true;
+                    else if (target.equals(List.of("extractSelectedItemName"))) {
+                        itemName = true;
+                        require(method.desc.equals("(Lorg/spongepowered/asm/mixin/injection/callback/CallbackInfo;)V"),
+                            "Item-name hook must support NeoForge's extra height-aware overload");
+                        require(Boolean.TRUE.equals(value(annotation, "cancellable")), "Item-name hook cannot replace the vanilla hint");
+                    } else throw new AssertionError("HUD mixin uses an unsupported dispatcher: " + target);
                     Object points = value(annotation, "at");
                     require(points instanceof List<?> && ((List<?>) points).size() == 1, "Unexpected HUD injection points");
                     require("HEAD".equals(value((AnnotationNode) ((List<?>) points).getFirst(), "value")), "HUD event changed its extraction order");
                     require(Integer.valueOf(1).equals(value(annotation, "require")), "HUD hook may silently stop working");
-                    return;
                 }
             }
+            require(effects && itemName, "Shared HUD event or item-name hook was not checked");
+            return;
         }
         throw new AssertionError("Shared HUD mixin injection was not checked");
     }
@@ -110,6 +119,10 @@ public final class MixinCompatibilityChecks {
         }
         require(hud.methods.stream().anyMatch(m -> m.name.equals("extractEffects") && m.desc.equals(HUD_EXTRACT)),
             platform + " removed the shared HUD hook");
+        var itemNames = hud.methods.stream().filter(m -> m.name.equals("extractSelectedItemName")).toList();
+        String graphics = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;";
+        require(!itemNames.isEmpty() && itemNames.stream().allMatch(m -> m.desc.equals("(" + graphics + ")V")
+                || m.desc.equals("(" + graphics + "I)V")), platform + " changed its item-name extraction overloads");
         List<String> order = new ArrayList<>();
         String dispatcher = platform.equals("fabric") ? "extractRenderState" : "registerVanillaLayers";
         var method = hud.methods.stream().filter(m -> m.name.equals(dispatcher)).findFirst().orElseThrow();
