@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,7 +58,7 @@ public class CapeManager implements Closeable {
             RenderSystem.queueFencedTask(() -> {
                 DynamicTexture nativeImage = createNativeTexture(textureData);
                 if (nativeImage != null) {
-                    Identifier identifier = Identifier.fromNamespaceAndPath("pupper", namespace + "/" + id);
+                    Identifier identifier = Identifier.fromNamespaceAndPath("pupper", texturePath(id));
                     Minecraft.getInstance().getTextureManager().register(identifier, nativeImage);
                     loadedCapes.put(id, identifier);
                     loadedCapeTextures.put(identifier, nativeImage);
@@ -89,6 +90,15 @@ public class CapeManager implements Closeable {
 
     public Set<String> getLoadedCapeIds() {
         return new HashSet<>(loadedCapes.keySet());
+    }
+
+    /**
+     * Cape names come from user-supplied file names, but {@link Identifier} paths only
+     * accept {@code [a-z0-9/._-]}. Map arbitrary names to a deterministic, collision-safe
+     * key instead of passing the original name through.
+     */
+    private String texturePath(String capeId) {
+        return namespace + "/" + UUID.nameUUIDFromBytes(capeId.getBytes(StandardCharsets.UTF_8));
     }
 
     private static DynamicTexture createNativeTexture(byte[] bytes) {
