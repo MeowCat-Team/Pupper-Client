@@ -26,6 +26,11 @@
 - **Permissions**: `common/src/main/resources/pupper.classtweaker` is the source of truth; Loom converts it to NeoForge Access Transformers
 - **Verification**: Common checks run under `:common:check`; `scripts/verify_multiloader.py` checks both final artifacts for identical shared code/assets, metadata, permissions and native libraries
 
+## Commit Messages
+- **Conventional Commits**: Use `type(scope): summary` (`feat`, `fix`, `perf`, `refactor`, `test`, `docs`, `chore`) with a lowercase, imperative summary; keep one theme per commit.
+- **No Internal Phase Codes**: Commit messages must never contain working-plan identifiers such as `P0-A`, `P1-D`, `阶段3`, `Phase 2` or `步骤4`. Those codes only exist in the internal plan and are meaningless to anyone reading the history. Describe the user-visible behaviour or the technical change instead, and keep the codes inside `.local/` documents.
+- **No Local Files**: Never commit anything under `.local/`.
+
 ## Integration Points
 - **ViaFabricPlus**: `ProtocolAccess` consumes a `FabricProtocolProvider`; keep ViaFabricPlus imports inside `fabric`. NeoForge has no equivalent native ViaFabricPlus distribution; do not pretend to support translated protocols.
 - **WebSocket**: Real-time communication in `management/websocket/`
