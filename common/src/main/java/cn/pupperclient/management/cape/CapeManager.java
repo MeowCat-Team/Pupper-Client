@@ -1,8 +1,8 @@
 package cn.pupperclient.management.cape;
 
 import cn.pupperclient.PupperClient;
+import cn.pupperclient.PupperLogger;
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -52,19 +52,33 @@ public class CapeManager implements Closeable {
     }
 
     public void loadCape(String id, byte[] textureData) {
-        if (id == null || textureData == null) return;
+        if (id == null || textureData == null || loadedCapes.containsKey(id)) return;
 
+        Minecraft minecraft = Minecraft.getInstance();
         executorService.submit(() -> {
-            RenderSystem.queueFencedTask(() -> {
-                DynamicTexture nativeImage = createNativeTexture(textureData);
-                if (nativeImage != null) {
-                    Identifier identifier = Identifier.fromNamespaceAndPath("pupper", texturePath(id));
-                    Minecraft.getInstance().getTextureManager().register(identifier, nativeImage);
-                    loadedCapes.put(id, identifier);
-                    loadedCapeTextures.put(identifier, nativeImage);
-                }
-            });
+            NativeImage image = readNativeImage(textureData);
+            if (image == null) return;
+
+            // Texture registration must happen on the client thread. Reading the PNG
+            // stays on the worker so large capes do not stall a frame.
+            minecraft.execute(() -> registerCape(id, image));
         });
+    }
+
+    private void registerCape(String id, NativeImage image) {
+        DynamicTexture texture;
+        try {
+            texture = new DynamicTexture(() -> "Pupper Client cape texture", image);
+        } catch (RuntimeException e) {
+            image.close();
+            PupperLogger.error("CapeManager", "Failed to create cape texture", e);
+            return;
+        }
+
+        Identifier identifier = Identifier.fromNamespaceAndPath("pupper", texturePath(id));
+        Minecraft.getInstance().getTextureManager().register(identifier, texture);
+        loadedCapes.put(id, identifier);
+        loadedCapeTextures.put(identifier, texture);
     }
 
     public void unloadCape(String id) {
@@ -101,12 +115,13 @@ public class CapeManager implements Closeable {
         return namespace + "/" + UUID.nameUUIDFromBytes(capeId.getBytes(StandardCharsets.UTF_8));
     }
 
-    private static DynamicTexture createNativeTexture(byte[] bytes) {
+    private static NativeImage readNativeImage(byte[] bytes) {
         if (bytes == null) return null;
         try {
-            return new DynamicTexture(() -> "Pupper Client cape texture", NativeImage.read(bytes));
+            return NativeImage.read(bytes);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            PupperLogger.error("CapeManager", "Failed to read cape texture", e);
+            return null;
         }
     }
 

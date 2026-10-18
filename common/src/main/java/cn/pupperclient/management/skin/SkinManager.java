@@ -3,7 +3,6 @@ package cn.pupperclient.management.skin;
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.PupperLogger;
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -65,17 +64,33 @@ public class SkinManager implements Closeable {
     }
 
     public void loadSkin(String id, byte[] textureData) {
-        if (id == null || textureData == null) return;
+        if (id == null || textureData == null || loadedSkins.containsKey(id)) return;
 
-        executorService.submit(() -> RenderSystem.queueFencedTask(() -> {
-            DynamicTexture nativeImage = createNativeTexture(textureData);
-            if (nativeImage != null) {
-                Identifier identifier = Identifier.fromNamespaceAndPath("pupper", texturePath(id));
-                Minecraft.getInstance().getTextureManager().register(identifier, nativeImage);
-                loadedSkins.put(id, identifier);
-                loadedSkinTextures.put(identifier, nativeImage);
-            }
-        }));
+        Minecraft minecraft = Minecraft.getInstance();
+        executorService.submit(() -> {
+            NativeImage image = readNativeImage(textureData);
+            if (image == null) return;
+
+            // Texture registration must happen on the client thread. Reading the PNG
+            // stays on the worker so large skins do not stall a frame.
+            minecraft.execute(() -> registerSkin(id, image));
+        });
+    }
+
+    private void registerSkin(String id, NativeImage image) {
+        DynamicTexture texture;
+        try {
+            texture = new DynamicTexture(() -> "Pupper Client skin texture", image);
+        } catch (RuntimeException e) {
+            image.close();
+            PupperLogger.error("SkinManager", "Failed to create skin texture", e);
+            return;
+        }
+
+        Identifier identifier = Identifier.fromNamespaceAndPath("pupper", texturePath(id));
+        Minecraft.getInstance().getTextureManager().register(identifier, texture);
+        loadedSkins.put(id, identifier);
+        loadedSkinTextures.put(identifier, texture);
     }
 
     public void unloadSkin(String id) {
@@ -109,10 +124,10 @@ public class SkinManager implements Closeable {
         return namespace + "/" + UUID.nameUUIDFromBytes(skinId.getBytes(StandardCharsets.UTF_8));
     }
 
-    private static DynamicTexture createNativeTexture(byte[] bytes) {
+    private static NativeImage readNativeImage(byte[] bytes) {
         if (bytes == null) return null;
         try {
-            return new DynamicTexture(() -> "Pupper Client skin texture", NativeImage.read(bytes));
+            return NativeImage.read(bytes);
         } catch (IOException e) {
             PupperLogger.error("SkinManager", "Failed to read skin texture", e);
             return null;

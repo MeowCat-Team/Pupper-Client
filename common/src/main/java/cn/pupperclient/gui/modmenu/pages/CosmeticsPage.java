@@ -309,10 +309,9 @@ public class CosmeticsPage extends Page {
             return;
         }
 
-        float scale = 3.0f;
+        float scale = 4.0f;
         float modelWidth = 16 * scale;
-        float modelHeight = 32 * scale;
-        Skia.drawSkin(item.file, itemX + (itemWidth - modelWidth) / 2, itemY + 48, scale);
+        Skia.drawSkin(item.file, itemX + (itemWidth - modelWidth) / 2, itemY + 36, scale);
     }
 
     private String limitLabel(String label) {
