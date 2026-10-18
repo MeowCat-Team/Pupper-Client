@@ -27,6 +27,7 @@
     "minecraft.client.render.MixinEntityRenderer",
     "minecraft.client.render.MixinChestRendererOptimization",
     "minecraft.client.render.MixinAbstractMinecartRendererOptimization",
+    "minecraft.client.render.MixinBoatRendererWaterPatchFix",
     "minecraft.client.render.MixinLevelRendererOptimization",
     "minecraft.client.render.MixinLevelExtractorOptimization",
     "minecraft.client.render.MixinItemShadowOptimization",

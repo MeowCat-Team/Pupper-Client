@@ -29,6 +29,9 @@ public class EntityRenderOptimizerMod extends Mod {
     private final BooleanSetting optimizeMinecarts = new BooleanSetting(
         "setting.entityoptimizer.minecarts", "setting.entityoptimizer.minecarts.description",
         Icon.TRAIN, this, true);
+    private final BooleanSetting fixBoatWaterPatch = new BooleanSetting(
+        "setting.entityoptimizer.boatwaterpatch", "setting.entityoptimizer.boatwaterpatch.description",
+        Icon.DIRECTIONS_BOAT, this, true);
 
     public EntityRenderOptimizerMod() {
         super("mod.entityoptimizer.name", "mod.entityoptimizer.description",
@@ -59,5 +62,10 @@ public class EntityRenderOptimizerMod extends Mod {
     /** 静止矿车复用上一帧的铁路姿态，跳过每帧 6 次方块查询与 10 次坐标分配。 */
     public boolean optimizeMinecarts() {
         return isEnabled() && optimizeMinecarts.isEnabled();
+    }
+
+    /** 应用 26.2 声明但从未生效的水膜模型姿势（属于修正，而非性能优化）。 */
+    public boolean fixBoatWaterPatch() {
+        return isEnabled() && fixBoatWaterPatch.isEnabled();
     }
 }
