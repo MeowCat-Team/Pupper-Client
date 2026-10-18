@@ -59,6 +59,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Install headless Skia libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libfontconfig1
+
       - name: Build and check
         run: |
           chmod +x gradlew
