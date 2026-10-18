@@ -379,66 +379,45 @@ public class Skia {
      * @param scale The scale factor for the skin
      */
     public static void drawSkin(File file, float x, float y, float scale) {
-        if (imageHelper.load(file)) {
+        if (!imageHelper.load(file)) return;
+        Image image = imageHelper.get(file.getName());
+        if (image == null) return;
 
-            Rect head = Rect.makeXYWH(8, 8, 8, 8);
-            Rect headLayer = Rect.makeXYWH(40, 8, 8, 8);
-            Rect body = Rect.makeXYWH(20, 20, 8, 12);
-            Rect bodyLayer = Rect.makeXYWH(20, 36, 8, 12);
-            Rect leftArm = Rect.makeXYWH(36, 52, 4, 12);
-            Rect leftArmLayer = Rect.makeXYWH(52, 52, 4, 12);
-            Rect rightArm = Rect.makeXYWH(44, 20, 4, 12);
-            Rect rightArmLayer = Rect.makeXYWH(44, 36, 4, 12);
-            Rect leftLeg = Rect.makeXYWH(20, 52, 4, 12);
-            Rect leftLegLayer = Rect.makeXYWH(4, 52, 4, 12);
-            Rect rightLeg = Rect.makeXYWH(4, 20, 4, 12);
-            Rect rightLegLayer = Rect.makeXYWH(4, 36, 4, 12);
+        save();
+        scale(x, y, scale);
 
-            save();
-            scale(x, y, scale);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), head,
-                Rect.makeXYWH(x + leftArm.getWidth(), y, head.getWidth(), head.getHeight()), null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), headLayer,
-                Rect.makeXYWH(x + leftArm.getWidth(), y, headLayer.getWidth(), headLayer.getHeight()), null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), body,
-                Rect.makeXYWH(x + leftArm.getWidth(), y + head.getHeight(), body.getWidth(), body.getHeight()),
-                null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), bodyLayer, Rect.makeXYWH(x + leftArm.getWidth(),
-                y + headLayer.getHeight(), bodyLayer.getWidth(), bodyLayer.getHeight()), null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), leftArm,
-                Rect.makeXYWH(x, y + head.getHeight(), leftArm.getWidth(), leftArm.getHeight()), null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), leftArmLayer,
-                Rect.makeXYWH(x, y + headLayer.getHeight(), leftArmLayer.getWidth(), leftArmLayer.getHeight()),
-                null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), rightArm,
-                Rect.makeXYWH(x + leftArm.getWidth() + body.getWidth(), y + head.getHeight(), rightArm.getWidth(),
-                    rightArm.getHeight()),
-                null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), rightArmLayer,
-                Rect.makeXYWH(x + leftArmLayer.getWidth() + bodyLayer.getWidth(), y + headLayer.getHeight(),
-                    rightArmLayer.getWidth(), rightArmLayer.getHeight()),
-                null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(
-                imageHelper.get(file.getName()), leftLeg, Rect.makeXYWH(x + leftArm.getWidth(),
-                    y + head.getHeight() + body.getHeight(), leftLeg.getWidth(), leftLeg.getHeight()),
-                null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), leftLegLayer,
-                Rect.makeXYWH(x + leftArmLayer.getWidth(), y + headLayer.getHeight() + bodyLayer.getHeight(),
-                    leftLegLayer.getWidth(), leftLegLayer.getHeight()),
-                null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas()
-                .drawImageRect(imageHelper.get(file.getName()), rightLeg,
-                    Rect.makeXYWH(x + leftArm.getWidth() + leftLeg.getWidth(),
-                        y + head.getHeight() + body.getHeight(), rightLeg.getWidth(), rightLeg.getHeight()),
-                    null, false, UiCanvas.ImageSampling.PIXEL);
-            getCanvas().drawImageRect(imageHelper.get(file.getName()), rightLegLayer,
-                Rect.makeXYWH(x + leftArmLayer.getWidth() + leftLegLayer.getWidth(),
-                    y + headLayer.getHeight() + bodyLayer.getHeight(), rightLegLayer.getWidth(),
-                    rightLegLayer.getHeight()),
-                null, false, UiCanvas.ImageSampling.PIXEL);
+        // Pseudo-3D top and left-side faces keep the overlay layer visible in the
+        // flat preview instead of showing only the front faces.
+        drawSkinFace(image, 8, 0, 8, 8, x + 4, y, 8, 4);
+        drawSkinFace(image, 40, 0, 8, 8, x + 4, y, 8, 4);
+        drawSkinFace(image, 16, 8, 8, 8, x + 12, y + 4, 2, 8);
+        drawSkinFace(image, 48, 8, 8, 8, x + 12, y + 4, 2, 8);
+        drawSkinFace(image, 20, 16, 8, 4, x + 4, y + 8, 8, 2);
+        drawSkinFace(image, 20, 32, 8, 4, x + 4, y + 8, 8, 2);
+        drawSkinFace(image, 28, 20, 4, 12, x + 12, y + 12, 1, 12);
+        drawSkinFace(image, 28, 36, 4, 12, x + 12, y + 12, 1, 12);
 
-            restore();
-        }
+        // Front faces start below the top faces.
+        float front = y + 4;
+        drawSkinFace(image, 8, 8, 8, 8, x + 4, front, 8, 8);
+        drawSkinFace(image, 40, 8, 8, 8, x + 4, front, 8, 8);
+        drawSkinFace(image, 20, 20, 8, 12, x + 4, front + 8, 8, 12);
+        drawSkinFace(image, 20, 36, 8, 12, x + 4, front + 8, 8, 12);
+        drawSkinFace(image, 36, 52, 4, 12, x, front + 8, 4, 12);
+        drawSkinFace(image, 52, 52, 4, 12, x, front + 8, 4, 12);
+        drawSkinFace(image, 44, 20, 4, 12, x + 12, front + 8, 4, 12);
+        drawSkinFace(image, 44, 36, 4, 12, x + 12, front + 8, 4, 12);
+        drawSkinFace(image, 20, 52, 4, 12, x + 4, front + 20, 4, 12);
+        drawSkinFace(image, 4, 52, 4, 12, x + 4, front + 20, 4, 12);
+        drawSkinFace(image, 4, 20, 4, 12, x + 8, front + 20, 4, 12);
+        drawSkinFace(image, 4, 36, 4, 12, x + 8, front + 20, 4, 12);
+        restore();
+    }
+
+    private static void drawSkinFace(Image image, int srcX, int srcY, int srcW, int srcH,
+                                     float dstX, float dstY, float dstW, float dstH) {
+        getCanvas().drawImageRect(image, Rect.makeXYWH(srcX, srcY, srcW, srcH),
+                Rect.makeXYWH(dstX, dstY, dstW, dstH), null, false, UiCanvas.ImageSampling.PIXEL);
     }
 
     /**
