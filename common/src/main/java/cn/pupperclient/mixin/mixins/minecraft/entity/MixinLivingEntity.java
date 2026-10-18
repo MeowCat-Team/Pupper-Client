@@ -8,14 +8,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import cn.pupperclient.management.mod.impl.hud.JumpResetIndicatorMod;
 import cn.pupperclient.management.mod.impl.player.NoJumpDelayMod;
+import cn.pupperclient.management.mod.impl.render.ClearViewMod;
 import cn.pupperclient.mixin.interfaces.IMixinLivingEntity;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.Holder;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LivingEntity.class)
 public abstract class MixinLivingEntity extends Entity implements IMixinLivingEntity{
@@ -75,6 +80,20 @@ public abstract class MixinLivingEntity extends Entity implements IMixinLivingEn
 
 		if ((Object) this == client.player) {
 			mod.setHurtAge(client.player.tickCount);
+		}
+	}
+
+	@Inject(method = "getEffectBlendFactor", at = @At("HEAD"), cancellable = true)
+	private void pupper$clearViewEffectBlend(Holder<MobEffect> effect, float partialTicks,
+			CallbackInfoReturnable<Float> cir) {
+		ClearViewMod mod = ClearViewMod.getInstance();
+		if (mod == null || !mod.isEnabled() || (Object) this != Minecraft.getInstance().player) {
+			return;
+		}
+
+		if ((effect.is(MobEffects.NAUSEA) && mod.isAntiNausea())
+				|| (effect.is(MobEffects.DARKNESS) && mod.isAntiDarkness())) {
+			cir.setReturnValue(0.0F);
 		}
 	}
 

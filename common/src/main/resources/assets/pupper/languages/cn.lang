@@ -194,6 +194,15 @@ mod.systemsettings.description=设置系统细节
 mod.fullbright.name=夜视
 mod.fullbright.description=夜视
 
+mod.clearview.name=清晰视野
+mod.clearview.description=去除失明、黑暗与反胃造成的屏幕效果
+mod.clearview.blindness.name=防失明
+mod.clearview.blindness.description=去除失明造成的视野雾气
+mod.clearview.darkness.name=防黑暗
+mod.clearview.darkness.description=去除黑暗效果造成的视野压暗
+mod.clearview.nausea.name=防反胃
+mod.clearview.nausea.description=去除反胃造成的画面扭曲与叠加层
+
 mod.webbrowser.name=网页浏览器
 mod.webbrowser.description=显示网页浏览器
 

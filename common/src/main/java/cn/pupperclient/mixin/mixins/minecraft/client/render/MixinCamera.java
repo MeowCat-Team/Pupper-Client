@@ -1,6 +1,9 @@
 package cn.pupperclient.mixin.mixins.minecraft.client.render;
 
 import cn.pupperclient.management.mod.impl.player.ZoomMod;
+import cn.pupperclient.management.mod.impl.render.ClearViewMod;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.world.effect.MobEffects;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -51,6 +54,23 @@ public abstract class MixinCamera {
             float original = cir.getReturnValue();
             float modified = ZoomMod.getInstance().getFov(original);
             cir.setReturnValue(modified);
+        }
+    }
+
+    @Inject(method = "extractRenderState", at = @At("TAIL"))
+    private void pupper$clearViewSky(CameraRenderState cameraState, float partialTicks, CallbackInfo ci) {
+        ClearViewMod mod = ClearViewMod.getInstance();
+        Minecraft minecraft = Minecraft.getInstance();
+        if (mod == null || !mod.isEnabled() || this.entity == null || this.entity != minecraft.player
+                || !cameraState.entityRenderState.doesMobEffectBlockSky) {
+            return;
+        }
+
+        LocalPlayer player = minecraft.player;
+        boolean blindnessBlocksSky = player.hasEffect(MobEffects.BLINDNESS) && !mod.isAntiBlindness();
+        boolean darknessBlocksSky = player.hasEffect(MobEffects.DARKNESS) && !mod.isAntiDarkness();
+        if (!blindnessBlocksSky && !darknessBlocksSky) {
+            cameraState.entityRenderState.doesMobEffectBlockSky = false;
         }
     }
 }

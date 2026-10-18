@@ -98,6 +98,7 @@ public class ModManager {
     private void initRenderMods(){
         mods.add(new EntityRenderOptimizerMod());
         mods.add(new BloodParticleMod());
+        mods.add(new ClearViewMod());
         mods.add(new CustomHandMod());
         mods.add(new FullbrightMod());
         mods.add(new MusicWaveformMod());

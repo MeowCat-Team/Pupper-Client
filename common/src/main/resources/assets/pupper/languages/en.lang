@@ -201,6 +201,15 @@ mod.systemsettings.description=Setting the system details
 mod.fullbright.name=Fullbright
 mod.fullbright.description=Brighten your viewpoint
 
+mod.clearview.name=Clear View
+mod.clearview.description=Remove blindness, darkness and nausea screen effects
+mod.clearview.blindness.name=Anti Blindness
+mod.clearview.blindness.description=Remove the blindness fog
+mod.clearview.darkness.name=Anti Darkness
+mod.clearview.darkness.description=Remove the darkness effect overlay and dimming
+mod.clearview.nausea.name=Anti Nausea
+mod.clearview.nausea.description=Remove the nausea overlay and camera wobble
+
 mod.webbrowser.name=Web Browser
 mod.webbrowser.description=Display the Web Browser
 
