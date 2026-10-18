@@ -70,7 +70,7 @@ public final class StartupSmoke {
                 System.err.flush();
                 Runtime.getRuntime().halt(2);
             }
-        }, 180, TimeUnit.SECONDS);
+        }, Boolean.getBoolean("pupper.smoke.bench") ? 600 : 180, TimeUnit.SECONDS);
         ClientTickEvent.CLIENT_POST.register(StartupSmoke::tick);
         System.out.println("PUPPER_SMOKE_ARMED loader=" + loader);
     }
@@ -112,7 +112,13 @@ public final class StartupSmoke {
     }
 
     private static void tick(Minecraft minecraft) {
-        if (FINISHED.get()) return;
+        if (FINISHED.get()) {
+            // -Dpupper.smoke.bench=true turns the startup check into a render-extraction benchmark.
+            if (Boolean.getBoolean("pupper.smoke.bench") && BenchMinecartRender.tick(minecraft)) {
+                minecraft.stop();
+            }
+            return;
+        }
         try {
             PupperClient client = PupperClient.getInstance();
             List<Object> current = managers(client);
@@ -180,7 +186,7 @@ public final class StartupSmoke {
         FINISHED.set(true);
         System.out.println("PUPPER_SMOKE_SUCCESS " + report);
         System.out.flush();
-        minecraft.stop();
+        if (!Boolean.getBoolean("pupper.smoke.bench")) minecraft.stop();
     }
 
     private static String verifyPackagedRuntime() throws Exception {
