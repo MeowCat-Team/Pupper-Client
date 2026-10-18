@@ -52,6 +52,11 @@ val hudVerification = sourceSets.create("hudVerification") {
     runtimeClasspath += output + sourceSets.main.get().output + configurations.runtimeClasspath.get()
 }
 
+dependencies {
+    // These checks load the production HUD fonts through Skia; CI runs the verification on Linux.
+    add("hudVerificationRuntimeOnly", libs.skija.linux.get())
+}
+
 // Dependency-free design checks run on the same Java/toolchain and color library as the client.
 val verifyHudDesign = tasks.register<JavaExec>("verifyHudDesign") {
     group = "verification"
