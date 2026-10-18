@@ -29,6 +29,9 @@ public class EntityRenderOptimizerMod extends Mod {
     private final BooleanSetting optimizeMinecarts = new BooleanSetting(
         "setting.entityoptimizer.minecarts", "setting.entityoptimizer.minecarts.description",
         Icon.TRAIN, this, true);
+    private final BooleanSetting optimizeEntities = new BooleanSetting(
+        "setting.entityoptimizer.extraction", "setting.entityoptimizer.extraction.description",
+        Icon.TRANSPORTATION, this, true);
     private final BooleanSetting fixBoatWaterPatch = new BooleanSetting(
         "setting.entityoptimizer.boatwaterpatch", "setting.entityoptimizer.boatwaterpatch.description",
         Icon.DIRECTIONS_BOAT, this, true);
@@ -67,5 +70,10 @@ public class EntityRenderOptimizerMod extends Mod {
     /** 应用 26.2 声明但从未生效的水膜模型姿势（属于修正，而非性能优化）。 */
     public boolean fixBoatWaterPatch() {
         return isEnabled() && fixBoatWaterPatch.isEnabled();
+    }
+
+    /** 实体阴影扫描记忆化 + 矿车展示方块模型脏标记。 */
+    public boolean optimizeEntities() {
+        return isEnabled() && optimizeEntities.isEnabled();
     }
 }

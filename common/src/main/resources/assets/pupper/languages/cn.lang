@@ -603,6 +603,8 @@ setting.entityoptimizer.shadows=简化掉落物阴影
 setting.entityoptimizer.shadows.description=密集时只保留8格内阴影；超过两倍阈值时保留4格内阴影，不隐藏物品
 setting.entityoptimizer.minecarts=优化矿车
 setting.entityoptimizer.minecarts.description=静止矿车复用上一帧的铁路姿态，跳过每帧的方块查询与坐标分配
+setting.entityoptimizer.extraction=优化实体提取
+setting.entityoptimizer.extraction.description=静止实体复用阴影方块扫描结果，矿车展示方块未变化时跳过重新解析
 setting.entityoptimizer.boatwaterpatch=修复船水面遮罩姿态
 setting.entityoptimizer.boatwaterpatch.description=应用 26.2 声明但从未生效的水膜模型姿势；关闭可与原版对比
 

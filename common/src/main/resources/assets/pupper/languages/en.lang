@@ -601,6 +601,8 @@ setting.entityoptimizer.shadows=Simplify item shadows
 setting.entityoptimizer.shadows.description=Under load keep shadows within 8 blocks, or 4 at twice the threshold; items remain visible
 setting.entityoptimizer.minecarts=Optimize minecarts
 setting.entityoptimizer.minecarts.description=Reuse the rail orientation of stationary minecarts to skip their per-frame block lookups
+setting.entityoptimizer.extraction=Optimize entity extraction
+setting.entityoptimizer.extraction.description=Reuse the shadow block scan of stationary entities and skip re-resolving an unchanged minecart display block
 setting.entityoptimizer.boatwaterpatch=Fix boat water mask pose
 setting.entityoptimizer.boatwaterpatch.description=Apply the water patch model pose that 26.2 declares but never evaluates; turn off to compare with vanilla
 
