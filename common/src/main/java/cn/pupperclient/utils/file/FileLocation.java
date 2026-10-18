@@ -12,6 +12,7 @@ public class FileLocation {
 	public static final File PROFILE_DIR = new File(MAIN_DIR, "profile");
     public static final File BACKGROUND_DIR = new File(MAIN_DIR, "background");
     public static final File CAPES_DIR = new File(MAIN_DIR, "capes");
+    public static final File SKINS_DIR = new File(MAIN_DIR, "skins");
 
     public static void init() {
 		FileUtils.createDir(MAIN_DIR);
@@ -21,5 +22,6 @@ public class FileLocation {
 		FileUtils.createDir(PROFILE_DIR);
         FileUtils.createDir(BACKGROUND_DIR);
         FileUtils.createDir(CAPES_DIR);
+        FileUtils.createDir(SKINS_DIR);
 	}
 }

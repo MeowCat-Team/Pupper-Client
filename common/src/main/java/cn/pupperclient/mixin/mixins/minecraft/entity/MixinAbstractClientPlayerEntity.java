@@ -2,6 +2,7 @@ package cn.pupperclient.mixin.mixins.minecraft.entity;
 
 import cn.pupperclient.PupperClient;
 import com.mojang.authlib.GameProfile;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.world.entity.player.Player;
@@ -25,17 +26,25 @@ public abstract class MixinAbstractClientPlayerEntity extends Player {
 
     @Inject(method = "getSkin", at = @At("RETURN"), cancellable = true)
     public void getSkinTextures(CallbackInfoReturnable<PlayerSkin> cir) {
-        var customCape = PupperClient.getInstance().getCapeManager().getSelectedCapeTexture();
-        if (customCape != null) {
-            PlayerSkin current = cir.getReturnValue();
-            cir.setReturnValue(new PlayerSkin(
-                current.body(),
-                customCape,
-                current.elytra(),
-                current.model(),
-                current.secure()
-            ));
+        // Cosmetics are local-only: never replace another player's cape or skin.
+        if ((Object) this != Minecraft.getInstance().player) {
+            return;
         }
+
+        var customCape = PupperClient.getInstance().getCapeManager().getSelectedCapeTexture();
+        var customSkin = PupperClient.getInstance().getSkinManager().getSelectedSkinTexture();
+        if (customCape == null && customSkin == null) {
+            return;
+        }
+
+        PlayerSkin current = cir.getReturnValue();
+        cir.setReturnValue(new PlayerSkin(
+            customSkin != null ? customSkin : current.body(),
+            customCape != null ? customCape : current.cape(),
+            current.elytra(),
+            current.model(),
+            current.secure()
+        ));
     }
 
     @Override

@@ -3,6 +3,7 @@ package cn.pupperclient;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.server.PacketHandler;
 import cn.pupperclient.management.cape.CapeManager;
+import cn.pupperclient.management.skin.SkinManager;
 import cn.pupperclient.management.color.ColorManager;
 import cn.pupperclient.management.command.PupperCommand;
 import cn.pupperclient.management.config.ConfigManager;
@@ -49,6 +50,7 @@ public class PupperClient implements IMinecraft {
     private HypixelManager hypixelManager;
     private KeybindManager keybindManager;
     private CapeManager capeManager;
+    private SkinManager skinManager;
 
     private PupperClient() {}
 
@@ -91,6 +93,7 @@ public class PupperClient implements IMinecraft {
         keybindManager.initialize();
         PupperCommand.register();
         capeManager = new CapeManager();
+        skinManager = new SkinManager();
     }
 
     private void registerEventHandlers() {
@@ -197,6 +200,10 @@ public class PupperClient implements IMinecraft {
 
     public CapeManager getCapeManager() {
         return capeManager;
+    }
+
+    public SkinManager getSkinManager() {
+        return skinManager;
     }
 
     public static String getModId() {

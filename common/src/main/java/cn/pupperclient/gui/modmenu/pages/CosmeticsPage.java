@@ -7,6 +7,7 @@ import cn.pupperclient.gui.api.page.Page;
 import cn.pupperclient.gui.api.page.impl.RightLeftTransition;
 import cn.pupperclient.management.cape.CapeManager;
 import cn.pupperclient.management.cape.CapeRenderer;
+import cn.pupperclient.management.skin.SkinManager;
 import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
@@ -37,13 +38,16 @@ import java.util.List;
 
 public class CosmeticsPage extends Page {
     private Category selectedCategory = Category.ALL;
-    private final List<CapeItem> capeItems = new ArrayList<>();
+    private final List<CosmeticItem> capeItems = new ArrayList<>();
+    private final List<CosmeticItem> skinItems = new ArrayList<>();
     private Component addButton;
     private String selectedCapeId = null;
+    private String selectedSkinId = null;
 
     public enum Category {
         ALL("text.all"),
-        CAPE("text.cape");
+        CAPE("text.cape"),
+        SKIN("text.skin");
 
         private final String name;
 
@@ -54,6 +58,11 @@ public class CosmeticsPage extends Page {
         public String getName() {
             return I18n.get(name);
         }
+    }
+
+    private enum CosmeticType {
+        CAPE,
+        SKIN
     }
 
     public CosmeticsPage(PupperClientGui parent) {
@@ -68,69 +77,117 @@ public class CosmeticsPage extends Page {
         addButton.setHandler(new ButtonHandler() {
             @Override
             public void onAction() {
-                uploadCape();
+                uploadCosmetic();
             }
         });
 
-        loadExistingCapes();
+        loadExistingCosmetics();
         selectedCapeId = PupperClient.getInstance().getCapeManager().getSelectedCapeId();
+        selectedSkinId = PupperClient.getInstance().getSkinManager().getSelectedSkinId();
     }
 
-    private void loadExistingCapes() {
+    private void loadExistingCosmetics() {
         capeItems.clear();
+        skinItems.clear();
+        loadCapeItems();
+        loadSkinItems();
+    }
+
+    private void loadCapeItems() {
         File capesDir = FileLocation.CAPES_DIR;
-        if (capesDir.exists() && capesDir.isDirectory()) {
-            File[] capeFiles = capesDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".png"));
-            if (capeFiles != null) {
-                for (File capeFile : capeFiles) {
-                    String capeId = capeFile.getName().replace(".png", "");
-                    capeItems.add(new CapeItem(capeId, capeFile));
-                    try {
-                        byte[] capeData = Files.readAllBytes(capeFile.toPath());
-                        PupperClient.getInstance().getCapeManager().loadCape(capeId, capeData);
-                    } catch (IOException e) {
-                        cn.pupperclient.PupperLogger.error("CosmeticsPage", "Failed to load existing cape", e);
-                    }
-                }
+        if (!capesDir.isDirectory()) return;
+        File[] capeFiles = capesDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".png"));
+        if (capeFiles == null) return;
+
+        for (File capeFile : capeFiles) {
+            String capeId = stripPng(capeFile.getName());
+            capeItems.add(new CosmeticItem(CosmeticType.CAPE, capeId, capeFile));
+            try {
+                PupperClient.getInstance().getCapeManager().loadCape(capeId, Files.readAllBytes(capeFile.toPath()));
+            } catch (IOException e) {
+                cn.pupperclient.PupperLogger.error("CosmeticsPage", "Failed to load existing cape", e);
             }
         }
     }
 
-    private void uploadCape() {
+    private void loadSkinItems() {
+        File skinsDir = FileLocation.SKINS_DIR;
+        if (!skinsDir.isDirectory()) return;
+        File[] skinFiles = skinsDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".png"));
+        if (skinFiles == null) return;
+
+        for (File skinFile : skinFiles) {
+            String skinId = stripPng(skinFile.getName());
+            skinItems.add(new CosmeticItem(CosmeticType.SKIN, skinId, skinFile));
+            try {
+                PupperClient.getInstance().getSkinManager().loadSkin(skinId, Files.readAllBytes(skinFile.toPath()));
+            } catch (IOException e) {
+                cn.pupperclient.PupperLogger.error("CosmeticsPage", "Failed to load existing skin", e);
+            }
+        }
+    }
+
+    private static String stripPng(String name) {
+        return name.substring(0, name.length() - 4);
+    }
+
+    private List<CosmeticItem> visibleItems() {
+        if (selectedCategory == Category.CAPE) return capeItems;
+        if (selectedCategory == Category.SKIN) return skinItems;
+
+        List<CosmeticItem> all = new ArrayList<>(skinItems.size() + capeItems.size());
+        all.addAll(skinItems);
+        all.addAll(capeItems);
+        return all;
+    }
+
+    private void uploadCosmetic() {
         Multithreading.runAsync(() -> {
-            var result = FileDialog.chooseFile("Select Cape", "png");
+            boolean uploadSkin = selectedCategory == Category.SKIN;
+            var result = FileDialog.chooseFile(uploadSkin ? "Select Skin" : "Select Cape", "png");
 
             if (result.left()) {
-                File selectedFile = result.right();
-                if (validateCape(selectedFile)) {
-                    String originalName = selectedFile.getName();
-                    String processedName = originalName.replace(" ", "_");
-                    File targetFile = new File(FileLocation.CAPES_DIR, processedName);
-
-                    if (targetFile.exists()) {
-                        PupperClient.LOGGER.warn("Cape already exists: {}", processedName);
-                        return;
-                    }
-
-                    try {
-                        Files.copy(selectedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        Minecraft.getInstance().execute(this::loadExistingCapes);
-                    } catch (IOException e) {
-                        cn.pupperclient.PupperLogger.error("CosmeticsPage", "Failed to copy uploaded cape", e);
-                    }
-                } else {
-                    PupperClient.LOGGER.warn("Invalid cape format: {}", selectedFile.getAbsolutePath());
-                }
+                copyCosmetic(result.right(), uploadSkin ? FileLocation.SKINS_DIR : FileLocation.CAPES_DIR, uploadSkin);
             }
         });
     }
 
+    private void copyCosmetic(File selectedFile, File directory, boolean skin) {
+        if (!(skin ? validateSkin(selectedFile) : validateCape(selectedFile))) {
+            PupperClient.LOGGER.warn("Invalid {} format: {}", skin ? "skin" : "cape", selectedFile.getAbsolutePath());
+            return;
+        }
+
+        String processedName = selectedFile.getName().replace(" ", "_");
+        File targetFile = new File(directory, processedName);
+        if (targetFile.exists()) {
+            PupperClient.LOGGER.warn("{} already exists: {}", skin ? "Skin" : "Cape", processedName);
+            return;
+        }
+
+        try {
+            Files.copy(selectedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Minecraft.getInstance().execute(this::loadExistingCosmetics);
+        } catch (IOException e) {
+            cn.pupperclient.PupperLogger.error("CosmeticsPage", "Failed to copy uploaded " + (skin ? "skin" : "cape"), e);
+        }
+    }
+
     private boolean validateCape(File file) {
+        return validateImage(file, false);
+    }
+
+    private boolean validateSkin(File file) {
+        return validateImage(file, true);
+    }
+
+    private boolean validateImage(File file, boolean skin) {
         try {
             BufferedImage image = ImageIO.read(file);
             if (image == null) return false;
             int width = image.getWidth();
             int height = image.getHeight();
+            if (skin) return width == 64 && (height == 64 || height == 32);
             return (width == 64 && height == 32) || (width == 128 && height == 64);
         } catch (IOException e) {
             return false;
@@ -143,7 +200,6 @@ public class CosmeticsPage extends Page {
 
         double relativeMouseY = mouseY - scrollHelper.getValue();
 
-        // Draw category bar (similar to ModsPage)
         drawCategoryBar(mouseX, mouseY);
 
         Skia.save();
@@ -189,9 +245,10 @@ public class CosmeticsPage extends Page {
         float itemHeight = 220;
         float spacing = 20;
         int itemsPerRow = 5;
+        List<CosmeticItem> items = visibleItems();
 
-        for (int i = 0; i < capeItems.size(); i++) {
-            CapeItem item = capeItems.get(i);
+        for (int i = 0; i < items.size(); i++) {
+            CosmeticItem item = items.get(i);
             int row = i / itemsPerRow;
             int col = i % itemsPerRow;
             float itemX = startX + col * (itemWidth + spacing);
@@ -202,7 +259,7 @@ public class CosmeticsPage extends Page {
             itemX = item.xAnimation.getValue();
             itemY = item.yAnimation.getValue();
 
-            boolean isSelected = item.capeId.equals(selectedCapeId);
+            boolean isSelected = item.isSelected(selectedCapeId, selectedSkinId);
             boolean isHovered = MouseUtils.isInside(mouseX, mouseY, itemX, itemY, itemWidth, itemHeight);
             item.focusAnimation.onTick(isHovered ? 1 : 0, 10);
 
@@ -214,27 +271,52 @@ public class CosmeticsPage extends Page {
                 Skia.drawOutline(itemX + 3, itemY + 3, itemWidth - 6, itemHeight - 6, MaterialTheme.CARD_RADIUS + 2, 1.5F, palette.getPrimary());
             }
 
-            if (item.capeFile.exists()) {
-                Identifier capeTexture = PupperClient.getInstance().getCapeManager().getLoadedCape(item.capeId);
-                if (capeTexture != null) {
-                    CapeRenderer.renderRoundedCapePreview(capeTexture,
-                        itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, MaterialTheme.CARD_RADIUS);
-                } else {
-                    // 如果纹理尚未加载，显示加载状态或占位符
-                    Skia.drawRoundedRect(itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, MaterialTheme.CARD_RADIUS,
-                        MaterialTheme.alpha(palette.getSurfaceVariant(), MaterialTheme.opacity() * 0.2F));
-                    // 可以添加加载中的文字提示
-                    String loadingText = "Loading...";
-                    float textWidth = Skia.getTextBounds(loadingText, Fonts.getRegular(12)).getWidth();
-                    Skia.drawText(loadingText, itemX + itemWidth / 2 - textWidth / 2, 
-                        itemY + itemHeight / 2, palette.getOnSurfaceVariant(), Fonts.getRegular(12));
-                }
+            if (item.type == CosmeticType.CAPE) {
+                drawCape(item, itemX, itemY, itemWidth, itemHeight, palette);
+            } else {
+                drawSkin(item, itemX, itemY, itemWidth, itemHeight, palette);
             }
+
+            String label = limitLabel(item.id);
+            Skia.drawFullCenteredText(label, itemX + itemWidth / 2, itemY + itemHeight - 20,
+                isSelected ? palette.getPrimary() : palette.getOnSurfaceVariant(), Fonts.getRegular(11));
         }
 
-        int totalRows = (int) Math.ceil((double) capeItems.size() / itemsPerRow);
+        int totalRows = (int) Math.ceil((double) items.size() / itemsPerRow);
         float totalHeight = totalRows * (itemHeight + spacing);
         scrollHelper.setMaxScroll(totalHeight, height - 200);
+    }
+
+    private void drawCape(CosmeticItem item, float itemX, float itemY, float itemWidth, float itemHeight,
+                          ColorPalette palette) {
+        Identifier capeTexture = PupperClient.getInstance().getCapeManager().getLoadedCape(item.id);
+        if (capeTexture != null) {
+            CapeRenderer.renderRoundedCapePreview(capeTexture,
+                itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, MaterialTheme.CARD_RADIUS);
+        } else {
+            Skia.drawRoundedRect(itemX + 5, itemY + 5, itemWidth - 10, itemHeight - 10, MaterialTheme.CARD_RADIUS,
+                MaterialTheme.alpha(palette.getSurfaceVariant(), MaterialTheme.opacity() * 0.2F));
+            Skia.drawFullCenteredText("Loading...", itemX + itemWidth / 2, itemY + itemHeight / 2,
+                palette.getOnSurfaceVariant(), Fonts.getRegular(12));
+        }
+    }
+
+    private void drawSkin(CosmeticItem item, float itemX, float itemY, float itemWidth, float itemHeight,
+                          ColorPalette palette) {
+        if (!item.file.exists()) {
+            Skia.drawFullCenteredText(Icon.PERSON, itemX + itemWidth / 2, itemY + itemHeight / 2,
+                palette.getOnSurfaceVariant(), Fonts.getRegular(40));
+            return;
+        }
+
+        float scale = 3.0f;
+        float modelWidth = 16 * scale;
+        float modelHeight = 32 * scale;
+        Skia.drawSkin(item.file, itemX + (itemWidth - modelWidth) / 2, itemY + 48, scale);
+    }
+
+    private String limitLabel(String label) {
+        return label.length() > 12 ? label.substring(0, 12) + "..." : label;
     }
 
     @Override
@@ -242,7 +324,6 @@ public class CosmeticsPage extends Page {
         super.mousePressed(mouseX, mouseY, button);
         addButton.mousePressed(mouseX, mouseY, button);
 
-        // Handle category selection
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             float categoryBarY = y + 56;
             float categoryBarHeight = 24;
@@ -254,9 +335,7 @@ public class CosmeticsPage extends Page {
                 float padding = 20.0f;
                 float buttonWidth = textWidth + padding;
                 if (MouseUtils.isInside(mouseX, mouseY, categoryX, categoryBarY, buttonWidth, categoryBarHeight)) {
-                    if (this.selectedCategory != category) {
-                        this.selectedCategory = category;
-                    }
+                    this.selectedCategory = category;
                     return;
                 }
                 categoryX += buttonWidth + 10;
@@ -287,41 +366,60 @@ public class CosmeticsPage extends Page {
         float itemHeight = 220;
         float spacing = 20;
         int itemsPerRow = 5;
+        List<CosmeticItem> items = visibleItems();
 
-        for (int i = 0; i < capeItems.size(); i++) {
+        for (int i = 0; i < items.size(); i++) {
             int row = i / itemsPerRow;
             int col = i % itemsPerRow;
             float itemX = startX + col * (itemWidth + spacing);
             float itemY = startY + row * (itemHeight + spacing);
 
             if (MouseUtils.isInside(mouseX, mouseY, itemX, itemY, itemWidth, itemHeight)) {
-                handleCapeItemClick(capeItems.get(i));
+                handleCosmeticItemClick(items.get(i));
                 return;
             }
         }
     }
 
-    private void handleCapeItemClick(CapeItem item) {
-        CapeManager capeManager = PupperClient.getInstance().getCapeManager();
-        if (item.capeId.equals(selectedCapeId)) {
-            selectedCapeId = null;
-            capeManager.clearSelectedCape();
+    private void handleCosmeticItemClick(CosmeticItem item) {
+        if (item.type == CosmeticType.CAPE) {
+            CapeManager capeManager = PupperClient.getInstance().getCapeManager();
+            if (item.id.equals(selectedCapeId)) {
+                selectedCapeId = null;
+                capeManager.clearSelectedCape();
+            } else {
+                selectedCapeId = item.id;
+                capeManager.selectCape(item.id);
+            }
+            return;
+        }
+
+        SkinManager skinManager = PupperClient.getInstance().getSkinManager();
+        if (item.id.equals(selectedSkinId)) {
+            selectedSkinId = null;
+            skinManager.clearSelectedSkin();
         } else {
-            selectedCapeId = item.capeId;
-            capeManager.selectCape(item.capeId);
+            selectedSkinId = item.id;
+            skinManager.selectSkin(item.id);
         }
     }
 
-    private static class CapeItem {
-        public final String capeId;
-        public final File capeFile;
+    private static class CosmeticItem {
+        public final CosmeticType type;
+        public final String id;
+        public final File file;
         public final SimpleAnimation xAnimation = new SimpleAnimation();
         public final SimpleAnimation yAnimation = new SimpleAnimation();
         public final SimpleAnimation focusAnimation = new SimpleAnimation();
 
-        public CapeItem(String capeId, File capeFile) {
-            this.capeId = capeId;
-            this.capeFile = capeFile;
+        public CosmeticItem(CosmeticType type, String id, File file) {
+            this.type = type;
+            this.id = id;
+            this.file = file;
+        }
+
+        public boolean isSelected(String capeId, String skinId) {
+            return type == CosmeticType.CAPE ? id.equals(capeId) : id.equals(skinId);
         }
     }
 }
