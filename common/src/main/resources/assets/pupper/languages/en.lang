@@ -590,7 +590,7 @@ setting.hud.backgroundblur=HUD background blur
 setting.hud.backgroundblur.description=Blur the scene behind HUD panels
 
 mod.entityoptimizer.name=Entity Render Optimizer
-mod.entityoptimizer.description=Reduce repeated item and chest rendering work without hiding entities
+mod.entityoptimizer.description=Reduce repeated item, chest, minecart and boat rendering work without hiding entities
 setting.entityoptimizer.items=Optimize dropped items
 setting.entityoptimizer.items.description=Cache static item models, batch vertices and limit duplicate models under load
 setting.entityoptimizer.chests=Optimize closed chests
@@ -599,6 +599,8 @@ setting.entityoptimizer.threshold=Item load threshold
 setting.entityoptimizer.threshold.description=Visible item count before limiting model copies and simplifying distant shadows
 setting.entityoptimizer.shadows=Simplify item shadows
 setting.entityoptimizer.shadows.description=Under load keep shadows within 8 blocks, or 4 at twice the threshold; items remain visible
+setting.entityoptimizer.minecarts=Optimize minecarts
+setting.entityoptimizer.minecarts.description=Reuse the rail orientation of stationary minecarts to skip their per-frame block lookups
 
 
 # Music player and NetEase library

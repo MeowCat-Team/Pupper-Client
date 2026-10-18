@@ -26,6 +26,7 @@
     "minecraft.client.render.MixinCamera",
     "minecraft.client.render.MixinEntityRenderer",
     "minecraft.client.render.MixinChestRendererOptimization",
+    "minecraft.client.render.MixinAbstractMinecartRendererOptimization",
     "minecraft.client.render.MixinLevelRendererOptimization",
     "minecraft.client.render.MixinLevelExtractorOptimization",
     "minecraft.client.render.MixinItemShadowOptimization",

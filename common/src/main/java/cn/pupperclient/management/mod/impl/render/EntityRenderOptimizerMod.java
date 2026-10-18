@@ -26,6 +26,9 @@ public class EntityRenderOptimizerMod extends Mod {
         Icon.PERFORMANCE_MAX, this, 64, 16, 256, 16) {
         @Override public boolean isVisible() { return optimizeItems.isEnabled() && optimizeItemShadows.isEnabled(); }
     };
+    private final BooleanSetting optimizeMinecarts = new BooleanSetting(
+        "setting.entityoptimizer.minecarts", "setting.entityoptimizer.minecarts.description",
+        Icon.TRAIN, this, true);
 
     public EntityRenderOptimizerMod() {
         super("mod.entityoptimizer.name", "mod.entityoptimizer.description",
@@ -51,5 +54,10 @@ public class EntityRenderOptimizerMod extends Mod {
 
     public int getItemThreshold() {
         return (int) itemThreshold.getValue();
+    }
+
+    /** 静止矿车复用上一帧的铁路姿态，跳过每帧 6 次方块查询与 10 次坐标分配。 */
+    public boolean optimizeMinecarts() {
+        return isEnabled() && optimizeMinecarts.isEnabled();
     }
 }
