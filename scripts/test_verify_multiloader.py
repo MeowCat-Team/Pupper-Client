@@ -49,10 +49,18 @@ def mod_class(mod_id="pupper"):
 
 
 class ArtifactFixture:
-    def __init__(self, directory):
+    def __init__(self, directory, skija_platforms=("windows-x64", "linux-x64"), omit_libraries=()):
         self.directory = Path(directory)
+        self.omit_libraries = set(omit_libraries)
         self.tweaker = self.directory / "pupper.classtweaker"
         self.tweaker.write_bytes(TWEAKER.encode())
+        # The licence inventory is part of the verified artifact, so the fixture ships one.
+        self.inventory = self.directory / "THIRD-PARTY.md"
+        rows = "".join(f"| Skija | " + chr(96) + f"skija-{platform}" + chr(96) + " | Apache-2.0 |\n"
+                       for platform in skija_platforms)
+        self.inventory.write_text("# Third-party components\n\n"
+                                  "| Library | Coordinates | License |\n| --- | --- | --- |\n" + rows,
+                                  encoding="utf-8")
         self.fabric_path = self.directory / "fabric.jar"
         self.neo_path = self.directory / "neoforge.jar"
         self.common = {
@@ -82,6 +90,8 @@ class ArtifactFixture:
         self.neo_jij = {"jars": []}
         self.libraries = {}
         for artifact in verifier.REQUIRED_LIBRARIES:
+            if artifact in self.omit_libraries:
+                continue
             name = artifact + "-1.0.0.jar"
             files = {"library/" + artifact + ".class": b"same library bytes"}
             for class_file in verifier.REQUIRED_LIBRARY_CLASSES.get(artifact, ()):
@@ -114,9 +124,11 @@ class ArtifactFixture:
         self.fabric_path.write_bytes(jar_bytes(self.fabric))
         self.neo_path.write_bytes(jar_bytes(self.neo))
 
-    def verify(self):
+    def verify(self, required_libraries=None):
         self.save()
-        return verifier.verify(self.fabric_path, self.neo_path, self.tweaker, version=VERSION)
+        return verifier.verify(self.fabric_path, self.neo_path, self.tweaker, version=VERSION,
+                               project_root=self.directory,
+                               required_libraries=required_libraries or verifier.REQUIRED_LIBRARIES)
 
 
 class ParityChecks(unittest.TestCase):
@@ -130,8 +142,9 @@ class ParityChecks(unittest.TestCase):
         self.assertEqual(3, result["shared_classes"])
         self.assertEqual(2, result["shared_assets"])
         self.assertEqual(7, result["access_rules"])
-        self.assertEqual(15, result["shared_libraries"])
+        self.assertEqual(16, result["shared_libraries"])
         self.assertEqual(8, result["native_resources"])
+        self.assertEqual(["linux-x64", "windows-x64"], result["documented_skija_platforms"])
 
     def test_shared_class_byte_difference_fails(self):
         self.fixture.neo["cn/pupperclient/music/Player.class"] = b"diverged music implementation"
@@ -163,6 +176,28 @@ class ParityChecks(unittest.TestCase):
         self.fixture.fabric_meta["mixins"].append("pupper-smoke.mixins.json")
         with self.assertRaisesRegex(verifier.VerificationError, "development smoke mixins declared"):
             self.fixture.verify()
+
+    def test_documented_platform_missing_from_jar_fails(self):
+        """The regression: THIRD-PARTY.md claimed skija-linux-x64 while only Windows shipped."""
+        self.fixture = ArtifactFixture(self.directory.name,
+                                       skija_platforms=("windows-x64", "linux-x64"),
+                                       omit_libraries=("skija-linux-x64",))
+        with self.assertRaisesRegex(verifier.VerificationError, "missing packaged library skija-linux-x64"):
+            self.fixture.verify()
+
+    def test_packaged_platform_absent_from_documentation_fails(self):
+        self.fixture = ArtifactFixture(self.directory.name, skija_platforms=("windows-x64",))
+        with self.assertRaisesRegex(verifier.VerificationError, "Skija platforms disagree with the JAR"):
+            self.fixture.verify()
+
+    def test_windows_only_documentation_and_jar_pass(self):
+        """The inventory check is symmetric: shipping and documenting only Windows is consistent."""
+        self.fixture = ArtifactFixture(self.directory.name, skija_platforms=("windows-x64",),
+                                       omit_libraries=("skija-linux-x64",))
+        result = self.fixture.verify(
+            required_libraries=[name for name in verifier.REQUIRED_LIBRARIES
+                                if name != "skija-linux-x64"])
+        self.assertEqual(["windows-x64"], result["documented_skija_platforms"])
 
     def test_shared_class_missing_fails(self):
         del self.fixture.neo["cn/pupperclient/music/Player.class"]

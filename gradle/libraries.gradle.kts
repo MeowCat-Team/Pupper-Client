@@ -7,7 +7,10 @@ if (project.name != "common") {
 }
 
 dependencies {
-    listOf("caffeine", "humbleui-types", "skija-windows", "skija-shared", "junixsocket-common", "junixsocket-native-common",
+    // Every native dependency ships for both supported desktop platforms; a release JAR that
+    // carries only one of them fails at Skia's first native call on the other.
+    listOf("caffeine", "humbleui-types", "skija-windows", "skija-linux", "skija-shared",
+        "junixsocket-common", "junixsocket-native-common",
         "java-websocket", "mp3agic", "mp3spi", "tritonus-share", "jaudiotagger", "jlayer-google",
         "mcping", "reflect", "lwjgl-nfd").forEach {
         add("modJij", catalog.findLibrary(it).get())

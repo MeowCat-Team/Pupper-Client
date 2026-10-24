@@ -22,7 +22,8 @@ NESTING_METADATA = "META-INF/architectury-loom-nesting-metadata.json"
 SMOKE_PACKAGE = "cn/pupperclient/smoke/"
 SMOKE_MIXINS = "pupper-smoke.mixins.json"
 REQUIRED_LIBRARIES = (
-    "caffeine", "types", "skija-shared", "skija-windows-x64", "junixsocket-common", "junixsocket-native-common",
+    "caffeine", "types", "skija-shared", "skija-windows-x64", "skija-linux-x64",
+    "junixsocket-common", "junixsocket-native-common",
     "Java-WebSocket", "mp3agic", "mp3spi", "jaudiotagger", "jlayer",
     "tritonus-share", "MCPing", "Reflect", "lwjgl-nfd",
 )
@@ -39,6 +40,10 @@ REQUIRED_LIBRARY_NATIVES = {
         ("lib/x86_64-MacOSX-clang/jni/", ".dylib"),
         ("lib/aarch64-MacOSX-clang/jni/", ".dylib"),
     ),
+    # Skija extracts the native library from the module matching the running OS, so every
+    # platform the client claims to support has to ship its own module.
+    "skija-windows-x64": (("io/github/humbleui/skija/windows/x64/", "skija.dll"),),
+    "skija-linux-x64": (("io/github/humbleui/skija/linux/x64/", "libskija.so"),),
 }
 NFD_NATIVE_PATHS = (
     "windows/x64/org/lwjgl/nfd/lwjgl_nfd.dll",
@@ -46,6 +51,11 @@ NFD_NATIVE_PATHS = (
     "macos/x64/org/lwjgl/nfd/liblwjgl_nfd.dylib",
     "macos/arm64/org/lwjgl/nfd/liblwjgl_nfd.dylib",
 )
+# Every nested artifact must be named in THIRD-PARTY.md, and every Skija platform listed there
+# must actually be packaged. Without this the licence inventory silently drifts from the JAR.
+THIRD_PARTY = "THIRD-PARTY.md"
+SKIJA_ARTIFACT = "skija-"
+SKIJA_PLATFORM_SUFFIXES = ("windows-x64", "linux-x64", "macos-x64", "macos-arm64")
 
 
 def check(condition: bool, message: str) -> None:
@@ -254,7 +264,33 @@ def native_resources(files: dict[str, bytes], libraries: dict[str, dict[str, byt
     return result
 
 
-def verify_sources(fabric: Path, neoforge: Path) -> dict[str, int]:
+def documented_skija_platforms(inventory):
+    """Skija platform artifacts the licence inventory claims are bundled."""
+    return {suffix for suffix in SKIJA_PLATFORM_SUFFIXES
+            if SKIJA_ARTIFACT + suffix in inventory}
+
+
+def verify_third_party_inventory(root, packaged):
+    """Cross-checks THIRD-PARTY.md against the libraries actually bundled.
+
+    The licence inventory is a published statement about the artifact, so it has to be derived
+    from the same facts as the build. Checking it here means a platform dropped from
+    ``gradle/libraries.gradle.kts`` fails verification instead of shipping a JAR that
+    disagrees with its own documentation.
+    """
+    inventory_path = root / THIRD_PARTY
+    check(inventory_path.is_file(), f"licence inventory missing: {THIRD_PARTY}")
+    inventory = inventory_path.read_text(encoding="utf-8")
+    documented = documented_skija_platforms(inventory)
+    packaged_skija = {suffix for suffix in SKIJA_PLATFORM_SUFFIXES
+                      if any(name.startswith(SKIJA_ARTIFACT + suffix + "-") for name in packaged)}
+    check(documented == packaged_skija,
+          f"{THIRD_PARTY}: Skija platforms disagree with the JAR; "
+          f"documented={sorted(documented)}, packaged={sorted(packaged_skija)}")
+    return {"documented_skija_platforms": sorted(documented)}
+
+
+def verify_sources(fabric, neoforge):
     left, right = entries(fabric, "Fabric sources"), entries(neoforge, "NeoForge sources")
     platform_metadata = {"META-INF/MANIFEST.MF", "fabric.mod.json", "META-INF/neoforge.mods.toml"}
     common = lambda items: {name: data for name, data in items.items()
@@ -265,7 +301,8 @@ def verify_sources(fabric: Path, neoforge: Path) -> dict[str, int]:
 
 
 def verify(fabric: Path, neoforge: Path, classtweaker: Path, *, version: str | None = None,
-           required_libraries: tuple[str, ...] = REQUIRED_LIBRARIES) -> dict[str, object]:
+           required_libraries: tuple[str, ...] = REQUIRED_LIBRARIES,
+           project_root: Path | None = None) -> dict[str, object]:
     left, right = entries(fabric, "Fabric"), entries(neoforge, "NeoForge")
     no_smoke_entries(left, "Fabric")
     no_smoke_entries(right, "NeoForge")
@@ -351,10 +388,13 @@ def verify(fabric: Path, neoforge: Path, classtweaker: Path, *, version: str | N
         require(native_left, name, "Fabric NFD native")
         require(native_right, name, "NeoForge NFD native")
     natives = same_entries(native_left, native_right, "NFD native resources")
+    inventory = verify_third_party_inventory(
+        project_root or classtweaker.resolve().parents[4],
+        set(paired_left) | set(libs_left) | set(libs_right))
     return {"version": fabric_meta["version"], "shared_classes": classes, "shared_assets": assets,
             "common_mixins": len(common_mixins), "access_rules": len(expected),
             "shared_libraries": len(paired_left), "native_resources": natives,
-            "neoforge_entrypoints": neo_entrypoints}
+            "neoforge_entrypoints": neo_entrypoints, **inventory}
 
 
 def main() -> int:

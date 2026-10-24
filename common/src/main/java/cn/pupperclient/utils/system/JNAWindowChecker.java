@@ -29,7 +29,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class JNAWindowChecker {
-    private static final User32 USER32 = User32.INSTANCE;
+    /**
+     * The window enumeration is Win32-only, and resolving {@code User32.INSTANCE} on another
+     * platform fails while the class initialises. The mod that owns this helper is available on
+     * every platform, so the native handle is only created where it exists.
+     */
+    private static final User32 USER32 = OS.isWindows() ? User32.INSTANCE : null;
     private static ScheduledExecutorService scheduler;
 
     private static final AtomicReference<WindowInfo> cachedWindowInfo =
@@ -43,7 +48,7 @@ public class JNAWindowChecker {
     public record WindowInfo(String title, long timestamp) {}
 
     public static void startBackgroundMonitoring() {
-        if (scheduler != null && !scheduler.isShutdown()) {
+        if (USER32 == null || scheduler != null && !scheduler.isShutdown()) {
             return;
         }
 
@@ -81,6 +86,9 @@ public class JNAWindowChecker {
     }
 
     private static String findCloudMusicWindowTitle() {
+        if (USER32 == null) {
+            return "No Song";
+        }
         final List<String> windowTitles = new ArrayList<>();
 
         WNDENUMPROC enumProc = (hwnd, arg) -> {

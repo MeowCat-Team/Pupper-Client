@@ -41,11 +41,17 @@ These libraries are shaded into the release JARs by Loom's jar-in-jar support
 Versions come from `gradle/libs.versions.toml`; the coordinates below are the
 stable part of each entry.
 
+The Skija rows list the platform modules that are packaged, not the full upstream
+set: a native module is only shipped for a platform the client supports, and the
+two must stay in sync. `scripts/verify_multiloader.py` fails when the platforms
+named here and the modules inside the JAR disagree, so this table cannot drift
+from the artifact again.
+
 | Library | Coordinates | License |
 | --- | --- | --- |
 | Caffeine | `com.github.ben-manes.caffeine:caffeine` | Apache-2.0 |
 | HumbleUI types | `io.github.humbleui:types` | Apache-2.0 |
-| Skija | `io.github.humbleui:skija-shared`, `skija-windows-x64`, `skija-linux-x64` | Apache-2.0 |
+| Skija | `io.github.humbleui:skija-shared`, `skija-windows-x64`, `skija-linux-x64` — one native module per supported desktop platform, selected at runtime | Apache-2.0 |
 | junixsocket | `com.kohlschutter.junixsocket:junixsocket-common`, `junixsocket-native-common` | Apache-2.0 |
 | Java-WebSocket | `org.java-websocket:Java-WebSocket` | MIT |
 | mp3agic | `com.mpatric:mp3agic` | MIT |
