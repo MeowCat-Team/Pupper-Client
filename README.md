@@ -32,4 +32,7 @@ Maintainers publish by bumping `mod_version` and pushing to `architectury/<minec
 Open an issue before larger contributions.
 
 ## License
-MIT — see [LICENSE](LICENSE).
+Pupper Client is licensed under the GNU General Public License, version 3 or later
+(GPL-3.0-or-later) — see [LICENSE](LICENSE). Portions derived from Soar Client (MIT)
+are attributed in [NOTICE](NOTICE); third-party components are listed in
+[THIRD-PARTY.md](THIRD-PARTY.md).
