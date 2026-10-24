@@ -15,7 +15,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 package cn.pupperclient.management.mod.impl.player;
 
 import net.minecraft.client.input.KeyEvent;
