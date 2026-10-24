@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.architectury.loom) apply false
     alias(libs.plugins.shadow) apply false
     alias(libs.plugins.modrinth.minotaur) apply false
+    alias(libs.plugins.spotless) apply false
 }
 
 val minecraftVersion = providers.gradleProperty("minecraft_version").get()
@@ -74,4 +75,19 @@ tasks.register("runClient") {
     group = "fabric"
     description = "Compatibility alias for the Fabric development client; NeoForge uses :neoforge:runClient."
     dependsOn(":fabric:runClient")
+}
+
+// Fails the build when a first-party source loses its license header.
+// Vendored sources are excluded: their upstream licenses require the headers they ship with.
+subprojects {
+    pluginManager.withPlugin("java") {
+        apply(plugin = "com.diffplug.spotless")
+        extensions.configure<com.diffplug.gradle.spotless.SpotlessExtension> {
+            java {
+                target("src/**/*.java")
+                targetExclude("src/main/java/cn/pupperclient/libraries/**")
+                licenseHeaderFile(rootProject.file("gradle/license-header.txt"))
+            }
+        }
+    }
 }
