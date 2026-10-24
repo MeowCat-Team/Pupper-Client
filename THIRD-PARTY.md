@@ -12,11 +12,15 @@ attributed in [NOTICE](NOTICE).
 | --- | --- | --- | --- | --- |
 | libFLAC (Java port) | `common/src/main/java/cn/pupperclient/libraries/flac/` | Copyright (C) 2000-2003 Josh Coalson; Java port by kc7bfi | LGPL-2.0-or-later | No — original GNU header kept in every file |
 | DiscordIPC | `common/src/main/java/cn/pupperclient/libraries/discordipc/` | Copyright 2017 John Grosh (john.a.grosh@gmail.com) | Apache-2.0 | No |
-| Material Color Utilities | `common/src/main/java/cn/pupperclient/libraries/material3/` | Copyright 2021-2024 Google LLC | Apache-2.0 | Small changes in `Material3.java` |
+| Material Color Utilities | `common/src/main/java/cn/pupperclient/libraries/material3/` (except `Material3.java`) | Copyright 2021-2024 Google LLC | Apache-2.0 | No |
 
 These directories are excluded from the project license header check
 (`spotlessCheck`) on purpose: their files carry the upstream notices, and those
-notices must not be replaced.
+notices must not be replaced. The one exception is
+`libraries/material3/Material3.java`: it is a first-party adapter written against
+the library's public API (it calls the project's own `ImageUtils` and adds
+helpers that upstream does not have), so it carries the project license header
+rather than Google's.
 
 ## Bundled fonts
 
