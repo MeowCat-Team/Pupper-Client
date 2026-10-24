@@ -87,7 +87,7 @@ public class HomePage extends SimplePage {
             palette.getOnSurfaceVariant(), Fonts.getMedium(12));
 
         Skia.drawText("Welcome back.", x + PAGE_PADDING, y + 78,
-            palette.getOnSurface(), Fonts.getGoogleSansRegular(36));
+            palette.getOnSurface(), Fonts.getOpenSansMedium(36));
         Skia.drawText("Everything you need, one click away.", x + PAGE_PADDING, y + 122,
             palette.getOnSurfaceVariant(), Fonts.getRegular(15));
 
