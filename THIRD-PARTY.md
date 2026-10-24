@@ -38,21 +38,24 @@ The full SIL OFL 1.1 text that these fonts require is shipped next to them in
 These libraries are shaded into the release JARs by Loom's jar-in-jar support
 (see `gradle/libraries.gradle.kts`). None of them is modified.
 
+Versions come from `gradle/libs.versions.toml`; the coordinates below are the
+stable part of each entry.
+
 | Library | Coordinates | License |
 | --- | --- | --- |
-| Caffeine | `com.github.ben-manes.caffeine:caffeine:3.1.8` | Apache-2.0 |
-| HumbleUI types | `io.github.humbleui:types:0.2.0` | Apache-2.0 |
-| Skija | `io.github.humbleui:skija-shared:0.143.12`, `skija-windows-x64`, `skija-linux-x64` | Apache-2.0 |
-| junixsocket | `com.kohlschutter.junixsocket:junixsocket-common:2.10.1`, `junixsocket-native-common` | Apache-2.0 |
-| Java-WebSocket | `org.java-websocket:Java-WebSocket:1.6.0` | MIT |
-| mp3agic | `com.mpatric:mp3agic:0.9.1` | MIT |
-| mp3spi | `com.googlecode.soundlibs:mp3spi:1.9.5.4` | LGPL-2.1 |
-| tritonus-share | `com.googlecode.soundlibs:tritonus-share:0.3.7.4` | LGPL-2.1 |
-| jaudiotagger | `org:jaudiotagger:2.0.3` | LGPL-2.1 |
-| jlayer | `com.googlecode.soundlibs:jlayer:1.0.1.4` | LGPL-2.1 |
-| MCPing | `net.lenni0451:MCPing:1.4.2` | MIT |
-| Reflect | `net.lenni0451:Reflect:1.4.0` | MIT |
-| LWJGL NFD | `org.lwjgl:lwjgl-nfd:3.4.1` (+ `natives-*` classifiers) | BSD-3-Clause |
+| Caffeine | `com.github.ben-manes.caffeine:caffeine` | Apache-2.0 |
+| HumbleUI types | `io.github.humbleui:types` | Apache-2.0 |
+| Skija | `io.github.humbleui:skija-shared`, `skija-windows-x64`, `skija-linux-x64` | Apache-2.0 |
+| junixsocket | `com.kohlschutter.junixsocket:junixsocket-common`, `junixsocket-native-common` | Apache-2.0 |
+| Java-WebSocket | `org.java-websocket:Java-WebSocket` | MIT |
+| mp3agic | `com.mpatric:mp3agic` | MIT |
+| mp3spi | `com.googlecode.soundlibs:mp3spi` | LGPL-2.1 |
+| tritonus-share | `com.googlecode.soundlibs:tritonus-share` | LGPL-2.1 |
+| jaudiotagger | `org:jaudiotagger` | LGPL-2.1 |
+| jlayer | `com.googlecode.soundlibs:jlayer` | LGPL-2.1 |
+| MCPing | `net.lenni0451:MCPing` | MIT |
+| Reflect | `net.lenni0451:Reflect` | MIT |
+| LWJGL NFD | `org.lwjgl:lwjgl-nfd` (+ `natives-*` classifiers) | BSD-3-Clause |
 
 ## Build and runtime dependencies that are not redistributed
 
@@ -85,6 +88,6 @@ replacement can be supplied by rebuilding from this source tree.
 
 | Component | Reason |
 | --- | --- |
-| ResourcePackConverter (`libraries/resourcepack/`, 25 files) | No copyright or license header in any file and its origin could not be established, so it could not be redistributed lawfully. Removed with the `Convert` button it powered. |
+| ResourcePackConverter (`libraries/resourcepack/`) | No copyright or license header in any file and its origin could not be established, so it could not be redistributed lawfully. Removed with the `Convert` button it powered. |
 | Google Sans (`assets/pupper/fonts/GoogleSans-Regular.ttf`) | Proprietary Google font, licensed only for Google's own products; not redistributable. Replaced by Open Sans Medium. |
 | Meteor Client `Color.java` / `ICopyable.java` and the unused `shader/` package | GPL-3.0-only code reachable only from dead code. Keeping it would have forced the whole JAR to GPL-3.0-only instead of GPL-3.0-or-later. |
