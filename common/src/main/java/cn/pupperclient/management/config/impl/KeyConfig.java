@@ -23,6 +23,7 @@ import cn.pupperclient.management.config.Config;
 import cn.pupperclient.management.config.ConfigType;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModManager;
+import cn.pupperclient.management.mod.ModNames;
 
 public class KeyConfig extends Config {
 
@@ -51,23 +52,25 @@ public class KeyConfig extends Config {
                 JsonObject modKeybinds = jsonObject.getAsJsonObject("modKeybinds");
 
                 for (java.util.Map.Entry<String, ?> entry : modKeybinds.entrySet()) {
-                    String modName = entry.getKey();
+                    String savedKey = entry.getKey();
 
                     try {
-                        if (modKeybinds.has(modName) && modKeybinds.get(modName).isJsonPrimitive()) {
-                            int keyCode = modKeybinds.get(modName).getAsInt();
+                        if (modKeybinds.has(savedKey) && modKeybinds.get(savedKey).isJsonPrimitive()) {
+                            int keyCode = modKeybinds.get(savedKey).getAsInt();
 
-                            Mod mod = modManager.getModByName(modName);
+                            // Older builds saved the translated display name; resolve it so an
+                            // existing installation keeps its keybinds through the migration.
+                            Mod mod = ModNames.resolve(modManager, savedKey);
                             if (mod != null) {
                                 mod.setKeybind(keyCode);
                                 loadedCount++;
-                                PupperClient.LOGGER.debug("Loaded keybind for mod {}: keycode {}", modName, keyCode);
+                                PupperClient.LOGGER.debug("Loaded keybind for {}: keycode {}", savedKey, keyCode);
                             } else {
-                                PupperClient.LOGGER.warn("Mod not found for keybind: {}", modName);
+                                PupperClient.LOGGER.warn("Mod not found for keybind: {}", savedKey);
                             }
                         }
                     } catch (Exception e) {
-                        PupperClient.LOGGER.error("Error loading keybind for mod {}: {}", modName, e.getMessage());
+                        PupperClient.LOGGER.error("Error loading keybind for {}: {}", savedKey, e.getMessage());
                     }
                 }
             }
@@ -95,7 +98,7 @@ public class KeyConfig extends Config {
             for (Mod mod : modManager.getMods()) {
                 try {
                     if (mod.getKeybind() != 0) {
-                        modKeybinds.addProperty(mod.getName(), mod.getKeybind());
+                        modKeybinds.addProperty(ModNames.configKey(mod), mod.getKeybind());
                         savedCount++;
                     }
                 } catch (Exception e) {

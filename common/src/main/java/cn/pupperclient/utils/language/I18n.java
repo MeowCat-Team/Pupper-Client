@@ -20,14 +20,14 @@ package cn.pupperclient.utils.language;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public final class I18n {
 
-	private static final Map<String, String> translateMap = new HashMap<>();
-	private static final Map<String, String> fallbackMap = new HashMap<>();
+	private static final Map<Language, Map<String, String>> bundles = new EnumMap<>(Language.class);
 	private static Language currentLanguage;
 
 	private I18n() {
@@ -35,18 +35,23 @@ public final class I18n {
 
 	public static void setLanguage(Language language) {
 		currentLanguage = language;
-		load(language, translateMap);
+		bundle(language);
 		if (language != Language.ENGLISH) {
-			load(Language.ENGLISH, fallbackMap);
-		} else {
-			fallbackMap.clear();
+			bundle(Language.ENGLISH);
 		}
+	}
+
+	private static Map<String, String> bundle(Language language) {
+		return bundles.computeIfAbsent(language, key -> {
+			Map<String, String> map = new HashMap<>();
+			load(key, map);
+			return map;
+		});
 	}
 
 	private static void load(Language language, Map<String, String> map) {
 
 		String resourcePath = String.format("assets/pupper/languages/%s.lang", language.getId());
-		map.clear();
 
 		try (BufferedReader reader = new BufferedReader(new InputStreamReader(
             Objects.requireNonNull(I18n.class.getClassLoader().getResourceAsStream(resourcePath), "Language file not found: " + resourcePath), StandardCharsets.UTF_8))) {
@@ -60,7 +65,19 @@ public final class I18n {
 	}
 
 	public static String get(String key) {
-		return translateMap.getOrDefault(key, fallbackMap.getOrDefault(key, key));
+		if (currentLanguage == null) {
+			return key;
+		}
+		String translated = bundle(currentLanguage).get(key);
+		if (translated != null) {
+			return translated;
+		}
+		return currentLanguage == Language.ENGLISH ? key : bundle(Language.ENGLISH).getOrDefault(key, key);
+	}
+
+	/** Reads a translation without changing the active language. */
+	public static String get(Language language, String key) {
+		return bundle(language).getOrDefault(key, key);
 	}
 
 	public static Language getCurrentLanguage() {

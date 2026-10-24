@@ -57,6 +57,16 @@ dependencies {
     add("hudVerificationRuntimeOnly", libs.skija.linux.get())
 }
 
+// Guards the saved-config keys against depending on the selected language.
+val verifyConfigKeys = tasks.register<JavaExec>("verifyConfigKeys") {
+    group = "verification"
+    description = "Checks that saved mod settings and keybinds survive a language switch."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.config.ConfigKeyChecks")
+}
+tasks.check { dependsOn(verifyConfigKeys) }
+
 // Dependency-free design checks run on the same Java/toolchain and color library as the client.
 val verifyHudDesign = tasks.register<JavaExec>("verifyHudDesign") {
     group = "verification"

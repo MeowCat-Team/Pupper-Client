@@ -18,6 +18,7 @@
 package cn.pupperclient.management.config.impl;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import cn.pupperclient.PupperClient;
@@ -29,6 +30,7 @@ import cn.pupperclient.management.config.Config;
 import cn.pupperclient.management.config.ConfigType;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModManager;
+import cn.pupperclient.management.mod.ModNames;
 import cn.pupperclient.management.mod.api.AnchorPosition;
 import cn.pupperclient.management.mod.api.Position;
 import cn.pupperclient.management.mod.api.hud.HUDMod;
@@ -74,14 +76,22 @@ public class ModConfig extends Config {
     private void loadModsConfiguration(ModManager modManager, JsonObject modsJson) {
         DynamicIsland.setConfigLoading(true);
 
-        for (Mod mod : modManager.getMods()) {
-            JsonObject modJson = JsonUtils.getObjectProperty(modsJson, mod.getName());
+        List<String> migratedKeys = new ArrayList<>();
+        List<Mod> mods = modManager.getMods();
+
+        for (Mod mod : mods) {
+            JsonObject modJson = ModNames.find(modsJson, mod, mods, migratedKeys);
 
             if (modJson != null) {
                 loadModBasicSettings(mod, modJson);
                 loadHUDModSettings(mod, modJson);
                 loadModSpecificSettings(mod, modManager, modJson);
             }
+        }
+
+        if (!migratedKeys.isEmpty()) {
+            // The next save rewrites every entry under its stable key, dropping these.
+            PupperClient.LOGGER.info("Migrated {} mod settings from translated names to stable keys", migratedKeys.size());
         }
 
         DynamicIsland.setConfigLoading(false);
@@ -207,7 +217,7 @@ public class ModConfig extends Config {
             saveModBasicSettings(mod, modJson);
             saveHUDModSettings(mod, modJson);
             saveModSpecificSettings(mod, modManager, modJson);
-            modsJson.add(mod.getName(), modJson);
+            modsJson.add(ModNames.configKey(mod), modJson);
         }
     }
 
