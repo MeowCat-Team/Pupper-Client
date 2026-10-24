@@ -32,7 +32,7 @@ public class AutoTextMod extends Mod {
     }
 
     public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> {
-        if (client.player != null) {
+        if (client.player == null) {
             return;
         }
 
