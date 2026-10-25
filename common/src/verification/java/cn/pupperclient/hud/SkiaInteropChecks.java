@@ -51,7 +51,7 @@ public final class SkiaInteropChecks {
         require(frameCalls.indexOf("blitFromTexture") < frameCalls.indexOf("submit")
                 && frameCalls.indexOf("submit") < frameCalls.indexOf("present"), "UI hook is no longer before submission/presentation");
         List<String> targets = new ArrayList<>();
-        read("cn/pupperclient/mixin/mixins/minecraft/client/MixinMinecraftClient", new ClassVisitor(ASM9) {
+        read("cn/pupperclient/mixin/core/minecraft/client/MixinMinecraftClient", new ClassVisitor(ASM9) {
             @Override public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
                 return new MethodVisitor(ASM9) {
                     @Override public AnnotationVisitor visitAnnotation(String desc, boolean visible) {

@@ -20,7 +20,7 @@ package cn.pupperclient.management.mod.api.hud;
 import cn.pupperclient.gui.edithud.api.HUDCore;
 import cn.pupperclient.management.mod.api.AnchorPosition;
 import cn.pupperclient.management.mod.api.hud.design.ContextInfoHudUi;
-import cn.pupperclient.mixin.mixins.accessors.PlayerTabOverlayAccessor;
+import cn.pupperclient.mixin.core.accessors.PlayerTabOverlayAccessor;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ChatScreen;

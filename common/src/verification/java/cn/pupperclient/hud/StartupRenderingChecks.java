@@ -17,7 +17,7 @@
 
 package cn.pupperclient.hud;
 
-import cn.pupperclient.mixin.mixins.minecraft.client.render.MixinTextureAtlas;
+import cn.pupperclient.mixin.core.minecraft.client.render.MixinTextureAtlas;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -123,7 +123,7 @@ public final class StartupRenderingChecks {
         require(constructorAllocates.get(), "Globals is no longer allocated before constructor return");
 
         AtomicBoolean constructorTarget = new AtomicBoolean(), atReturn = new AtomicBoolean(), callsInitializer = new AtomicBoolean();
-        try (InputStream source = resource("cn/pupperclient/mixin/mixins/minecraft/client/render/MixinGameRenderer.class")) {
+        try (InputStream source = resource("cn/pupperclient/mixin/core/minecraft/client/render/MixinGameRenderer.class")) {
             new ClassReader(source).accept(new ClassVisitor(ASM9) {
                 @Override public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
                     if (!name.equals("pupper$initializeStartupUniforms")) return null;

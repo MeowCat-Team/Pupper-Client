@@ -97,7 +97,7 @@ public final class MixinCompatibilityChecks {
     }
 
     private static void checkSharedHudMixin(List<byte[]> classes) {
-        String mixin = "cn/pupperclient/mixin/mixins/minecraft/client/render/MixinInGameHud";
+        String mixin = "cn/pupperclient/mixin/core/minecraft/client/render/MixinInGameHud";
         for (byte[] bytes : classes) {
             ClassNode node = new ClassNode();
             new ClassReader(bytes).accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);

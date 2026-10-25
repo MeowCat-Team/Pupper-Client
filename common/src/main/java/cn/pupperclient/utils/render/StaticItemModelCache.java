@@ -21,8 +21,8 @@ import java.lang.ref.WeakReference;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import cn.pupperclient.mixin.mixins.accessors.CuboidItemModelWrapperAccessor;
-import cn.pupperclient.mixin.mixins.accessors.ItemModelResolverAccessor;
+import cn.pupperclient.mixin.core.accessors.CuboidItemModelWrapperAccessor;
+import cn.pupperclient.mixin.core.accessors.ItemModelResolverAccessor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.item.CuboidItemModelWrapper;
 import net.minecraft.client.renderer.item.ItemModel;
