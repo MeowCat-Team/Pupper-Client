@@ -17,9 +17,10 @@
 
 package cn.pupperclient.management.config.impl;
 
-import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.mod.impl.hud.DynamicIsland;
@@ -40,6 +41,102 @@ import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.misc.JsonUtils;
 
 public class ModConfig extends Config {
+
+    /** Serialises one setting subtype to and from the shared settings object. */
+    private interface SettingCodec {
+        void load(Setting setting, JsonObject settings);
+        void save(Setting setting, JsonObject settings);
+    }
+
+    /**
+     * One codec per setting subtype. A subtype with no entry keeps its default value,
+     * which is why {@link #codec} has no fallback branch.
+     */
+    private static final Map<Class<? extends Setting>, SettingCodec> CODECS = new LinkedHashMap<>();
+
+    static {
+        CODECS.put(BooleanSetting.class, new SettingCodec() {
+            @Override public void load(Setting setting, JsonObject settings) {
+                BooleanSetting value = (BooleanSetting) setting;
+                value.setEnabled(JsonUtils.getBooleanProperty(settings, value.getName(), value.getDefaultValue()));
+            }
+            @Override public void save(Setting setting, JsonObject settings) {
+                settings.addProperty(setting.getName(), ((BooleanSetting) setting).isEnabled());
+            }
+        });
+        CODECS.put(ColorSetting.class, new SettingCodec() {
+            @Override public void load(Setting setting, JsonObject settings) {
+                ColorSetting value = (ColorSetting) setting;
+                int stored = JsonUtils.getIntProperty(settings, value.getName(), value.getColor().getRGB());
+                value.setColor(ColorUtils.getColorFromInt(stored));
+            }
+            @Override public void save(Setting setting, JsonObject settings) {
+                settings.addProperty(setting.getName(), ((ColorSetting) setting).getColor().getRGB());
+            }
+        });
+        CODECS.put(ComboSetting.class, new SettingCodec() {
+            @Override public void load(Setting setting, JsonObject settings) {
+                ComboSetting value = (ComboSetting) setting;
+                String stored = JsonUtils.getStringProperty(settings, value.getName(), "");
+                value.setOption(value.has(stored) ? stored : value.getDefaultOption());
+            }
+            @Override public void save(Setting setting, JsonObject settings) {
+                settings.addProperty(setting.getName(), ((ComboSetting) setting).getOption());
+            }
+        });
+        CODECS.put(HctColorSetting.class, new SettingCodec() {
+            @Override public void load(Setting setting, JsonObject settings) {
+                HctColorSetting value = (HctColorSetting) setting;
+                int stored = JsonUtils.getIntProperty(settings, value.getName(), value.getDefaultHct().toInt());
+                value.setHct(Hct.fromInt(stored));
+            }
+            @Override public void save(Setting setting, JsonObject settings) {
+                settings.addProperty(setting.getName(), ((HctColorSetting) setting).getHct().toInt());
+            }
+        });
+        CODECS.put(KeybindSetting.class, new SettingCodec() {
+            @Override public void load(Setting setting, JsonObject settings) {
+                KeybindSetting value = (KeybindSetting) setting;
+                JsonObject stored = JsonUtils.getObjectProperty(settings, value.getName());
+                if (stored == null) {
+                    value.setKey(value.getDefaultKey());
+                    return;
+                }
+                String inputType = JsonUtils.getStringProperty(stored, "type", "");
+                int keyCode = JsonUtils.getIntProperty(stored, "code", -1);
+                if (!inputType.isEmpty() && keyCode != -1) {
+                    value.setKey(determineInputType(inputType).getOrCreate(keyCode));
+                } else {
+                    value.setKey(value.getDefaultKey());
+                }
+            }
+            @Override public void save(Setting setting, JsonObject settings) {
+                KeybindSetting value = (KeybindSetting) setting;
+                JsonObject keybind = new JsonObject();
+                keybind.addProperty("type", getInputTypeString(value.getKey().getType()));
+                keybind.addProperty("code", value.getKey().getValue());
+                settings.add(value.getName(), keybind);
+            }
+        });
+        CODECS.put(NumberSetting.class, new SettingCodec() {
+            @Override public void load(Setting setting, JsonObject settings) {
+                NumberSetting value = (NumberSetting) setting;
+                value.setValue(JsonUtils.getFloatProperty(settings, value.getName(), value.getValue()));
+            }
+            @Override public void save(Setting setting, JsonObject settings) {
+                settings.addProperty(setting.getName(), ((NumberSetting) setting).getValue());
+            }
+        });
+        CODECS.put(StringSetting.class, new SettingCodec() {
+            @Override public void load(Setting setting, JsonObject settings) {
+                StringSetting value = (StringSetting) setting;
+                value.setValue(JsonUtils.getStringProperty(settings, value.getName(), value.getDefaultValue()));
+            }
+            @Override public void save(Setting setting, JsonObject settings) {
+                settings.addProperty(setting.getName(), ((StringSetting) setting).getValue());
+            }
+        });
+    }
 
     public ModConfig() {
         super(ConfigType.MOD);
@@ -130,85 +227,8 @@ public class ModConfig extends Config {
         }
 
         for (Setting setting : settings) {
-            loadSettingValue(setting, settingsJson);
+            codec(setting).load(setting, settingsJson);
         }
-    }
-
-    private void loadSettingValue(Setting setting, JsonObject settingsJson) {
-        if (setting instanceof BooleanSetting) {
-            loadBooleanSetting((BooleanSetting) setting, settingsJson);
-        } else if (setting instanceof ColorSetting) {
-            loadColorSetting((ColorSetting) setting, settingsJson);
-        } else if (setting instanceof ComboSetting) {
-            loadComboSetting((ComboSetting) setting, settingsJson);
-        } else if (setting instanceof HctColorSetting) {
-            loadHctColorSetting((HctColorSetting) setting, settingsJson);
-        } else if (setting instanceof KeybindSetting) {
-            loadKeybindSetting((KeybindSetting) setting, settingsJson);
-        } else if (setting instanceof NumberSetting) {
-            loadNumberSetting((NumberSetting) setting, settingsJson);
-        } else if (setting instanceof StringSetting) {
-            loadStringSetting((StringSetting) setting, settingsJson);
-        } else if (setting instanceof FileSetting) {
-            loadFileSetting((FileSetting) setting, settingsJson);
-        }
-    }
-
-    private void loadBooleanSetting(BooleanSetting setting, JsonObject settingsJson) {
-        boolean value = JsonUtils.getBooleanProperty(settingsJson, setting.getName(), setting.getDefaultValue());
-        setting.setEnabled(value);
-    }
-
-    private void loadColorSetting(ColorSetting setting, JsonObject settingsJson) {
-        int colorValue = JsonUtils.getIntProperty(settingsJson, setting.getName(), setting.getColor().getRGB());
-        setting.setColor(ColorUtils.getColorFromInt(colorValue));
-    }
-
-    private void loadComboSetting(ComboSetting setting, JsonObject settingsJson) {
-        String option = JsonUtils.getStringProperty(settingsJson, setting.getName(), "");
-        String finalOption = setting.has(option) ? option : setting.getDefaultOption();
-        setting.setOption(finalOption);
-    }
-
-    private void loadHctColorSetting(HctColorSetting setting, JsonObject settingsJson) {
-        int hctValue = JsonUtils.getIntProperty(settingsJson, setting.getName(), setting.getDefaultHct().toInt());
-        setting.setHct(Hct.fromInt(hctValue));
-    }
-
-    private void loadKeybindSetting(KeybindSetting setting, JsonObject settingsJson) {
-        JsonObject keybindJson = JsonUtils.getObjectProperty(settingsJson, setting.getName());
-
-        if (keybindJson == null) {
-            setting.setKey(setting.getDefaultKey());
-            return;
-        }
-
-        String inputType = JsonUtils.getStringProperty(keybindJson, "type", "");
-        int keyCode = JsonUtils.getIntProperty(keybindJson, "code", -1);
-
-        InputConstants.Type type = determineInputType(inputType);
-
-        if (!inputType.isEmpty() && keyCode != -1) {
-            setting.setKey(type.getOrCreate(keyCode));
-        } else {
-            setting.setKey(setting.getDefaultKey());
-        }
-    }
-
-    private void loadNumberSetting(NumberSetting setting, JsonObject settingsJson) {
-        float value = JsonUtils.getFloatProperty(settingsJson, setting.getName(), setting.getValue());
-        setting.setValue(value);
-    }
-
-    private void loadStringSetting(StringSetting setting, JsonObject settingsJson) {
-        String value = JsonUtils.getStringProperty(settingsJson, setting.getName(), setting.getDefaultValue());
-        setting.setValue(value);
-    }
-
-    private void loadFileSetting(FileSetting setting, JsonObject settingsJson) {
-        String filePath = JsonUtils.getStringProperty(settingsJson, setting.getName(), "");
-        File file = (filePath != null && !filePath.isEmpty()) ? new File(filePath) : setting.getDefaultValue();
-        setting.setFile(file);
     }
 
     private void saveModsConfiguration(ModManager modManager, JsonObject modsJson) {
@@ -246,74 +266,28 @@ public class ModConfig extends Config {
         JsonObject settingsJson = new JsonObject();
 
         for (Setting setting : settings) {
-            saveSettingValue(setting, settingsJson);
+            codec(setting).save(setting, settingsJson);
         }
 
         modJson.add("settings", settingsJson);
     }
 
-    private void saveSettingValue(Setting setting, JsonObject settingsJson) {
-        if (setting instanceof BooleanSetting) {
-            saveBooleanSetting((BooleanSetting) setting, settingsJson);
-        } else if (setting instanceof ColorSetting) {
-            saveColorSetting((ColorSetting) setting, settingsJson);
-        } else if (setting instanceof ComboSetting) {
-            saveComboSetting((ComboSetting) setting, settingsJson);
-        } else if (setting instanceof HctColorSetting) {
-            saveHctColorSetting((HctColorSetting) setting, settingsJson);
-        } else if (setting instanceof KeybindSetting) {
-            saveKeybindSetting((KeybindSetting) setting, settingsJson);
-        } else if (setting instanceof NumberSetting) {
-            saveNumberSetting((NumberSetting) setting, settingsJson);
-        } else if (setting instanceof StringSetting) {
-            saveStringSetting((StringSetting) setting, settingsJson);
-        } else if (setting instanceof FileSetting) {
-            saveFileSetting((FileSetting) setting, settingsJson);
+    /**
+     * Resolves the codec for a setting's subtype.
+     *
+     * @throws IllegalStateException when a subtype is added without a codec, so a new
+     *         setting cannot be silently dropped from the saved configuration
+     */
+    private static SettingCodec codec(Setting setting) {
+        for (Map.Entry<Class<? extends Setting>, SettingCodec> entry : CODECS.entrySet()) {
+            if (entry.getKey().isInstance(setting)) {
+                return entry.getValue();
+            }
         }
+        throw new IllegalStateException("No config codec for " + setting.getClass().getName());
     }
 
-    private void saveBooleanSetting(BooleanSetting setting, JsonObject settingsJson) {
-        settingsJson.addProperty(setting.getName(), setting.isEnabled());
-    }
-
-    private void saveColorSetting(ColorSetting setting, JsonObject settingsJson) {
-        settingsJson.addProperty(setting.getName(), setting.getColor().getRGB());
-    }
-
-    private void saveComboSetting(ComboSetting setting, JsonObject settingsJson) {
-        settingsJson.addProperty(setting.getName(), setting.getOption());
-    }
-
-    private void saveHctColorSetting(HctColorSetting setting, JsonObject settingsJson) {
-        settingsJson.addProperty(setting.getName(), setting.getHct().toInt());
-    }
-
-    private void saveKeybindSetting(KeybindSetting setting, JsonObject settingsJson) {
-        JsonObject keybindJson = new JsonObject();
-        InputConstants.Type type = setting.getKey().getType();
-
-        String saveType = getInputTypeString(type);
-        keybindJson.addProperty("type", saveType);
-        keybindJson.addProperty("code", setting.getKey().getValue());
-
-        settingsJson.add(setting.getName(), keybindJson);
-    }
-
-    private void saveNumberSetting(NumberSetting setting, JsonObject settingsJson) {
-        settingsJson.addProperty(setting.getName(), setting.getValue());
-    }
-
-    private void saveStringSetting(StringSetting setting, JsonObject settingsJson) {
-        settingsJson.addProperty(setting.getName(), setting.getValue());
-    }
-
-    private void saveFileSetting(FileSetting setting, JsonObject settingsJson) {
-        File file = setting.getFile();
-        String filePath = (file != null) ? file.getAbsolutePath() : "null";
-        settingsJson.addProperty(setting.getName(), filePath);
-    }
-
-    private InputConstants.Type determineInputType(String inputType) {
+    private static InputConstants.Type determineInputType(String inputType) {
         return switch (inputType) {
             case "key" -> InputConstants.Type.KEYSYM;
             case "mouse" -> InputConstants.Type.MOUSE;
@@ -321,7 +295,7 @@ public class ModConfig extends Config {
         };
     }
 
-    private String getInputTypeString(InputConstants.Type type) {
+    private static String getInputTypeString(InputConstants.Type type) {
         if (type.equals(InputConstants.Type.KEYSYM)) {
             return "key";
         } else if (type.equals(InputConstants.Type.MOUSE)) {

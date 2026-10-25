@@ -17,7 +17,6 @@
 
 package cn.pupperclient.gui.modmenu.component;
 
-import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -29,7 +28,6 @@ import cn.pupperclient.management.color.api.ColorPalette;
 import cn.pupperclient.management.mod.settings.Setting;
 import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
 import cn.pupperclient.management.mod.settings.impl.ComboSetting;
-import cn.pupperclient.management.mod.settings.impl.FileSetting;
 import cn.pupperclient.management.mod.settings.impl.HctColorSetting;
 import cn.pupperclient.management.mod.settings.impl.KeybindSetting;
 import cn.pupperclient.management.mod.settings.impl.NumberSetting;
@@ -38,14 +36,12 @@ import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.Fonts;
 import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.ComboButtonHandler;
-import cn.pupperclient.ui.component.handler.impl.FileSelectorHandler;
 import cn.pupperclient.ui.component.handler.impl.HctColorPickerHandler;
 import cn.pupperclient.ui.component.handler.impl.KeybindHandler;
 import cn.pupperclient.ui.component.handler.impl.SliderHandler;
 import cn.pupperclient.ui.component.handler.impl.SwitchHandler;
 import cn.pupperclient.ui.component.handler.impl.TextHandler;
 import cn.pupperclient.ui.component.impl.ComboButton;
-import cn.pupperclient.ui.component.impl.FileSelector;
 import cn.pupperclient.ui.component.impl.HctColorPicker;
 import cn.pupperclient.ui.component.impl.Keybind;
 import cn.pupperclient.ui.component.impl.Slider;
@@ -141,17 +137,6 @@ public class SettingBar extends Component {
             return textField;
         });
 
-        register(FileSetting.class, setting -> {
-            FileSetting fSetting = (FileSetting) setting;
-            FileSelector fileSelector = new FileSelector(0, 0, fSetting.getFile(), fSetting.getExtensions());
-            fileSelector.setHandler(new FileSelectorHandler() {
-                @Override
-                public void onSelect(File file) {
-                    fSetting.setFile(file);
-                }
-            });
-            return fileSelector;
-        });
     }
 
     private static void register(Class<? extends Setting> settingClass, Function<Setting, Component> factory) {
