@@ -34,7 +34,6 @@ import cn.pupperclient.ui.component.Component;
 import cn.pupperclient.ui.component.handler.impl.ButtonHandler;
 import cn.pupperclient.ui.component.impl.IconButton;
 import cn.pupperclient.utils.thread.Multithreading;
-import cn.pupperclient.utils.file.FileLocation;
 import cn.pupperclient.utils.file.FileDialog;
 import cn.pupperclient.utils.language.I18n;
 import cn.pupperclient.utils.mouse.MouseUtils;
@@ -42,14 +41,9 @@ import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import io.github.humbleui.skija.Font;
-import javax.imageio.ImageIO;
 import net.minecraft.client.Minecraft;
 import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -106,46 +100,10 @@ public class CosmeticsPage extends Page {
     private void loadExistingCosmetics() {
         capeItems.clear();
         skinItems.clear();
-        loadCapeItems();
-        loadSkinItems();
-    }
-
-    private void loadCapeItems() {
-        File capesDir = FileLocation.CAPES_DIR;
-        if (!capesDir.isDirectory()) return;
-        File[] capeFiles = capesDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".png"));
-        if (capeFiles == null) return;
-
-        for (File capeFile : capeFiles) {
-            String capeId = stripPng(capeFile.getName());
-            capeItems.add(new CosmeticItem(CosmeticType.CAPE, capeId, capeFile));
-            try {
-                PupperClient.getInstance().getCapeManager().loadCape(capeId, Files.readAllBytes(capeFile.toPath()));
-            } catch (IOException e) {
-                cn.pupperclient.PupperLogger.error("CosmeticsPage", "Failed to load existing cape", e);
-            }
+        for (CosmeticStore.Item item : CosmeticStore.load()) {
+            (item.skin() ? skinItems : capeItems).add(
+                new CosmeticItem(item.skin() ? CosmeticType.SKIN : CosmeticType.CAPE, item.id(), item.file()));
         }
-    }
-
-    private void loadSkinItems() {
-        File skinsDir = FileLocation.SKINS_DIR;
-        if (!skinsDir.isDirectory()) return;
-        File[] skinFiles = skinsDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".png"));
-        if (skinFiles == null) return;
-
-        for (File skinFile : skinFiles) {
-            String skinId = stripPng(skinFile.getName());
-            skinItems.add(new CosmeticItem(CosmeticType.SKIN, skinId, skinFile));
-            try {
-                PupperClient.getInstance().getSkinManager().loadSkin(skinId, Files.readAllBytes(skinFile.toPath()));
-            } catch (IOException e) {
-                cn.pupperclient.PupperLogger.error("CosmeticsPage", "Failed to load existing skin", e);
-            }
-        }
-    }
-
-    private static String stripPng(String name) {
-        return name.substring(0, name.length() - 4);
     }
 
     private List<CosmeticItem> visibleItems() {
@@ -162,53 +120,12 @@ public class CosmeticsPage extends Page {
         Multithreading.runAsync(() -> {
             boolean uploadSkin = selectedCategory == Category.SKIN;
             var result = FileDialog.chooseFile(uploadSkin ? "Select Skin" : "Select Cape", "png");
+            if (!result.left()) return;
 
-            if (result.left()) {
-                copyCosmetic(result.right(), uploadSkin ? FileLocation.SKINS_DIR : FileLocation.CAPES_DIR, uploadSkin);
+            if (CosmeticStore.add(result.right(), uploadSkin) != null) {
+                Minecraft.getInstance().execute(this::loadExistingCosmetics);
             }
         });
-    }
-
-    private void copyCosmetic(File selectedFile, File directory, boolean skin) {
-        if (!(skin ? validateSkin(selectedFile) : validateCape(selectedFile))) {
-            PupperClient.LOGGER.warn("Invalid {} format: {}", skin ? "skin" : "cape", selectedFile.getAbsolutePath());
-            return;
-        }
-
-        String processedName = selectedFile.getName().replace(" ", "_");
-        File targetFile = new File(directory, processedName);
-        if (targetFile.exists()) {
-            PupperClient.LOGGER.warn("{} already exists: {}", skin ? "Skin" : "Cape", processedName);
-            return;
-        }
-
-        try {
-            Files.copy(selectedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            Minecraft.getInstance().execute(this::loadExistingCosmetics);
-        } catch (IOException e) {
-            cn.pupperclient.PupperLogger.error("CosmeticsPage", "Failed to copy uploaded " + (skin ? "skin" : "cape"), e);
-        }
-    }
-
-    private boolean validateCape(File file) {
-        return validateImage(file, false);
-    }
-
-    private boolean validateSkin(File file) {
-        return validateImage(file, true);
-    }
-
-    private boolean validateImage(File file, boolean skin) {
-        try {
-            BufferedImage image = ImageIO.read(file);
-            if (image == null) return false;
-            int width = image.getWidth();
-            int height = image.getHeight();
-            if (skin) return width == 64 && (height == 64 || height == 32);
-            return (width == 64 && height == 32) || (width == 128 && height == 64);
-        } catch (IOException e) {
-            return false;
-        }
     }
 
     @Override
