@@ -17,8 +17,6 @@
 
 package cn.pupperclient.management.mod.impl.hud;
 
-import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.management.mod.settings.impl.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
@@ -39,9 +37,6 @@ public class JumpResetIndicatorMod extends SimpleHUDMod {
 		instance = this;
 	}
 
-	public EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-		this.draw();
-	};
 
 	@Override
 	public String getText() {

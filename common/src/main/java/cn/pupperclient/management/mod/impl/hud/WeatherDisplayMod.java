@@ -17,8 +17,6 @@
 
 package cn.pupperclient.management.mod.impl.hud;
 
-import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.skia.font.Icon;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -33,9 +31,6 @@ public class WeatherDisplayMod extends SimpleHUDMod {
 		super("mod.weatherdisplay.name", "mod.weatherdisplay.description", Icon.SUNNY);
 	}
 
-	public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-		this.draw();
-	};
 
 	@Override
 	public String getText() {

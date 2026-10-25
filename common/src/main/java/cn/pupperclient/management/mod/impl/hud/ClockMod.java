@@ -20,8 +20,6 @@ package cn.pupperclient.management.mod.impl.hud;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
-import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.skia.font.Icon;
 
@@ -33,9 +31,6 @@ public class ClockMod extends SimpleHUDMod{
 		super("mod.clock.name", "mod.clock.description", Icon.SCHEDULE);
 	}
 
-	public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-		this.draw();
-	};
 	
 	@Override
 	public String getText() {

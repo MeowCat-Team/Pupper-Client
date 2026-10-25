@@ -18,8 +18,6 @@
 package cn.pupperclient.management.mod.impl.hud;
 
 import cn.pupperclient.PupperClient;
-import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.skia.font.Icon;
 
@@ -29,9 +27,6 @@ public class PlayTimeDisplayMod extends SimpleHUDMod {
 		super("mod.playtimedisplay.name", "mod.playtimedisplay.description", Icon.WATCH);
 	}
 
-	public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-		this.draw();
-	};
 
 	@Override
 	public String getText() {

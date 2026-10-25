@@ -17,8 +17,6 @@
 
 package cn.pupperclient.management.mod.impl.fun;
 
-import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.management.mod.settings.impl.ComboSetting;
 import cn.pupperclient.management.mod.settings.impl.NumberSetting;
@@ -96,9 +94,6 @@ public class FakeFpsMod extends SimpleHUDMod {
         };
     }
 
-    public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-        this.draw();
-    };
 
     @Override
     public String getText() {

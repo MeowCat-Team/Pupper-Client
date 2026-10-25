@@ -20,8 +20,6 @@ package cn.pupperclient.management.mod.impl.hud;
 import java.text.DecimalFormat;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
-import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.skia.font.Icon;
 
@@ -33,9 +31,6 @@ public class SpeedometerMod extends SimpleHUDMod {
 		super("mod.speedometer.name", "mod.speedometer.description", Icon.SPEED);
 	}
 
-	public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-		this.draw();
-	};
 	
 	@Override
 	public String getText() {

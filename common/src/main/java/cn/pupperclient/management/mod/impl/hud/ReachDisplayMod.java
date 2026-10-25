@@ -22,7 +22,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.event.server.impl.AttackEntityEvent;
 import cn.pupperclient.event.server.impl.DamageEntityEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
@@ -41,9 +40,6 @@ public class ReachDisplayMod extends SimpleHUDMod {
 		super("mod.reachdisplay.name", "mod.reachdisplay.description", Icon.SOCIAL_DISTANCE);
 	}
 
-	public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-		this.draw();
-	};
 
 	public final EventBus.EventListener<DamageEntityEvent> onDamageEntity = event -> {
 		// Damage packets arrive on the network thread; world and player state is

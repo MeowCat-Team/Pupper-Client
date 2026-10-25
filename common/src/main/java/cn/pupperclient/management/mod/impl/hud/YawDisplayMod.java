@@ -19,8 +19,6 @@ package cn.pupperclient.management.mod.impl.hud;
 
 import java.text.DecimalFormat;
 
-import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.skia.font.Icon;
 
@@ -32,9 +30,6 @@ public class YawDisplayMod extends SimpleHUDMod {
 		super("mod.yawdisplay.name", "mod.yawdisplay.description", Icon.ARROW_RANGE);
 	}
 
-	public EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-		this.draw();
-	};
 
 	@Override
 	public String getText() {

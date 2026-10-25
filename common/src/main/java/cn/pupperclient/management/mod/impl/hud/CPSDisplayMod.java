@@ -23,7 +23,6 @@ import org.lwjgl.glfw.GLFW;
 
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
 import cn.pupperclient.skia.font.Icon;
@@ -40,9 +39,6 @@ public class CPSDisplayMod extends SimpleHUDMod {
         super("mod.cpsdisplay.name", "mod.cpsdisplay.description", Icon.MOUSE);
     }
 
-    public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-        this.draw();
-    };
 
     public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> {
         leftPresses.removeIf(t -> System.currentTimeMillis() - t > 1000);

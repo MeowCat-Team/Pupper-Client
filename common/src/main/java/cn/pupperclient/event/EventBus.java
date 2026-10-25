@@ -22,6 +22,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -58,12 +59,35 @@ public class EventBus {
     private final Comparator<EventListener<?>> priorityOrder = Comparator
         .comparingInt((EventListener<?> listener) -> listener.getPriority()).reversed();
 
+    /**
+     * Fields of the class and its superclasses.
+     *
+     * <p>Listeners declared on a shared base class have to reach the subclass that is
+     * registered, otherwise moving a listener up the hierarchy would silently stop it.
+     */
     private Field[] getCachedDeclaredFields(final Class<?> clazz) {
-        return declaredFieldsCache.computeIfAbsent(clazz, Class::getDeclaredFields);
+        return declaredFieldsCache.computeIfAbsent(clazz, EventBus::allFields);
     }
 
+    /** Methods of the class and its superclasses, for the same reason as the fields. */
     private Method[] getCachedDeclaredMethods(final Class<?> clazz) {
-        return declaredMethodsCache.computeIfAbsent(clazz, Class::getDeclaredMethods);
+        return declaredMethodsCache.computeIfAbsent(clazz, EventBus::allMethods);
+    }
+
+    private static Field[] allFields(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        for (Class<?> current = clazz; current != null && current != Object.class; current = current.getSuperclass()) {
+            Collections.addAll(fields, current.getDeclaredFields());
+        }
+        return fields.toArray(new Field[0]);
+    }
+
+    private static Method[] allMethods(Class<?> clazz) {
+        List<Method> methods = new ArrayList<>();
+        for (Class<?> current = clazz; current != null && current != Object.class; current = current.getSuperclass()) {
+            Collections.addAll(methods, current.getDeclaredMethods());
+        }
+        return methods.toArray(new Method[0]);
     }
 
     public void register(final Object object) {

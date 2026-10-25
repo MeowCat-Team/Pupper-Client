@@ -20,6 +20,8 @@ package cn.pupperclient.management.mod.api.hud;
 import java.awt.Color;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import cn.pupperclient.event.EventBus;
+import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.design.HUDColors;
 import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
@@ -47,6 +49,9 @@ public abstract class SimpleHUDMod extends HUDMod {
     private boolean initialized;
 
     public SimpleHUDMod(String name, String description, String icon) { super(name, description, icon); }
+
+    /** Draws this metric once per frame; subclasses that need more override {@link #draw()}. */
+    public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> draw();
 
     protected void draw() {
         float dt = motion.deltaSeconds();

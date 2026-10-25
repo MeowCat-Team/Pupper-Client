@@ -24,7 +24,6 @@ import org.lwjgl.glfw.GLFW;
 
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.management.mod.settings.impl.KeybindSetting;
 import cn.pupperclient.skia.font.Icon;
@@ -45,9 +44,6 @@ public class StopwatchMod extends SimpleHUDMod {
 		super("mod.stopwatch.name", "mod.stopwatch.description", Icon.TIMER);
 	}
 
-	public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-		this.draw();
-	};
 
 	public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> {
 

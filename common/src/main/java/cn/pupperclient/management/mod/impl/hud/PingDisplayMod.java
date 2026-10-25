@@ -19,7 +19,6 @@ package cn.pupperclient.management.mod.impl.hud;
 
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.management.mod.settings.impl.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
@@ -42,9 +41,6 @@ public class PingDisplayMod extends SimpleHUDMod {
 		pinging = false;
 	}
 
-	public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
-		this.draw();
-	};
 	public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> updatePing();
 
 	private void updatePing() {

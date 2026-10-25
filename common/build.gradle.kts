@@ -67,6 +67,16 @@ val verifyConfigKeys = tasks.register<JavaExec>("verifyConfigKeys") {
 }
 tasks.check { dependsOn(verifyConfigKeys) }
 
+// The bus scans declared members, so a listener moved to a base class must still register.
+val verifyEventBus = tasks.register<JavaExec>("verifyEventBus") {
+    group = "verification"
+    description = "Checks event registration and dispatch across the class hierarchy."
+    dependsOn(hudVerification.classesTaskName)
+    classpath = hudVerification.runtimeClasspath
+    mainClass.set("cn.pupperclient.event.EventBusChecks")
+}
+tasks.check { dependsOn(verifyEventBus) }
+
 // Dependency-free design checks run on the same Java/toolchain and color library as the client.
 val verifyHudDesign = tasks.register<JavaExec>("verifyHudDesign") {
     group = "verification"
