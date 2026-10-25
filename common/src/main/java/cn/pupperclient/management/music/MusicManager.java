@@ -17,32 +17,15 @@
 
 package cn.pupperclient.management.music;
 
-import java.awt.Color;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import cn.pupperclient.utils.thread.Multithreading;
 import cn.pupperclient.management.music.media.MediaSession;
 import cn.pupperclient.management.music.media.WindowsSmtc;
 
-import javax.imageio.ImageIO;
 
-import com.mpatric.mp3agic.ID3v1;
-import com.mpatric.mp3agic.ID3v2;
-import com.mpatric.mp3agic.Mp3File;
-import cn.pupperclient.libraries.flac.FLACDecoder;
-import cn.pupperclient.libraries.flac.metadata.Metadata;
-import cn.pupperclient.libraries.flac.metadata.Picture;
-import cn.pupperclient.libraries.flac.metadata.VorbisComment;
-import cn.pupperclient.utils.render.ImageUtils;
 import cn.pupperclient.utils.file.FileLocation;
-import cn.pupperclient.utils.file.FileUtils;
 
 public class MusicManager {
     private static final AtomicReferenceFieldUpdater<MusicManager, Music> CURRENT =
@@ -152,9 +135,8 @@ public class MusicManager {
 
     public synchronized void load() throws Exception {
         if (isLoading) {
-            return; // if is loading return
+            return;
         }
-
         synchronized (this) {
             if (isLoading) {
                 return;
@@ -163,115 +145,17 @@ public class MusicManager {
         }
 
         try {
-            List<Music> loaded = new ArrayList<>();
-
-            File musicDir = FileLocation.MUSIC_DIR;
-
-            File[] files = musicDir.listFiles();
-            if (files == null) {
-                return;
-            }
-            Arrays.sort(files, Comparator.comparing(File::getName, String.CASE_INSENSITIVE_ORDER));
-            for (File f : files) {
-                String name = f.getName().toLowerCase(Locale.ROOT);
-                try {
-                    if (name.endsWith(".flac")) loaded.add(loadFlacFile(f));
-                    else if (name.endsWith(".mp3")) loaded.add(loadMp3File(f));
-                } catch (Exception invalid) {
-                    cn.pupperclient.PupperLogger.error("MusicManager", "Could not load " + f.getName(), invalid);
-                }
-            }
             // Publish one complete snapshot; refreshes must not briefly empty a playing library.
-            musics = List.copyOf(loaded);
+            List<Music> loaded = MusicLibraryScanner.scan(library);
+            musics = loaded;
             Music current = currentMusic;
-            if (current != null) CURRENT.compareAndSet(this, current,
-                loaded.stream().filter(m -> m.getAudio().equals(current.getAudio())).findFirst().orElse(current));
+            if (current != null) {
+                CURRENT.compareAndSet(this, current, loaded.stream()
+                    .filter(m -> m.getAudio().equals(current.getAudio())).findFirst().orElse(current));
+            }
         } finally {
             isLoading = false;
         }
-    }
-
-    private Music loadFlacFile(File f) throws Exception {
-        Metadata[] metadata;
-        try (FileInputStream input = new FileInputStream(f)) {
-            metadata = new FLACDecoder(input).readMetadata();
-        }
-        String title = null;
-        String artist = null;
-        byte[] imageData = null;
-
-        for (Metadata meta : metadata) {
-            if (meta instanceof VorbisComment) {
-                VorbisComment comment = (VorbisComment) meta;
-                String[] titles = comment.getCommentByName("TITLE");
-                if (titles!=null && titles.length > 0) {
-                    title = titles[0];
-                } else {
-                    String fileName = f.getName();
-                    title= fileName.substring(0, fileName.lastIndexOf("."));
-                }
-                String[] artists = comment.getCommentByName("ARTIST");
-                if (artists!=null && artists.length > 0) {
-                    artist = artists[0];
-                }
-            } else if (meta instanceof Picture) {
-                Picture picture = (Picture) meta;
-                imageData = picture.getImage();
-            }
-        }
-
-        return createMusic(f, title, artist, imageData);
-    }
-
-    private Music createMusic(File f, String title, String artist, byte[] imageData) throws Exception {
-        MusicTrack metadata = library.metadata(f.getName());
-        if (metadata != null) {
-            title = metadata.title();
-            artist = metadata.artist();
-        }
-        String fileHash = imageData == null ? "unused" : FileUtils.getMd5Checksum(f);
-        File album = new File(FileLocation.CACHE_DIR, fileHash);
-        Color color = Color.BLACK;
-
-        if (imageData != null && !album.exists()) {
-            FileOutputStream fos = new FileOutputStream(album);
-            fos.write(imageData);
-            fos.close();
-        }
-
-        if (imageData != null && album.exists()) {
-            color = ImageUtils.calculateAverageColor(ImageIO.read(album));
-        }
-
-        File providerCover = metadata == null ? null : new File(FileLocation.CACHE_DIR, metadata.coverFilename());
-        if (providerCover != null && providerCover.isFile()) album = providerCover;
-        String fallback = f.getName().substring(0, f.getName().lastIndexOf('.'));
-        return new Music(f, title == null || title.isBlank() ? fallback : title,
-            artist == null ? "" : artist, album.exists() ? album : null, color, metadata);
-    }
-
-    private Music loadMp3File(File f) throws Exception {
-        String title = null;
-        String artist = null;
-        byte[] imageData = null;
-
-        try {
-            Mp3File mp3file = new Mp3File(f);
-            if (mp3file.hasId3v2Tag()) {
-                ID3v2 id3v2Tag = mp3file.getId3v2Tag();
-                title = id3v2Tag.getTitle();
-                artist = id3v2Tag.getArtist();
-                imageData = id3v2Tag.getAlbumImage();
-            } else if (mp3file.hasId3v1Tag()) {
-                ID3v1 id3v1Tag = mp3file.getId3v1Tag();
-                title = id3v1Tag.getTitle();
-                artist = id3v1Tag.getArtist();
-            }
-        } catch (Exception e) {
-            cn.pupperclient.PupperLogger.error("MusicManager", "Failed to load MP3 tags", e);
-        }
-
-        return createMusic(f, title, artist, imageData);
     }
 
     public MusicService getService() { return service; }
