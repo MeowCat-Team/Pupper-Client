@@ -47,22 +47,22 @@ dependencies {
 }
 
 // Standalone checks have their own source set; they are not JUnit tests.
-val hudVerification = sourceSets.create("hudVerification") {
+val verification = sourceSets.create("verification") {
     compileClasspath += sourceSets.main.get().output + configurations.compileClasspath.get()
     runtimeClasspath += output + sourceSets.main.get().output + configurations.runtimeClasspath.get()
 }
 
 dependencies {
     // These checks load the production HUD fonts through Skia; CI runs the verification on Linux.
-    add("hudVerificationRuntimeOnly", libs.skija.linux.get())
+    add("verificationRuntimeOnly", libs.skija.linux.get())
 }
 
 // Guards the saved-config keys against depending on the selected language.
 val verifyConfigKeys = tasks.register<JavaExec>("verifyConfigKeys") {
     group = "verification"
     description = "Checks that saved mod settings and keybinds survive a language switch."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.config.ConfigKeyChecks")
 }
 tasks.check { dependsOn(verifyConfigKeys) }
@@ -71,8 +71,8 @@ tasks.check { dependsOn(verifyConfigKeys) }
 val verifyEventBus = tasks.register<JavaExec>("verifyEventBus") {
     group = "verification"
     description = "Checks event registration and dispatch across the class hierarchy."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.event.EventBusChecks")
 }
 tasks.check { dependsOn(verifyEventBus) }
@@ -81,8 +81,8 @@ tasks.check { dependsOn(verifyEventBus) }
 val verifyHudDesign = tasks.register<JavaExec>("verifyHudDesign") {
     group = "verification"
     description = "Checks HUD color contrast and frame-rate-independent motion."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.HUDDesignChecks")
 }
 tasks.check { dependsOn(verifyHudDesign) }
@@ -90,8 +90,8 @@ tasks.check { dependsOn(verifyHudDesign) }
 tasks.register<JavaExec>("previewHudTheme") {
     group = "verification"
     description = "Renders the HUD theme specimen with the bundled Skia fonts (Windows)."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.HUDThemePreview")
     args(layout.buildDirectory.file("reports/hud/theme-preview.png").get().asFile.absolutePath)
 }
@@ -99,8 +99,8 @@ tasks.register<JavaExec>("previewHudTheme") {
 tasks.register<JavaExec>("previewMaterialTheme") {
     group = "verification"
     description = "Renders light and dark Material glass surfaces and checks their compositing (Windows)."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.MaterialThemePreview")
     args(layout.buildDirectory.file("reports/ui/material-preview.png").get().asFile.absolutePath)
 }
@@ -108,8 +108,8 @@ tasks.register<JavaExec>("previewMaterialTheme") {
 tasks.register<JavaExec>("verifyGlassGpu") {
     group = "verification"
     description = "Checks Blaze3D glass brightness, clipping and scene coordinates on a hidden GPU device."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.GlassGpuChecks")
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     workingDir(layout.buildDirectory.dir("verification"))
@@ -119,8 +119,8 @@ tasks.register<JavaExec>("verifyGlassGpu") {
 val verifySkiaInterop = tasks.register<JavaExec>("verifySkiaInterop") {
     group = "verification"
     description = "Checks UI presentation order and absence of backend-specific GPU access."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.SkiaInteropChecks")
 }
 tasks.check { dependsOn(verifySkiaInterop) }
@@ -128,8 +128,8 @@ tasks.check { dependsOn(verifySkiaInterop) }
 tasks.register<JavaExec>("verifySkiaInteropGpu") {
     group = "verification"
     description = "Checks Blaze3D UI geometry, compositing, clips, glyph/image caching and ownership on a hidden GPU device."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.SkiaInteropGpuChecks")
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     workingDir(layout.buildDirectory.dir("verification"))
@@ -139,8 +139,8 @@ tasks.register<JavaExec>("verifySkiaInteropGpu") {
 val verifyItemRendering = tasks.register<JavaExec>("verifyItemRendering") {
     group = "verification"
     description = "Checks item shadow budgets and Minecraft render hook compatibility."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.ItemRenderChecks")
 }
 tasks.check { dependsOn(verifyItemRendering) }
@@ -148,8 +148,8 @@ tasks.check { dependsOn(verifyItemRendering) }
 val verifyItemInfo = tasks.register<JavaExec>("verifyItemInfo") {
     group = "verification"
     description = "Checks held-item expiry, component-aware inventory totals, enchantment formatting and bilingual layouts."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.ItemInfoChecks")
     workingDir(layout.buildDirectory.dir("verification"))
     doFirst { workingDir.mkdirs() }
@@ -159,8 +159,8 @@ tasks.check { dependsOn(verifyItemInfo) }
 tasks.register<JavaExec>("previewContextInfo") {
     group = "verification"
     description = "Renders Item Info and Look Info with the shared production painter in English and Chinese."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.ContextInfoPreview")
     args(layout.buildDirectory.file("reports/hud/context-info.png").get().asFile.absolutePath)
 }
@@ -168,8 +168,8 @@ tasks.register<JavaExec>("previewContextInfo") {
 val verifyStartupRendering = tasks.register<JavaExec>("verifyStartupRendering") {
     group = "verification"
     description = "Checks early Globals initialization, atlas deferral and Minecraft render hook compatibility."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.StartupRenderingChecks")
     workingDir(layout.buildDirectory.dir("verification"))
     doFirst { workingDir.mkdirs() }
@@ -179,8 +179,8 @@ tasks.check { dependsOn(verifyStartupRendering) }
 tasks.register<JavaExec>("verifyStartupGpu") {
     group = "verification"
     description = "Checks startup Globals publication and GPU contents in a hidden OpenGL context."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.StartupGpuChecks")
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     workingDir(layout.buildDirectory.dir("verification"))
@@ -190,8 +190,8 @@ tasks.register<JavaExec>("verifyStartupGpu") {
 val verifyItemVertices = tasks.register<JavaExec>("verifyItemVertices") {
     group = "verification"
     description = "Compares packed item vertices byte-for-byte with Sodium's encoder."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.ItemVertexChecks")
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     workingDir(layout.buildDirectory.dir("verification"))
@@ -202,8 +202,8 @@ tasks.check { dependsOn(verifyItemVertices) }
 val verifyMusicService = tasks.register<JavaExec>("verifyMusicService") {
     group = "verification"
     description = "Checks NetEase/Audius access, metadata migration, downloads, playback and isolated favorites using local HTTP fixtures."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.music.MusicServiceChecks")
 }
 tasks.check { dependsOn(verifyMusicService) }
@@ -211,8 +211,8 @@ tasks.check { dependsOn(verifyMusicService) }
 val verifyChatCompletion = tasks.register<JavaExec>("verifyChatCompletion") {
     group = "verification"
     description = "Checks MiniMessage tag completion, replacement ranges and Minecraft chat hook compatibility."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.chat.MiniMessageCompletionChecks")
 }
 tasks.check { dependsOn(verifyChatCompletion) }
@@ -220,8 +220,8 @@ tasks.check { dependsOn(verifyChatCompletion) }
 val verifyServerTextPrivacy = tasks.register<JavaExec>("verifyServerTextPrivacy") {
     group = "verification"
     description = "Checks remote mod text probes, local/vanilla text preservation and Minecraft network/sign hooks."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.network.ServerTextPrivacyChecks")
 }
 tasks.check { dependsOn(verifyServerTextPrivacy) }
@@ -229,8 +229,8 @@ tasks.check { dependsOn(verifyServerTextPrivacy) }
 tasks.register<JavaExec>("verifyWindowsSmtc") {
     group = "verification"
     description = "Checks real Windows WinRT SMTC metadata, timeline and FFM callbacks with a hidden window."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.management.music.media.WindowsSmtcChecks")
     jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
@@ -238,8 +238,8 @@ tasks.register<JavaExec>("verifyWindowsSmtc") {
 tasks.register<JavaExec>("previewMusicPlayer") {
     group = "verification"
     description = "Renders English/light and Chinese/dark player layouts with the production MD3 painters."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.music.MusicPlayerPreview")
     args(layout.buildDirectory.dir("reports/music").get().asFile.absolutePath)
     args(providers.gradleProperty("music_preview_views").orElse("").get())
@@ -248,8 +248,8 @@ tasks.register<JavaExec>("previewMusicPlayer") {
 tasks.register<JavaExec>("benchmarkItemVertices") {
     group = "verification"
     description = "Measures dropped-item encoding and native staging CPU cost, excluding game/GPU work."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.ItemVertexChecks")
     args("--benchmark")
     jvmArgs("--enable-native-access=ALL-UNNAMED")
@@ -260,8 +260,8 @@ tasks.register<JavaExec>("benchmarkItemVertices") {
 tasks.register<JavaExec>("previewBlazeUi") {
     group = "verification"
     description = "Renders production Material controls through the Blaze3D GPU geometry path."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.BlazeUiPreview")
     args(layout.buildDirectory.file("reports/ui/blaze-preview.png").get().asFile.absolutePath)
     jvmArgs("--enable-native-access=ALL-UNNAMED")
@@ -272,8 +272,8 @@ tasks.register<JavaExec>("previewBlazeUi") {
 tasks.register<JavaExec>("benchmarkGlassGpu") {
     group = "verification"
     description = "Measures representative Blaze3D UI and glass GPU/CPU cost in a hidden window."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.hud.GlassGpuBenchmark")
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     workingDir(layout.buildDirectory.dir("verification"))
@@ -284,8 +284,8 @@ tasks.register<JavaExec>("benchmarkGlassGpu") {
 val verifyProtocol = tasks.register<JavaExec>("verifyProtocol") {
     group = "verification"
     description = "Checks the shared protocol snapshot and native fallback without connecting to a server."
-    dependsOn(hudVerification.classesTaskName)
-    classpath = hudVerification.runtimeClasspath
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.platform.ProtocolAccessChecks")
 }
 tasks.check { dependsOn(verifyProtocol) }
@@ -305,16 +305,16 @@ val exportMixinCompileClasspath = tasks.register("exportMixinCompileClasspath") 
 val verifyMixinCompatibility = tasks.register<JavaExec>("verifyMixinCompatibility") {
     group = "verification"
     description = "Checks compiled common annotations against both loaders' actual Mixin and MixinExtras runtimes."
-    dependsOn(hudVerification.classesTaskName, exportMixinCompileClasspath)
+    dependsOn(verification.classesTaskName, exportMixinCompileClasspath)
     dependsOn(":fabric:exportMixinRuntimeClasspath", ":neoforge:exportMixinRuntimeClasspath")
     val fabricRuntimeManifest = rootProject.file("fabric/build/verification/mixin-runtime-classpath.txt")
     val neoForgeRuntimeManifest = rootProject.file("neoforge/build/verification/mixin-runtime-classpath.txt")
     inputs.files(mixinCompileManifest, fabricRuntimeManifest, neoForgeRuntimeManifest)
-    classpath = hudVerification.runtimeClasspath
+    classpath = verification.runtimeClasspath
     mainClass.set("cn.pupperclient.platform.MixinCompatibilityChecks")
     doFirst {
         args("--classes", sourceSets.main.get().output.classesDirs.asPath,
-            "--fixture", hudVerification.output.classesDirs.asPath,
+            "--fixture", verification.output.classesDirs.asPath,
             "--compile-file", mixinCompileManifest.get().asFile.absolutePath,
             "--fabric-file", fabricRuntimeManifest.absolutePath,
             "--neoforge-file", neoForgeRuntimeManifest.absolutePath)
