@@ -27,7 +27,6 @@ public final class SettingPresentation {
         "setting.blurtype", "setting.clickeffect.menuonly");
     private static final Set<String> MORE = Set.of(
         "setting.blurintensity", "setting.ui.backgroundopacity", "setting.hud.backgroundopacity",
-        "setting.ytdlppath", "setting.ffmpegpath", "setting.ytdlpcommand",
         "setting.icon", "setting.background", "setting.cover.animation.name",
         "setting.zoomspeed", "setting.smoothcamera", "setting.refreshtime", "setting.delay",
         "setting.alwayssharpness", "setting.alwayscriticals", "setting.sharpnessamount", "setting.criticalsamount",
