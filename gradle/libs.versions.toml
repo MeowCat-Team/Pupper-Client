@@ -9,6 +9,8 @@ shadow = "9.4.3"
 sponge-mixin-common = "0.17.3+mixin.0.8.7"
 # Build
 spotless = "8.10.4"
+junit = "5.13.4"
+junit-platform = "1.13.4"
 
 # mod
 sodium = "mc26.2-0.9.2-fabric"
@@ -85,6 +87,10 @@ mcping = { module = "net.lenni0451:MCPing", version.ref = "mcping" }
 reflect = { module = "net.lenni0451:Reflect", version.ref = "reflect" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
+
+# Tests
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
 
 # LWJGL NFD
 lwjgl-nfd = { module = "org.lwjgl:lwjgl-nfd", version.ref = "lwjgl" }

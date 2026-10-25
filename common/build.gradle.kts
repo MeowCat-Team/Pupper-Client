@@ -44,6 +44,16 @@ dependencies {
     runtimeOnly(libs.architectury.fabric)
     runtimeOnly(libs.sodium)
     runtimeOnly(libs.iris)
+    // Plain unit tests: no Minecraft, no GPU, no audio device.
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+// Dependency-free checks that need neither a game nor a GPU are JUnit tests.
+tasks.named<Test>("test") {
+    useJUnitPlatform()
+    // The tests touch the same static caches the client does, so keep them isolated.
+    systemProperty("java.awt.headless", "true")
 }
 
 // Standalone checks have their own source set; they are not JUnit tests.
@@ -56,16 +66,6 @@ dependencies {
     // These checks load the production HUD fonts through Skia; CI runs the verification on Linux.
     add("verificationRuntimeOnly", libs.skija.linux.get())
 }
-
-// Guards the saved-config keys against depending on the selected language.
-val verifyConfigKeys = tasks.register<JavaExec>("verifyConfigKeys") {
-    group = "verification"
-    description = "Checks that saved mod settings and keybinds survive a language switch."
-    dependsOn(verification.classesTaskName)
-    classpath = verification.runtimeClasspath
-    mainClass.set("cn.pupperclient.config.ConfigKeyChecks")
-}
-tasks.check { dependsOn(verifyConfigKeys) }
 
 // The bus scans declared members, so a listener moved to a base class must still register.
 val verifyEventBus = tasks.register<JavaExec>("verifyEventBus") {
