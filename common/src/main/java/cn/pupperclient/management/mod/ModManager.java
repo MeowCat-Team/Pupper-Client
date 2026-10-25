@@ -41,6 +41,7 @@ public class ModManager {
     private static final String DEFAULT_DESIGN = "design.simple";
 
     private HUDDesign currentDesign;
+    private volatile List<KeybindSetting> keybindSettings;
 
     public void init() {
         initMods();
@@ -171,9 +172,19 @@ public class ModManager {
         return mods.stream().filter(m -> m instanceof HUDMod).map(m -> (HUDMod) m).collect(Collectors.toList());
     }
 
+    /**
+     * Keybind settings, cached because input handlers ask for them on every click and
+     * every key press. Rebuilt when a setting is registered.
+     */
     public List<KeybindSetting> getKeybindSettings() {
-        return settings.stream().filter(s -> s instanceof KeybindSetting).map(s -> (KeybindSetting) s)
-                .collect(Collectors.toList());
+        List<KeybindSetting> cached = keybindSettings;
+        if (cached != null) {
+            return cached;
+        }
+        List<KeybindSetting> rebuilt = settings.stream().filter(s -> s instanceof KeybindSetting)
+                .map(s -> (KeybindSetting) s).toList();
+        keybindSettings = rebuilt;
+        return rebuilt;
     }
 
     public List<Setting> getSettingsByMod(Mod m) {
@@ -182,6 +193,7 @@ public class ModManager {
 
     public void addSetting(Setting setting) {
         settings.add(setting);
+        keybindSettings = null;
     }
 
     public HUDDesign getCurrentDesign() {

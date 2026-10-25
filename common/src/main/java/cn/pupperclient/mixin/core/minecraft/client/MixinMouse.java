@@ -93,11 +93,9 @@ public abstract class MixinMouse {
     private void onMouseButtonForCPS(long window, MouseButtonInfo rawButtonInfo, int action, CallbackInfo ci) {
         if (action != GLFW.GLFW_PRESS) return;
 
-        PupperClient.getInstance().getModManager().getMods()
-            .stream()
-            .filter(mod -> mod instanceof CPSDisplayMod)
-            .map(mod -> (CPSDisplayMod) mod)
-            .findFirst().ifPresent(cpsDisplayMod -> cpsDisplayMod.onMouseClick(rawButtonInfo.button(), true));
-
+        CPSDisplayMod cps = CPSDisplayMod.getInstance();
+        if (cps != null) {
+            cps.onMouseClick(rawButtonInfo.button(), true);
+        }
     }
 }

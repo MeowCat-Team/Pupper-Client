@@ -29,6 +29,8 @@ import cn.pupperclient.skia.font.Icon;
 
 public class CPSDisplayMod extends SimpleHUDMod {
 
+    private static CPSDisplayMod instance;
+
     private final ArrayList<Long> leftPresses = new ArrayList<Long>();
     private final ArrayList<Long> rightPresses = new ArrayList<Long>();
 
@@ -37,6 +39,12 @@ public class CPSDisplayMod extends SimpleHUDMod {
 
     public CPSDisplayMod() {
         super("mod.cpsdisplay.name", "mod.cpsdisplay.description", Icon.MOUSE);
+        instance = this;
+    }
+
+    /** @return the registered instance, or {@code null} before the mod manager initialises */
+    public static CPSDisplayMod getInstance() {
+        return instance;
     }
 
 
