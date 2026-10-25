@@ -20,7 +20,7 @@ package cn.pupperclient.management.mod.impl.hud;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
-import cn.pupperclient.management.mod.settings.impl.NumberSetting;
+import cn.pupperclient.management.mod.setting.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.thread.Multithreading;
 import cn.pupperclient.utils.time.TimerUtils;

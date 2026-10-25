@@ -35,8 +35,8 @@ import cn.pupperclient.management.mod.ModNames;
 import cn.pupperclient.management.mod.api.AnchorPosition;
 import cn.pupperclient.management.mod.api.Position;
 import cn.pupperclient.management.mod.api.hud.HUDMod;
-import cn.pupperclient.management.mod.settings.Setting;
-import cn.pupperclient.management.mod.settings.impl.*;
+import cn.pupperclient.management.mod.setting.Setting;
+import cn.pupperclient.management.mod.setting.*;
 import cn.pupperclient.utils.color.ColorUtils;
 import cn.pupperclient.utils.misc.JsonUtils;
 

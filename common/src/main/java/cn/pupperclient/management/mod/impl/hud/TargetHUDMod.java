@@ -27,7 +27,7 @@ import cn.pupperclient.gui.edithud.api.HUDCore;
 import cn.pupperclient.management.mod.api.hud.HUDMod;
 import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
-import cn.pupperclient.management.mod.settings.impl.ComboSetting;
+import cn.pupperclient.management.mod.setting.ComboSetting;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;

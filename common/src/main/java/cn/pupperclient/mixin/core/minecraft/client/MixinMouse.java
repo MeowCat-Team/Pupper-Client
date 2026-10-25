@@ -29,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.MouseScrollEvent;
-import cn.pupperclient.management.mod.settings.impl.KeybindSetting;
+import cn.pupperclient.management.mod.setting.KeybindSetting;
 import com.mojang.blaze3d.platform.InputConstants.Type;
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.client.Minecraft;

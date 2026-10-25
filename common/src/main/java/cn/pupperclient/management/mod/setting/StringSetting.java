@@ -15,43 +15,39 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package cn.pupperclient.management.mod.settings.impl;
+package cn.pupperclient.management.mod.setting;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.mod.Mod;
-import cn.pupperclient.management.mod.settings.Setting;
+import cn.pupperclient.management.mod.setting.Setting;
 
-public class BooleanSetting extends Setting {
+public class StringSetting extends Setting {
 
-    private boolean defaultValue, enabled;
+    private String defaultValue, value;
 
-    public BooleanSetting(String name, String description, String icon, Mod parent, boolean enabled) {
+    public StringSetting(String name, String description, String icon, Mod parent, String string) {
         super(name, description, icon, parent);
 
-        this.enabled = enabled;
-        this.defaultValue = enabled;
+        this.defaultValue = string;
+        this.value = string;
 
         PupperClient.getInstance().getModManager().addSetting(this);
     }
 
     @Override
     public void reset() {
-        this.enabled = defaultValue;
+        this.value = defaultValue;
     }
 
-    public boolean isEnabled() {
-        return enabled;
+    public String getValue() {
+        return value;
     }
 
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+    public void setValue(String string) {
+        this.value = string;
     }
 
-    public boolean getDefaultValue() {
+    public String getDefaultValue() {
         return defaultValue;
-    }
-
-    public void setDefaultValue(boolean defaultValue) {
-        this.defaultValue = defaultValue;
     }
 }

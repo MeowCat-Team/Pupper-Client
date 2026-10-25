@@ -21,7 +21,7 @@ import java.util.Arrays;
 
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModCategory;
-import cn.pupperclient.management.mod.settings.impl.ComboSetting;
+import cn.pupperclient.management.mod.setting.ComboSetting;
 import cn.pupperclient.skia.font.Icon;
 
 public class SystemSettings extends Mod {

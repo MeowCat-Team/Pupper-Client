@@ -15,39 +15,40 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package cn.pupperclient.management.mod.settings.impl;
+package cn.pupperclient.management.mod.setting;
 
 import cn.pupperclient.PupperClient;
+import cn.pupperclient.libraries.material3.hct.Hct;
 import cn.pupperclient.management.mod.Mod;
-import cn.pupperclient.management.mod.settings.Setting;
+import cn.pupperclient.management.mod.setting.Setting;
 
-public class StringSetting extends Setting {
+public class HctColorSetting extends Setting {
 
-    private String defaultValue, value;
+    private Hct hct;
+    private final Hct defaultHct;
 
-    public StringSetting(String name, String description, String icon, Mod parent, String string) {
+    public HctColorSetting(String name, String description, String icon, Mod parent, Hct hct) {
         super(name, description, icon, parent);
-
-        this.defaultValue = string;
-        this.value = string;
+        this.hct = hct;
+        this.defaultHct = hct;
 
         PupperClient.getInstance().getModManager().addSetting(this);
     }
 
     @Override
     public void reset() {
-        this.value = defaultValue;
+        this.hct = defaultHct;
     }
 
-    public String getValue() {
-        return value;
+    public Hct getHct() {
+        return hct;
     }
 
-    public void setValue(String string) {
-        this.value = string;
+    public void setHct(Hct hct) {
+        this.hct = hct;
     }
 
-    public String getDefaultValue() {
-        return defaultValue;
+    public Hct getDefaultHct() {
+        return defaultHct;
     }
 }

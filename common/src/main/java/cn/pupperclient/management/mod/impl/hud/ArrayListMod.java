@@ -25,7 +25,7 @@ import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModCategory;
 import cn.pupperclient.management.mod.api.hud.AnimatedListHUDMod;
-import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
+import cn.pupperclient.management.mod.setting.BooleanSetting;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.language.I18n;
 

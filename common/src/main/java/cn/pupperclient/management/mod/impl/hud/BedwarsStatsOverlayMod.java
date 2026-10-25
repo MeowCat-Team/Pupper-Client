@@ -27,7 +27,7 @@ import cn.pupperclient.management.hypixel.api.HypixelUser;
 import cn.pupperclient.management.mod.api.hud.HUDMod;
 import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
-import cn.pupperclient.management.mod.settings.impl.NumberSetting;
+import cn.pupperclient.management.mod.setting.NumberSetting;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.management.mod.api.hud.design.HUDText;
 import cn.pupperclient.skia.font.Icon;

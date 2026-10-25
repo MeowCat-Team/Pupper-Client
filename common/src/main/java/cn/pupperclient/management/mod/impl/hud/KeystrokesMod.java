@@ -24,7 +24,7 @@ import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.HUDMod;
 import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
 import cn.pupperclient.management.mod.api.hud.design.HUDTokens;
-import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
+import cn.pupperclient.management.mod.setting.BooleanSetting;
 import cn.pupperclient.mixin.interfaces.IMixinKeyBinding;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.management.mod.api.hud.design.HUDText;

@@ -18,7 +18,7 @@
 package cn.pupperclient.management.mod.impl.hud;
 
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
-import cn.pupperclient.management.mod.settings.impl.NumberSetting;
+import cn.pupperclient.management.mod.setting.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
 
 public class JumpResetIndicatorMod extends SimpleHUDMod {

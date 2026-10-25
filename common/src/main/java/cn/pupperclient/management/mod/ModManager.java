@@ -30,8 +30,8 @@ import cn.pupperclient.management.mod.impl.misc.*;
 import cn.pupperclient.management.mod.impl.player.*;
 import cn.pupperclient.management.mod.impl.render.*;
 import cn.pupperclient.management.mod.impl.settings.*;
-import cn.pupperclient.management.mod.settings.Setting;
-import cn.pupperclient.management.mod.settings.impl.KeybindSetting;
+import cn.pupperclient.management.mod.setting.Setting;
+import cn.pupperclient.management.mod.setting.KeybindSetting;
 
 public class ModManager {
     private final List<Mod> mods = new CopyOnWriteArrayList<>();

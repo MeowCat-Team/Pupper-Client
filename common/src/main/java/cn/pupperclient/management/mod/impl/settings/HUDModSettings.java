@@ -25,9 +25,9 @@ import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModCategory;
-import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
-import cn.pupperclient.management.mod.settings.impl.ComboSetting;
-import cn.pupperclient.management.mod.settings.impl.NumberSetting;
+import cn.pupperclient.management.mod.setting.BooleanSetting;
+import cn.pupperclient.management.mod.setting.ComboSetting;
+import cn.pupperclient.management.mod.setting.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
 
 public class HUDModSettings extends Mod {

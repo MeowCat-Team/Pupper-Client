@@ -21,8 +21,8 @@ import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModCategory;
-import cn.pupperclient.management.mod.settings.impl.KeybindSetting;
-import cn.pupperclient.management.mod.settings.impl.StringSetting;
+import cn.pupperclient.management.mod.setting.KeybindSetting;
+import cn.pupperclient.management.mod.setting.StringSetting;
 import cn.pupperclient.skia.font.Icon;
 import com.mojang.blaze3d.platform.InputConstants;
 

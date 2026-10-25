@@ -25,7 +25,7 @@ import org.lwjgl.glfw.GLFW;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
-import cn.pupperclient.management.mod.settings.impl.KeybindSetting;
+import cn.pupperclient.management.mod.setting.KeybindSetting;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.time.TimerUtils;
 import com.mojang.blaze3d.platform.InputConstants;

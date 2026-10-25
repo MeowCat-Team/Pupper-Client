@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package cn.pupperclient.management.mod.settings;
+package cn.pupperclient.management.mod.setting;
 
 import cn.pupperclient.management.mod.Mod;
 

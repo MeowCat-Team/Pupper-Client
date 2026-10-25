@@ -24,7 +24,7 @@ import org.lwjgl.glfw.GLFW;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.client.ClientTickEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
-import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
+import cn.pupperclient.management.mod.setting.BooleanSetting;
 import cn.pupperclient.skia.font.Icon;
 
 public class CPSDisplayMod extends SimpleHUDMod {

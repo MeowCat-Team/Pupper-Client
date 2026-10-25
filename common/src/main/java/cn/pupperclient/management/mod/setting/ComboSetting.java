@@ -15,13 +15,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package cn.pupperclient.management.mod.settings.impl;
+package cn.pupperclient.management.mod.setting;
 
 import java.util.List;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.mod.Mod;
-import cn.pupperclient.management.mod.settings.Setting;
+import cn.pupperclient.management.mod.setting.Setting;
 
 public class ComboSetting extends Setting {
 

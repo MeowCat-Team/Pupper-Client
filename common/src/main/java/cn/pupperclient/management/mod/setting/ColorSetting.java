@@ -15,13 +15,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package cn.pupperclient.management.mod.settings.impl;
+package cn.pupperclient.management.mod.setting;
 
 import java.awt.Color;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.mod.Mod;
-import cn.pupperclient.management.mod.settings.Setting;
+import cn.pupperclient.management.mod.setting.Setting;
 import cn.pupperclient.utils.color.ColorUtils;
 
 public class ColorSetting extends Setting {

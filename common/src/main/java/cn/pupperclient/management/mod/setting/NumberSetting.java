@@ -15,11 +15,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package cn.pupperclient.management.mod.settings.impl;
+package cn.pupperclient.management.mod.setting;
 
 import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.mod.Mod;
-import cn.pupperclient.management.mod.settings.Setting;
+import cn.pupperclient.management.mod.setting.Setting;
 import cn.pupperclient.utils.math.MathUtils;
 
 public class NumberSetting extends Setting {

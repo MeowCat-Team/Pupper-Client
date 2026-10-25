@@ -19,8 +19,8 @@ package cn.pupperclient.management.mod.impl.render;
 
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModCategory;
-import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
-import cn.pupperclient.management.mod.settings.impl.NumberSetting;
+import cn.pupperclient.management.mod.setting.BooleanSetting;
+import cn.pupperclient.management.mod.setting.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
 
 /** Reduces repeated render work while keeping every entity visible. */

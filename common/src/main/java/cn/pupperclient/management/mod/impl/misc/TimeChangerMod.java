@@ -19,7 +19,7 @@ package cn.pupperclient.management.mod.impl.misc;
 
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModCategory;
-import cn.pupperclient.management.mod.settings.impl.NumberSetting;
+import cn.pupperclient.management.mod.setting.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
 
 public class TimeChangerMod extends Mod {

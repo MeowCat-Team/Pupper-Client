@@ -15,40 +15,43 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package cn.pupperclient.management.mod.settings.impl;
+package cn.pupperclient.management.mod.setting;
 
 import cn.pupperclient.PupperClient;
-import cn.pupperclient.libraries.material3.hct.Hct;
 import cn.pupperclient.management.mod.Mod;
-import cn.pupperclient.management.mod.settings.Setting;
+import cn.pupperclient.management.mod.setting.Setting;
 
-public class HctColorSetting extends Setting {
+public class BooleanSetting extends Setting {
 
-    private Hct hct;
-    private final Hct defaultHct;
+    private boolean defaultValue, enabled;
 
-    public HctColorSetting(String name, String description, String icon, Mod parent, Hct hct) {
+    public BooleanSetting(String name, String description, String icon, Mod parent, boolean enabled) {
         super(name, description, icon, parent);
-        this.hct = hct;
-        this.defaultHct = hct;
+
+        this.enabled = enabled;
+        this.defaultValue = enabled;
 
         PupperClient.getInstance().getModManager().addSetting(this);
     }
 
     @Override
     public void reset() {
-        this.hct = defaultHct;
+        this.enabled = defaultValue;
     }
 
-    public Hct getHct() {
-        return hct;
+    public boolean isEnabled() {
+        return enabled;
     }
 
-    public void setHct(Hct hct) {
-        this.hct = hct;
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
-    public Hct getDefaultHct() {
-        return defaultHct;
+    public boolean getDefaultValue() {
+        return defaultValue;
+    }
+
+    public void setDefaultValue(boolean defaultValue) {
+        this.defaultValue = defaultValue;
     }
 }

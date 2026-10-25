@@ -18,8 +18,8 @@
 package cn.pupperclient.management.mod.impl.fun;
 
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
-import cn.pupperclient.management.mod.settings.impl.ComboSetting;
-import cn.pupperclient.management.mod.settings.impl.NumberSetting;
+import cn.pupperclient.management.mod.setting.ComboSetting;
+import cn.pupperclient.management.mod.setting.NumberSetting;
 import cn.pupperclient.skia.font.Icon;
 import java.util.Arrays;
 import java.util.List;

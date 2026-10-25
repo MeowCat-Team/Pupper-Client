@@ -26,7 +26,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import cn.pupperclient.PupperClient;
-import cn.pupperclient.management.mod.settings.impl.KeybindSetting;
+import cn.pupperclient.management.mod.setting.KeybindSetting;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyboardHandler;
 

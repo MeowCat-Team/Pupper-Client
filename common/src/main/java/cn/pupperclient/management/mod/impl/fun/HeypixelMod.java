@@ -23,7 +23,7 @@ import cn.pupperclient.event.mod.AutoAgainEvent;
 import cn.pupperclient.event.server.ChatEvent;
 import cn.pupperclient.management.mod.Mod;
 import cn.pupperclient.management.mod.ModCategory;
-import cn.pupperclient.management.mod.settings.impl.BooleanSetting;
+import cn.pupperclient.management.mod.setting.BooleanSetting;
 import cn.pupperclient.skia.font.Icon;
 import cn.pupperclient.utils.chat.ChatUtils;
 import net.minecraft.client.Minecraft;
