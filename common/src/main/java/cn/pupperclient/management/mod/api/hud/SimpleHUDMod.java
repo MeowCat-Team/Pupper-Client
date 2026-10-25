@@ -17,7 +17,6 @@
 
 package cn.pupperclient.management.mod.api.hud;
 
-import java.awt.Color;
 import java.util.Objects;
 import java.util.regex.Pattern;
 import cn.pupperclient.event.EventBus;
@@ -68,10 +67,7 @@ public abstract class SimpleHUDMod extends HUDMod {
         } else if (!sameVisual(shown, current)) {
             // Rapidly changing numbers are rendered immediately. Crossfading each FPS or
             // coordinate update would leave the metric permanently dim and hard to read.
-            boolean numericUpdate = !Objects.equals(shown.value, current.value)
-                && hasDigit(shown.value) && hasDigit(current.value)
-                && NUMERIC_PART.matcher(shown.value).replaceAll("#")
-                    .equals(NUMERIC_PART.matcher(current.value).replaceAll("#"));
+            boolean numericUpdate = HUDText.sameExceptNumbers(shown.value, current.value);
             boolean structureChanged = !Objects.equals(shown.label, current.label)
                 || !Objects.equals(shown.unit, current.unit)
                 || !Objects.equals(shown.icon, current.icon)
@@ -147,28 +143,19 @@ public abstract class SimpleHUDMod extends HUDMod {
         float centerY = getY() + HUDTokens.CHIP_HEIGHT / 2;
         if (content.hasIcon) {
             HUDText.drawFullCenteredText(content.icon, x + ICON_WIDTH / 2, centerY,
-                fade(palette.secondaryText(), opacity), getIconFont(HUDTokens.ICON_SIZE));
+                HUDText.fade(palette.secondaryText(), opacity), getIconFont(HUDTokens.ICON_SIZE));
             x += ICON_WIDTH + ICON_GAP;
         }
         if (!content.label.isBlank()) {
             HUDText.drawHeightCenteredText(content.label, x, centerY,
-                fade(palette.secondaryText(), opacity), HUDTokens.label());
+                HUDText.fade(palette.secondaryText(), opacity), HUDTokens.label());
             x += content.labelWidth;
         }
         HUDText.drawHeightCenteredText(content.value, x, centerY,
-            fade(content.urgent ? palette.danger() : palette.text(), opacity), font);
+            HUDText.fade(content.urgent ? palette.danger() : palette.text(), opacity), font);
         if (!content.unit.isBlank())
             HUDText.drawHeightCenteredText(content.unit, x + content.valueWidth + HUDTokens.GAP,
-                centerY, fade(palette.secondaryText(), opacity), HUDTokens.label());
-    }
-
-    private static Color fade(Color color, float opacity) {
-        return new Color(color.getRed(), color.getGreen(), color.getBlue(),
-            Math.round(color.getAlpha() * Math.max(0, Math.min(1, opacity))));
-    }
-
-    private static boolean hasDigit(String text) {
-        return text.codePoints().anyMatch(Character::isDigit);
+                centerY, HUDText.fade(palette.secondaryText(), opacity), HUDTokens.label());
     }
 
     private static boolean sameVisual(Content first, Content second) {

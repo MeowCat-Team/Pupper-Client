@@ -18,6 +18,8 @@
 package cn.pupperclient.management.mod.api.hud.design;
 
 import java.awt.Color;
+import java.util.Objects;
+import java.util.regex.Pattern;
 import cn.pupperclient.management.mod.impl.settings.HUDModSettings;
 import cn.pupperclient.skia.Skia;
 import cn.pupperclient.skia.font.TextMetrics;
@@ -29,9 +31,38 @@ import io.github.humbleui.skija.Paint;
 
 /** Original filled glyphs with a faint atlas-rendered shadow on translucent glass. */
 public final class HUDText {
+    private static final Pattern NUMERIC_PART = Pattern.compile("\\d+(?:[.,]\\d+)*");
     private static Paint shadowPaint;
 
     private HUDText() {}
+
+    /** Returns {@code color} at {@code opacity}, clamped to 0..1. */
+    public static Color fade(Color color, float opacity) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(),
+            Math.round(color.getAlpha() * Math.max(0, Math.min(1, opacity))));
+    }
+
+    /**
+     * Whether two strings differ only in their numeric parts.
+     *
+     * <p>Values like a coordinate or an FPS counter change constantly; crossfading each
+     * change would leave the text permanently dim, so callers render those immediately.
+     */
+    public static boolean sameExceptNumbers(String first, String second) {
+        if (!Objects.equals(first, second)) {
+            if (!hasDigit(first) || !hasDigit(second)) {
+                return false;
+            }
+        } else {
+            return true;
+        }
+        return NUMERIC_PART.matcher(first).replaceAll("#")
+            .equals(NUMERIC_PART.matcher(second).replaceAll("#"));
+    }
+
+    private static boolean hasDigit(String text) {
+        return text.codePoints().anyMatch(Character::isDigit);
+    }
 
     public static void drawText(String text, float x, float y, Color color, Font font) {
         var bounds = TextMetrics.bounds(font, text);

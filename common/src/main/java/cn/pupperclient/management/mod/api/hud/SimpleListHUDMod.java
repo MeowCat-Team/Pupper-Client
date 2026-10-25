@@ -17,7 +17,6 @@
 
 package cn.pupperclient.management.mod.api.hud;
 
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -62,9 +61,7 @@ public abstract class SimpleListHUDMod extends HUDMod {
         if (visible) {
             String nextTitle = text.getFirst();
             if (!Objects.equals(title, nextTitle)) {
-                boolean numericUpdate = containsDigit(title) && containsDigit(nextTitle)
-                    && NUMERIC_PART.matcher(title).replaceAll("#")
-                        .equals(NUMERIC_PART.matcher(nextTitle).replaceAll("#"));
+                boolean numericUpdate = HUDText.sameExceptNumbers(title, nextTitle);
                 outgoingTitle = initialized && !reduced && !numericUpdate
                     ? (titleProgress < 0.5f && outgoingTitle != null ? outgoingTitle : title) : null;
                 titleProgress = outgoingTitle == null ? 1 : 0;
@@ -147,10 +144,10 @@ public abstract class SimpleListHUDMod extends HUDMod {
                     Skia.drawRoundedRect(x + HUDTokens.PADDING,
                         y + HUDTokens.PADDING + HUDTokens.ROW_HEIGHT - 2,
                         width - HUDTokens.PADDING * 2, 1, 0.5f,
-                        fade(palette.outline(), headerVisibility));
+                        HUDText.fade(palette.outline(), headerVisibility));
                 if (!icon.isBlank())
                     HUDText.drawFullCenteredText(icon, x + width - HUDTokens.PADDING - 6,
-                        y + HUDTokens.PADDING + 7, fade(palette.accent(), headerVisibility), HUDTokens.icon());
+                        y + HUDTokens.PADDING + 7, HUDText.fade(palette.accent(), headerVisibility), HUDTokens.icon());
                 if (outgoingTitle != null)
                     drawTitle(outgoingTitle, innerWidth, palette, headerVisibility * (1 - titleProgress));
                 drawTitle(title, innerWidth, palette, headerVisibility * titleProgress);
@@ -166,7 +163,7 @@ public abstract class SimpleListHUDMod extends HUDMod {
         if (opacity <= 0) return;
         HUDText.drawHeightCenteredText(Skia.getLimitText(value, HUDTokens.title(), Math.max(8, innerWidth - 24)),
             getX() + HUDTokens.PADDING, getY() + HUDTokens.PADDING + 7,
-            fade(palette.text(), opacity), HUDTokens.title());
+            HUDText.fade(palette.text(), opacity), HUDTokens.title());
     }
 
     private void drawLine(Line entry, float innerWidth, HUDColors palette) {
@@ -174,16 +171,7 @@ public abstract class SimpleListHUDMod extends HUDMod {
         Font font = HUDTokens.body();
         HUDText.drawHeightCenteredText(Skia.getLimitText(entry.text, font, innerWidth),
             getX() + HUDTokens.PADDING, getY() + entry.renderSlot + 7,
-            fade(palette.secondaryText(), entry.visibility), font);
-    }
-
-    private static Color fade(Color color, float opacity) {
-        return new Color(color.getRed(), color.getGreen(), color.getBlue(),
-            Math.round(color.getAlpha() * Math.max(0, Math.min(1, opacity))));
-    }
-
-    private static boolean containsDigit(String value) {
-        return value.codePoints().anyMatch(Character::isDigit);
+            HUDText.fade(palette.secondaryText(), entry.visibility), font);
     }
 
     @Override public void onDisable() {
