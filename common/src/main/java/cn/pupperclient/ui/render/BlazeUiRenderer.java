@@ -145,10 +145,19 @@ public final class BlazeUiRenderer implements AutoCloseable {
             pass.setPipeline(PIPELINE);
             var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
             pass.bindTexture("Scene", sceneReady ? scene.view : white.view, sampler);
+            // Consecutive commands usually share the white or one atlas texture; rebinding
+            // the same view costs a driver call per command for no state change.
+            GpuTextureView boundTexture = null;
+            boolean boundNearest = false;
             for (var draw : prepared) {
-                var imageSampler = RenderSystem.getSamplerCache().getClampToEdge(
-                        draw.draw.style[3] == 1 ? FilterMode.NEAREST : FilterMode.LINEAR);
-                pass.bindTexture("UiImage", draw.draw.texture == null ? white.view : draw.draw.texture, imageSampler);
+                GpuTextureView texture = draw.draw.texture == null ? white.view : draw.draw.texture;
+                boolean nearest = draw.draw.style[3] == 1;
+                if (texture != boundTexture || nearest != boundNearest) {
+                    pass.bindTexture("UiImage", texture, RenderSystem.getSamplerCache().getClampToEdge(
+                            nearest ? FilterMode.NEAREST : FilterMode.LINEAR));
+                    boundTexture = texture;
+                    boundNearest = nearest;
+                }
                 pass.setUniform("UiData", draw.uniforms); pass.setVertexBuffer(0, draw.vertices);
                 pass.draw(draw.draw.size / BlazeUiCanvas.VERTEX_FLOATS, 1, 0, 0);
             }
