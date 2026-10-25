@@ -14,8 +14,8 @@ import release
 
 
 PROPS = {"mod_version": "9.0.0-alpha.6", "minecraft_version": "26.2",
-         "archives_base_name": "Pupper Client-Fabric", "modrinth_project_id": "pupper-client"}
-MULTI_PROPS = PROPS | {"archives_base_name": "Pupper Client", "enabled_platforms": "fabric,neoforge"}
+         "archives_base_name": "PupperClient-Fabric", "modrinth_project_id": "pupper-client"}
+MULTI_PROPS = PROPS | {"archives_base_name": "PupperClient", "enabled_platforms": "fabric,neoforge"}
 DIGEST = {"sha256": "a" * 64, "sha512": "b" * 128}
 NEO_DIGEST = {"sha256": "d" * 64, "sha512": "e" * 128}
 SHA = "c" * 40
@@ -28,7 +28,7 @@ class MetadataChecks(unittest.TestCase):
                 info = release.metadata(PROPS | {"mod_version": mod})
                 self.assertEqual(info["kind"], kind)
                 self.assertEqual(info["tag"], f"v{mod}+mc26.2")
-                self.assertEqual(Path(info["jar"]).name, f"Pupper Client-Fabric-{mod}+mc26.2.jar")
+                self.assertEqual(Path(info["jar"]).name, f"PupperClient-Fabric-{mod}+mc26.2.jar")
         self.assertNotEqual(release.metadata(PROPS)["tag"], release.metadata(PROPS | {"minecraft_version": "26.3"})["tag"])
 
     def test_unsafe_metadata_rejected(self):
@@ -133,7 +133,7 @@ class PlatformChecks(unittest.TestCase):
             def upload(*args):
                 self.assertEqual(args[:4], ("gh", "release", "upload", self.info["tag"]))
                 staged = Path(args[4])
-                self.assertEqual(staged.name, "Pupper.Client-Fabric-9.0.0-alpha.6+mc26.2.jar")
+                self.assertEqual(staged.name, "PupperClient-Fabric-9.0.0-alpha.6+mc26.2.jar")
                 self.assertEqual(staged.read_bytes(), path.read_bytes())
                 self.assertEqual(args[5:], ("--repo", "owner/repo"))
 
@@ -256,7 +256,7 @@ class MultiLoaderChecks(unittest.TestCase):
         self.assertEqual([artifact["modrinth_version"] for artifact in self.artifacts],
                          ["9.0.0-alpha.6+mc26.2-fabric", "9.0.0-alpha.6+mc26.2-neoforge"])
         self.assertEqual([Path(artifact["jar"]).name for artifact in self.artifacts],
-                         ["Pupper Client-Fabric-9.0.0-alpha.6+mc26.2.jar", "Pupper Client-NeoForge-9.0.0-alpha.6+mc26.2.jar"])
+                         ["PupperClient-Fabric-9.0.0-alpha.6+mc26.2.jar", "PupperClient-NeoForge-9.0.0-alpha.6+mc26.2.jar"])
         legacy = release.artifacts(release.metadata(PROPS))[0]
         self.assertEqual(legacy["modrinth_version"], legacy["version"])
         self.assertTrue(legacy["legacy"])

@@ -47,9 +47,15 @@ subprojects {
 }
 
 // Release automation receives only the final distributable jars, never raw or common jars.
+// Older versions are cleared first: the folder otherwise accumulates every jar this
+// checkout has ever built, which makes it ambiguous which files belong to a release.
 val stageReleaseJars = tasks.register<Copy>("stageReleaseJars") {
     group = "build"
     dependsOn(":fabric:shadowJar", ":neoforge:shadowJar")
+    doFirst {
+        val libs = layout.buildDirectory.dir("libs").get().asFile
+        libs.listFiles()?.forEach { it.delete() }
+    }
     from(project(":fabric").layout.buildDirectory.dir("libs")) {
         include("${rootProject.property("archives_base_name")}-Fabric-${project.version}.jar")
     }

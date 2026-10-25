@@ -147,7 +147,7 @@ def main() -> int:
                  if "=" in line and not line.lstrip().startswith("#"))
     version = props["mod_version"].strip() + "+mc" + props["minecraft_version"].strip()
     artifact = "Fabric" if args.loader == "fabric" else "NeoForge"
-    jar = args.jar or root / f"build/libs/Pupper Client-{artifact}-{version}.jar"
+    jar = args.jar or root / f"build/libs/PupperClient-{artifact}-{version}.jar"
     try:
         argfile, game, environment, audit = prepare(root, args.loader, jar)
         print(f"Prepared {args.loader} packaged smoke: removed {len(audit['removed'])} development/library entries")
