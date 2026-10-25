@@ -28,9 +28,9 @@ import net.minecraft.world.entity.player.Player;
 @Mixin(Player.class)
 public abstract class MixinPlayerEntity {
     @Inject(method = "getAttackStrengthScale", at = @At("HEAD"), cancellable = true)
-	public void disableCooldown(CallbackInfoReturnable<Float> cir) {
-		if (OldAnimationsMod.getInstance().isEnabled() && OldAnimationsMod.getInstance().isDisableAttackCooldown()) {
-			cir.setReturnValue(1F);
-		}
-	}
+    public void disableCooldown(CallbackInfoReturnable<Float> cir) {
+        if (OldAnimationsMod.getInstance().isEnabled() && OldAnimationsMod.getInstance().isDisableAttackCooldown()) {
+            cir.setReturnValue(1F);
+        }
+    }
 }

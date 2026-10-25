@@ -35,73 +35,73 @@ import cn.pupperclient.skia.font.Icon;
 
 public class DiscordRPCMod extends Mod {
 
-	private IPCClient client;
+    private IPCClient client;
 
-	public DiscordRPCMod() {
-		super("mod.discordrpc.name", "mod.discordrpc.description", Icon.VERIFIED, ModCategory.MISC);
-	}
+    public DiscordRPCMod() {
+        super("mod.discordrpc.name", "mod.discordrpc.description", Icon.VERIFIED, ModCategory.MISC);
+    }
 
-	@Override
-	public void onEnable() {
-		super.onEnable();
+    @Override
+    public void onEnable() {
+        super.onEnable();
 
-		client = new IPCClient(1059341815205068901L);
-		client.setListener(new IPCListener() {
-			@Override
-			public void onReady(IPCClient client) {
+        client = new IPCClient(1059341815205068901L);
+        client.setListener(new IPCListener() {
+            @Override
+            public void onReady(IPCClient client) {
 
-				RichPresence.Builder builder = new RichPresence.Builder();
+                RichPresence.Builder builder = new RichPresence.Builder();
 
-				builder.setState("Playing Pupper Client " + PupperClient.getInstance().getClientVersion())
-						.setStartTimestamp(OffsetDateTime.now().toEpochSecond()).setLargeImage("icon")
-						.setActivityType(ActivityType.Playing);
+                builder.setState("Playing Pupper Client " + PupperClient.getInstance().getClientVersion())
+                        .setStartTimestamp(OffsetDateTime.now().toEpochSecond()).setLargeImage("icon")
+                        .setActivityType(ActivityType.Playing);
 
-				client.sendRichPresence(builder.build());
-			}
+                client.sendRichPresence(builder.build());
+            }
 
-			@Override
-			public void onPacketSent(IPCClient client, Packet packet) {
-			}
+            @Override
+            public void onPacketSent(IPCClient client, Packet packet) {
+            }
 
-			@Override
-			public void onPacketReceived(IPCClient client, Packet packet) {
-			}
+            @Override
+            public void onPacketReceived(IPCClient client, Packet packet) {
+            }
 
-			@Override
-			public void onActivityJoin(IPCClient client, String secret) {
-			}
+            @Override
+            public void onActivityJoin(IPCClient client, String secret) {
+            }
 
-			@Override
-			public void onActivitySpectate(IPCClient client, String secret) {
-			}
+            @Override
+            public void onActivitySpectate(IPCClient client, String secret) {
+            }
 
-			@Override
-			public void onActivityJoinRequest(IPCClient client, String secret, User user) {
-			}
+            @Override
+            public void onActivityJoinRequest(IPCClient client, String secret, User user) {
+            }
 
-			@Override
-			public void onClose(IPCClient client, JsonObject json) {
-			}
+            @Override
+            public void onClose(IPCClient client, JsonObject json) {
+            }
 
-			@Override
-			public void onDisconnect(IPCClient client, Throwable t) {
-			}
-		});
+            @Override
+            public void onDisconnect(IPCClient client, Throwable t) {
+            }
+        });
 
-		try {
-			client.connect();
-		} catch (NoDiscordClientException e) {
-			cn.pupperclient.PupperLogger.error("DiscordRPC", "Failed to connect to Discord IPC", e);
-		}
-	}
+        try {
+            client.connect();
+        } catch (NoDiscordClientException e) {
+            cn.pupperclient.PupperLogger.error("DiscordRPC", "Failed to connect to Discord IPC", e);
+        }
+    }
 
-	@Override
-	public void onDisable() {
-		super.onDisable();
+    @Override
+    public void onDisable() {
+        super.onDisable();
 
-		if (client != null && client.getStatus() == PipeStatus.CONNECTED) {
-			client.close();
-			client = null;
-		}
-	}
+        if (client != null && client.getStatus() == PipeStatus.CONNECTED) {
+            client.close();
+            client = null;
+        }
+    }
 }

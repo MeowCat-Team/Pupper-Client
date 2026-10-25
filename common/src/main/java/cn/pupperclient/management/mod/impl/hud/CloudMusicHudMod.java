@@ -47,8 +47,8 @@ public class CloudMusicHudMod extends SimpleHUDMod {
 
     @Override
     public String getText() {
-		String title = JNAWindowChecker.getCurrentWindowTitle();
-		return title == null || title.isBlank() ? "Nothing is playing" : title;
+        String title = JNAWindowChecker.getCurrentWindowTitle();
+        return title == null || title.isBlank() ? "Nothing is playing" : title;
     }
 
     @Override

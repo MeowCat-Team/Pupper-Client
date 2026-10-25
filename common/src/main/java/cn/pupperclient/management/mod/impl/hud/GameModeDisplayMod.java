@@ -22,30 +22,30 @@ import cn.pupperclient.skia.font.Icon;
 
 public class GameModeDisplayMod extends SimpleHUDMod {
 
-	public GameModeDisplayMod() {
-		super("mod.gamemodedisplay.name", "mod.gamemodedisplay.description", Icon.SPORTS_ESPORTS);
-	}
+    public GameModeDisplayMod() {
+        super("mod.gamemodedisplay.name", "mod.gamemodedisplay.description", Icon.SPORTS_ESPORTS);
+    }
 
 
-	@Override
-	public String getText() {
+    @Override
+    public String getText() {
 
-		String prefix = "Mode: ";
-		if (client.player == null) {
-			return prefix + "Unknown";
-		}
+        String prefix = "Mode: ";
+        if (client.player == null) {
+            return prefix + "Unknown";
+        }
 
-		if (client.player.isCreative()) {
-			return prefix + "Creative";
-		} else if (client.player.isSpectator()) {
-			return prefix + "Spectator";
-		} else {
-			return prefix + "Survival";
-		}
-	}
+        if (client.player.isCreative()) {
+            return prefix + "Creative";
+        } else if (client.player.isSpectator()) {
+            return prefix + "Spectator";
+        } else {
+            return prefix + "Survival";
+        }
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.SPORTS_ESPORTS;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.SPORTS_ESPORTS;
+    }
 }

@@ -77,8 +77,9 @@ tasks.register("runClient") {
     dependsOn(":fabric:runClient")
 }
 
-// Fails the build when a first-party source loses its license header.
-// Vendored sources are excluded: their upstream licenses require the headers they ship with.
+// Fails the build when a first-party source loses its license header or drifts
+// from the shared formatting rules. Vendored sources are excluded: their upstream
+// licenses require the headers they ship with, and they are not ours to reformat.
 subprojects {
     pluginManager.withPlugin("java") {
         apply(plugin = "com.diffplug.spotless")
@@ -87,6 +88,12 @@ subprojects {
                 target("src/**/*.java")
                 targetExclude("src/main/java/cn/pupperclient/libraries/**")
                 licenseHeaderFile(rootProject.file("gradle/license-header.txt"))
+                // One rule that every file can satisfy today: no trailing whitespace,
+                // no tabs, LF endings, exactly one final newline. A full formatter is a
+                // separate change; enabling it now would rewrite every file at once.
+                trimTrailingWhitespace()
+                indentWithSpaces(4)
+                endWithNewline()
             }
         }
     }

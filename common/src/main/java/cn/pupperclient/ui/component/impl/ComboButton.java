@@ -38,93 +38,93 @@ import cn.pupperclient.utils.mouse.MouseUtils;
 
 public class ComboButton extends Component {
 
-	private PressAnimation pressAnimation = new PressAnimation();
+    private PressAnimation pressAnimation = new PressAnimation();
 
-	private Animation animation;
-	private List<String> options;
-	private String option;
+    private Animation animation;
+    private List<String> options;
+    private String option;
 
-	public ComboButton(float x, float y, List<String> options, String option) {
-		super(x, y);
-		this.options = options;
-		this.option = option;
-		this.animation = new DummyAnimation(1);
-		width = MaterialControls.COMPACT_WIDTH;
-		height = MaterialControls.COMPACT_HEIGHT;
-	}
+    public ComboButton(float x, float y, List<String> options, String option) {
+        super(x, y);
+        this.options = options;
+        this.option = option;
+        this.animation = new DummyAnimation(1);
+        width = MaterialControls.COMPACT_WIDTH;
+        height = MaterialControls.COMPACT_HEIGHT;
+    }
 
-	@Override
-	public void draw(double mouseX, double mouseY) {
+    @Override
+    public void draw(double mouseX, double mouseY) {
 
-		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+        ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		MaterialControls.choice(x, y, width, height, I18n.get(option), palette, MaterialTheme.opacity(),
-				hoverState(mouseX, mouseY), (animation.getEnd() - animation.getValue()) * 22,
-				Math.abs(animation.getValue()));
-		Skia.save();
-		try {
-			Skia.clip(x, y, width, height, MaterialTheme.CONTROL_RADIUS);
-			pressAnimation.draw(x, y, width, height, palette.getPrimary(), 0.12F);
-		} finally {
-			Skia.restore();
-		}
-	}
+        MaterialControls.choice(x, y, width, height, I18n.get(option), palette, MaterialTheme.opacity(),
+                hoverState(mouseX, mouseY), (animation.getEnd() - animation.getValue()) * 22,
+                Math.abs(animation.getValue()));
+        Skia.save();
+        try {
+            Skia.clip(x, y, width, height, MaterialTheme.CONTROL_RADIUS);
+            pressAnimation.draw(x, y, width, height, palette.getPrimary(), 0.12F);
+        } finally {
+            Skia.restore();
+        }
+    }
 
-	@Override
-	public void mousePressed(double mouseX, double mouseY, int button) {
-		if (MouseUtils.isInside(mouseX, mouseY, x, y, width, height) && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-			pressAnimation.onPressed(mouseX, mouseY, x, y);
-		}
-	}
+    @Override
+    public void mousePressed(double mouseX, double mouseY, int button) {
+        if (MouseUtils.isInside(mouseX, mouseY, x, y, width, height) && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            pressAnimation.onPressed(mouseX, mouseY, x, y);
+        }
+    }
 
-	@Override
-	public void mouseReleased(double mouseX, double mouseY, int button) {
+    @Override
+    public void mouseReleased(double mouseX, double mouseY, int button) {
 
-		int max = options.size();
-		int index = options.indexOf(option);
+        int max = options.size();
+        int index = options.indexOf(option);
 
-		if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
 
-			if (MouseUtils.isInside(mouseX, mouseY, x, y, 32, 32)) {
+            if (MouseUtils.isInside(mouseX, mouseY, x, y, 32, 32)) {
 
-				animation = new EaseStandard(Duration.MEDIUM_3, 0, 1);
+                animation = new EaseStandard(Duration.MEDIUM_3, 0, 1);
 
-				if (index > 0) {
-					index--;
-				} else {
-					index = max - 1;
-				}
+                if (index > 0) {
+                    index--;
+                } else {
+                    index = max - 1;
+                }
 
-				setOption(options.get(index));
-			}
+                setOption(options.get(index));
+            }
 
-			if (MouseUtils.isInside(mouseX, mouseY, x + width - 32, y, 32, 32)) {
+            if (MouseUtils.isInside(mouseX, mouseY, x + width - 32, y, 32, 32)) {
 
-				animation = new EaseStandard(Duration.MEDIUM_3, 0, -1);
+                animation = new EaseStandard(Duration.MEDIUM_3, 0, -1);
 
-				if (index < max - 1) {
-					index++;
-				} else {
-					index = 0;
-				}
+                if (index < max - 1) {
+                    index++;
+                } else {
+                    index = 0;
+                }
 
-				setOption(options.get(index));
-			}
-		}
+                setOption(options.get(index));
+            }
+        }
 
-		pressAnimation.onReleased(mouseX, mouseY, x, y);
-	}
+        pressAnimation.onReleased(mouseX, mouseY, x, y);
+    }
 
-	public String getOption() {
-		return option;
-	}
+    public String getOption() {
+        return option;
+    }
 
-	public void setOption(String option) {
+    public void setOption(String option) {
 
-		this.option = option;
+        this.option = option;
 
-		if (handler instanceof ComboButtonHandler) {
-			((ComboButtonHandler) handler).onChanged(option);
-		}
-	}
+        if (handler instanceof ComboButtonHandler) {
+            ((ComboButtonHandler) handler).onChanged(option);
+        }
+    }
 }

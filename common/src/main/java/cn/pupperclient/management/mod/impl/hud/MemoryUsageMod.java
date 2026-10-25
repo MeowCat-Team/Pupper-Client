@@ -22,23 +22,23 @@ import cn.pupperclient.skia.font.Icon;
 
 public class MemoryUsageMod extends SimpleHUDMod {
 
-	public MemoryUsageMod() {
-		super("mod.memoryusage.name", "mod.memoryusage.description", Icon.MEMORY_ALT);
-	}
-	
+    public MemoryUsageMod() {
+        super("mod.memoryusage.name", "mod.memoryusage.description", Icon.MEMORY_ALT);
+    }
 
-	@Override
-	public String getText() {
-		return "Mem: " + getUsingMemory() + "%";
-	}
 
-	@Override
-	public String getIcon() {
-		return Icon.MEMORY_ALT;
-	}
+    @Override
+    public String getText() {
+        return "Mem: " + getUsingMemory() + "%";
+    }
 
-	private long getUsingMemory() {
-		Runtime runtime = Runtime.getRuntime();
-		return (runtime.totalMemory() - runtime.freeMemory()) * 100L / runtime.maxMemory();
-	}
+    @Override
+    public String getIcon() {
+        return Icon.MEMORY_ALT;
+    }
+
+    private long getUsingMemory() {
+        Runtime runtime = Runtime.getRuntime();
+        return (runtime.totalMemory() - runtime.freeMemory()) * 100L / runtime.maxMemory();
+    }
 }

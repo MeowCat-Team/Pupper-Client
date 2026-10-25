@@ -21,13 +21,13 @@ import cn.pupperclient.event.Event;
 
 public class AttackEntityEvent extends Event {
 
-	private final int entityId;
+    private final int entityId;
 
-	public AttackEntityEvent(int entityId) {
-		this.entityId = entityId;
-	}
+    public AttackEntityEvent(int entityId) {
+        this.entityId = entityId;
+    }
 
-	public int getEntityId() {
-		return entityId;
-	}
+    public int getEntityId() {
+        return entityId;
+    }
 }

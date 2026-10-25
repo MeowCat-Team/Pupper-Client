@@ -31,53 +31,53 @@ import io.github.humbleui.skija.Font;
 
 public abstract class HUDMod extends Mod {
 
-	protected Position position;
+    protected Position position;
 
-	public HUDMod(String name, String description, String icon) {
-		super(name, description, icon, ModCategory.HUD);
-		this.position = new Position(100, 100, 0, 0);
-		this.setMovable(true);
-	}
+    public HUDMod(String name, String description, String icon) {
+        super(name, description, icon, ModCategory.HUD);
+        this.position = new Position(100, 100, 0, 0);
+        this.setMovable(true);
+    }
 
-	public void begin() {
-		Skia.save();
-		Skia.scale(position.getX(), position.getY(), position.getScale());
-	}
+    public void begin() {
+        Skia.save();
+        Skia.scale(position.getX(), position.getY(), position.getScale());
+    }
 
-	public void finish() {
-		Skia.restore();
-	}
+    public void finish() {
+        Skia.restore();
+    }
 
-	public void drawBackground(float x, float y, float width, float height) {
-		getDesign().drawBackground(x, y, width, height, getRadius());
-	}
-	
+    public void drawBackground(float x, float y, float width, float height) {
+        getDesign().drawBackground(x, y, width, height, getRadius());
+    }
 
-	public void drawText(String text, float x, float y, Font font) {
-		getDesign().drawText(text, x, y, font);
-	}
 
-	public float getRadius() { return HUDTokens.RADIUS; }
+    public void drawText(String text, float x, float y, Font font) {
+        getDesign().drawText(text, x, y, font);
+    }
 
-	public HUDColors colors() { return getDesign().colors(); }
+    public float getRadius() { return HUDTokens.RADIUS; }
 
-	protected boolean reducedMotion() {
-		return HUDModSettings.getInstance().getReducedMotionSetting().isEnabled();
-	}
+    public HUDColors colors() { return getDesign().colors(); }
 
-	public HUDDesign getDesign() {
-		return PupperClient.getInstance().getModManager().getCurrentDesign();
-	}
+    protected boolean reducedMotion() {
+        return HUDModSettings.getInstance().getReducedMotionSetting().isEnabled();
+    }
 
-	public Position getPosition() {
-		return position;
-	}
+    public HUDDesign getDesign() {
+        return PupperClient.getInstance().getModManager().getCurrentDesign();
+    }
 
-	public float getX() {
-		return position.getX();
-	}
+    public Position getPosition() {
+        return position;
+    }
 
-	public float getY() {
-		return position.getY();
-	}
+    public float getX() {
+        return position.getX();
+    }
+
+    public float getY() {
+        return position.getY();
+    }
 }

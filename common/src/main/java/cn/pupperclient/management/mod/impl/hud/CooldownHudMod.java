@@ -49,11 +49,11 @@ public class CooldownHudMod extends SimpleHUDMod {
             cooldownProgress = client.player.getAttackStrengthScale(0.0F);
         }
         boolean isCooldown = cooldownProgress < 1.0f;
-		return isCooldown ? "Cooldown " + Math.round(cooldownProgress * 100) + "%" : "Ready";
+        return isCooldown ? "Cooldown " + Math.round(cooldownProgress * 100) + "%" : "Ready";
     }
 
     @Override
     public String getIcon() {
-		return Icon.TIMER;
+        return Icon.TIMER;
     }
 }

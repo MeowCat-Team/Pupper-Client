@@ -22,22 +22,22 @@ import cn.pupperclient.skia.font.Icon;
 
 public class CoordsMod extends SimpleHUDMod {
 
-	public CoordsMod() {
-		super("mod.coords.name", "mod.coords.description", Icon.PIN_DROP);
-	}
+    public CoordsMod() {
+        super("mod.coords.name", "mod.coords.description", Icon.PIN_DROP);
+    }
 
 
-	@Override
-	public String getText() {
-		if (client.player != null) {
-			return "X: " + (int) client.player.getX() + " Y: " + (int) client.player.getY() + " Z: "
-					+ (int) client.player.getZ();
-		}
+    @Override
+    public String getText() {
+        if (client.player != null) {
+            return "X: " + (int) client.player.getX() + " Y: " + (int) client.player.getY() + " Z: "
+                    + (int) client.player.getZ();
+        }
         return "";
     }
 
-	@Override
-	public String getIcon() {
-		return Icon.PIN_DROP;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.PIN_DROP;
+    }
 }

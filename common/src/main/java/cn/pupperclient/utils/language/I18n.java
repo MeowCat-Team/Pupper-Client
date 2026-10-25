@@ -27,60 +27,60 @@ import java.util.Objects;
 
 public final class I18n {
 
-	private static final Map<Language, Map<String, String>> bundles = new EnumMap<>(Language.class);
-	private static Language currentLanguage;
+    private static final Map<Language, Map<String, String>> bundles = new EnumMap<>(Language.class);
+    private static Language currentLanguage;
 
-	private I18n() {
-	}
+    private I18n() {
+    }
 
-	public static void setLanguage(Language language) {
-		currentLanguage = language;
-		bundle(language);
-		if (language != Language.ENGLISH) {
-			bundle(Language.ENGLISH);
-		}
-	}
+    public static void setLanguage(Language language) {
+        currentLanguage = language;
+        bundle(language);
+        if (language != Language.ENGLISH) {
+            bundle(Language.ENGLISH);
+        }
+    }
 
-	private static Map<String, String> bundle(Language language) {
-		return bundles.computeIfAbsent(language, key -> {
-			Map<String, String> map = new HashMap<>();
-			load(key, map);
-			return map;
-		});
-	}
+    private static Map<String, String> bundle(Language language) {
+        return bundles.computeIfAbsent(language, key -> {
+            Map<String, String> map = new HashMap<>();
+            load(key, map);
+            return map;
+        });
+    }
 
-	private static void load(Language language, Map<String, String> map) {
+    private static void load(Language language, Map<String, String> map) {
 
-		String resourcePath = String.format("assets/pupper/languages/%s.lang", language.getId());
+        String resourcePath = String.format("assets/pupper/languages/%s.lang", language.getId());
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
             Objects.requireNonNull(I18n.class.getClassLoader().getResourceAsStream(resourcePath), "Language file not found: " + resourcePath), StandardCharsets.UTF_8))) {
 
-			reader.lines().filter(line -> !line.isEmpty() && !line.startsWith("#")).map(line -> line.split("=", 2))
-					.filter(parts -> parts.length == 2)
-					.forEach(parts -> map.put(parts[0].trim(), parts[1].trim()));
-		} catch (Exception e) {
+            reader.lines().filter(line -> !line.isEmpty() && !line.startsWith("#")).map(line -> line.split("=", 2))
+                    .filter(parts -> parts.length == 2)
+                    .forEach(parts -> map.put(parts[0].trim(), parts[1].trim()));
+        } catch (Exception e) {
             cn.pupperclient.PupperLogger.error("I18n", "Failed to load language: " + language.getId(), e);
-		}
-	}
+        }
+    }
 
-	public static String get(String key) {
-		if (currentLanguage == null) {
-			return key;
-		}
-		String translated = bundle(currentLanguage).get(key);
-		if (translated != null) {
-			return translated;
-		}
-		return currentLanguage == Language.ENGLISH ? key : bundle(Language.ENGLISH).getOrDefault(key, key);
-	}
+    public static String get(String key) {
+        if (currentLanguage == null) {
+            return key;
+        }
+        String translated = bundle(currentLanguage).get(key);
+        if (translated != null) {
+            return translated;
+        }
+        return currentLanguage == Language.ENGLISH ? key : bundle(Language.ENGLISH).getOrDefault(key, key);
+    }
 
-	/** Reads a translation without changing the active language. */
-	public static String get(Language language, String key) {
-		return bundle(language).getOrDefault(key, key);
-	}
+    /** Reads a translation without changing the active language. */
+    public static String get(Language language, String key) {
+        return bundle(language).getOrDefault(key, key);
+    }
 
-	public static Language getCurrentLanguage() {
-		return currentLanguage;
-	}
+    public static Language getCurrentLanguage() {
+        return currentLanguage;
+    }
 }

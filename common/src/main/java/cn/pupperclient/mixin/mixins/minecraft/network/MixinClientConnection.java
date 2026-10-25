@@ -38,9 +38,9 @@ import net.minecraft.server.RunningOnDifferentThreadException;
 @Mixin(Connection.class)
 public abstract class MixinClientConnection {
 
-	@Shadow
+    @Shadow
     private static <T extends PacketListener> void genericsFtw(Packet<T> packet, PacketListener listener) {
-	}
+    }
 
     @Shadow
     protected abstract void sendPacket(Packet<?> packet, @Nullable ChannelFutureListener listener, boolean flush);
@@ -51,34 +51,34 @@ public abstract class MixinClientConnection {
     )
     private void redirectSendPacket(Connection instance, Packet<?> packet, ChannelFutureListener listener, boolean flush) {
 
-		SendPacketEvent event = new SendPacketEvent(packet);
-		EventBus.getInstance().post(event);
+        SendPacketEvent event = new SendPacketEvent(packet);
+        EventBus.getInstance().post(event);
 
         if (!event.isCancelled()) {
             sendPacket(packet, listener, flush);
         }
-	}
+    }
 
-	@Inject(method = "genericsFtw", at = @At("HEAD"), cancellable = true, require = 1)
-	private static void onRecievePacket(Packet<?> packet, PacketListener listener, CallbackInfo ci) {
+    @Inject(method = "genericsFtw", at = @At("HEAD"), cancellable = true, require = 1)
+    private static void onRecievePacket(Packet<?> packet, PacketListener listener, CallbackInfo ci) {
 
-		if (packet instanceof ClientboundBundlePacket bundleS2CPacket) {
-			ci.cancel();
+        if (packet instanceof ClientboundBundlePacket bundleS2CPacket) {
+            ci.cancel();
 
-			for (Packet<?> packetInBundle : bundleS2CPacket.subPackets()) {
-				try {
-					genericsFtw(packetInBundle, listener);
-				} catch (RunningOnDifferentThreadException ignored) {
-				}
-			}
-			return;
-		}
+            for (Packet<?> packetInBundle : bundleS2CPacket.subPackets()) {
+                try {
+                    genericsFtw(packetInBundle, listener);
+                } catch (RunningOnDifferentThreadException ignored) {
+                }
+            }
+            return;
+        }
 
-		ReceivePacketEvent event = new ReceivePacketEvent(packet);
-		EventBus.getInstance().post(event);
+        ReceivePacketEvent event = new ReceivePacketEvent(packet);
+        EventBus.getInstance().post(event);
 
-		if (event.isCancelled()) {
-			ci.cancel();
-		}
-	}
+        if (event.isCancelled()) {
+            ci.cancel();
+        }
+    }
 }

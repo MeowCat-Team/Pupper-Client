@@ -21,26 +21,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 public enum ModCategory {
-	ALL("text.all"), HUD("text.hud"), RENDER("text.render"), PLAYER("text.player"), MISC("text.misc"), FUN("text.fun"), HACK("text.hack");
+    ALL("text.all"), HUD("text.hud"), RENDER("text.render"), PLAYER("text.player"), MISC("text.misc"), FUN("text.fun"), HACK("text.hack");
 
-	private final String title;
+    private final String title;
 
-	private ModCategory(String title) {
-		this.title = title;
-	}
+    private ModCategory(String title) {
+        this.title = title;
+    }
 
-	public String getTitle() {
-		return title;
-	}
+    public String getTitle() {
+        return title;
+    }
 
-	public static List<String> getTitles() {
+    public static List<String> getTitles() {
 
-		List<String> output = new ArrayList<>();
+        List<String> output = new ArrayList<>();
 
-		for (ModCategory c : ModCategory.values()) {
-			output.add(c.getTitle());
-		}
+        for (ModCategory c : ModCategory.values()) {
+            output.add(c.getTitle());
+        }
 
-		return output;
-	}
+        return output;
+    }
 }

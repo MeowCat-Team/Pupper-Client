@@ -25,36 +25,36 @@ import cn.pupperclient.skia.font.Icon;
 
 public class SpeedometerMod extends SimpleHUDMod {
 
-	private DecimalFormat speedFormat = new DecimalFormat("0.00");
+    private DecimalFormat speedFormat = new DecimalFormat("0.00");
 
-	public SpeedometerMod() {
-		super("mod.speedometer.name", "mod.speedometer.description", Icon.SPEED);
-	}
+    public SpeedometerMod() {
+        super("mod.speedometer.name", "mod.speedometer.description", Icon.SPEED);
+    }
 
-	
-	@Override
-	public String getText() {
 
-		String suffix = " m/s";
-		
-		if (client.player != null) {
-			
-			Entity entity = client.player.getVehicle() == null ? client.player : client.player.getVehicle();
-			Vec3 vec = entity.getKnownMovement();
-			
-			if (entity.onGround() && vec.y < 0) {
-				vec = new Vec3(vec.x, 0, vec.z);
-			}
-			
-			return speedFormat.format(vec.length() * 20) + suffix;
-		}
+    @Override
+    public String getText() {
 
-		return speedFormat.format(0) + suffix;
-	}
+        String suffix = " m/s";
 
-	@Override
-	public String getIcon() {
-		return Icon.SPEED;
-	}
+        if (client.player != null) {
+
+            Entity entity = client.player.getVehicle() == null ? client.player : client.player.getVehicle();
+            Vec3 vec = entity.getKnownMovement();
+
+            if (entity.onGround() && vec.y < 0) {
+                vec = new Vec3(vec.x, 0, vec.z);
+            }
+
+            return speedFormat.format(vec.length() * 20) + suffix;
+        }
+
+        return speedFormat.format(0) + suffix;
+    }
+
+    @Override
+    public String getIcon() {
+        return Icon.SPEED;
+    }
     @Override protected String getUnit() { return "m/s"; }
 }

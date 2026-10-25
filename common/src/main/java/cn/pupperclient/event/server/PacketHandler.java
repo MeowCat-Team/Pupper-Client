@@ -32,64 +32,64 @@ import net.minecraft.network.protocol.game.*;
 public class PacketHandler {
 
     @EventListener
-	public void onSendPacket(SendPacketEvent packetEvent) {
+    public void onSendPacket(SendPacketEvent packetEvent) {
 
-		Packet<?> basePacket = packetEvent.getPacket();
+        Packet<?> basePacket = packetEvent.getPacket();
 
-		if (basePacket instanceof ServerboundInteractPacket packet) {
+        if (basePacket instanceof ServerboundInteractPacket packet) {
 
-			if (!packet.usingSecondaryAction()) {
-				EventBus.getInstance()
-						.post(new AttackEntityEvent((packet.entityId())));
-			}
-		}
+            if (!packet.usingSecondaryAction()) {
+                EventBus.getInstance()
+                        .post(new AttackEntityEvent((packet.entityId())));
+            }
+        }
 
-		if (basePacket instanceof ServerboundChatPacket packet) {
+        if (basePacket instanceof ServerboundChatPacket packet) {
 
             SendChatEvent event = new SendChatEvent(packet.message());
 
-			EventBus.getInstance().post(event);
+            EventBus.getInstance().post(event);
 
-			if (event.isCancelled()) {
-				packetEvent.setCancelled(true);
-			}
-		}
-	};
+            if (event.isCancelled()) {
+                packetEvent.setCancelled(true);
+            }
+        }
+    };
 
     @EventListener
-	public void onReceivePacket(ReceivePacketEvent packetEvent) {
+    public void onReceivePacket(ReceivePacketEvent packetEvent) {
 
-		Packet<?> basePacket = packetEvent.getPacket();
+        Packet<?> basePacket = packetEvent.getPacket();
 
-		if (basePacket instanceof ClientboundDamageEventPacket packet) {
+        if (basePacket instanceof ClientboundDamageEventPacket packet) {
 
             EventBus.getInstance().post(new DamageEntityEvent(packet.entityId()));
-		}
+        }
 
-		if (basePacket instanceof ClientboundPlayerChatPacket packet) {
+        if (basePacket instanceof ClientboundPlayerChatPacket packet) {
 
             ReceiveChatEvent event = new ReceiveChatEvent(packet.body().content());
 
-			EventBus.getInstance().post(event);
+            EventBus.getInstance().post(event);
 
-			if (event.isCancelled()) {
-				packetEvent.setCancelled(true);
-			}
-		}
+            if (event.isCancelled()) {
+                packetEvent.setCancelled(true);
+            }
+        }
 
-		if (basePacket instanceof ClientboundSystemChatPacket packet) {
+        if (basePacket instanceof ClientboundSystemChatPacket packet) {
 
             ReceiveChatEvent event = new ReceiveChatEvent(packet.content().getString());
 
-			EventBus.getInstance().post(event);
+            EventBus.getInstance().post(event);
 
-			if (event.isCancelled()) {
-				packetEvent.setCancelled(true);
-			}
-		}
+            if (event.isCancelled()) {
+                packetEvent.setCancelled(true);
+            }
+        }
 
-		if (basePacket instanceof ClientboundLoginPacket) {
-			EventBus.getInstance().post(new GameJoinEvent());
-		}
-	};
+        if (basePacket instanceof ClientboundLoginPacket) {
+            EventBus.getInstance().post(new GameJoinEvent());
+        }
+    };
 }

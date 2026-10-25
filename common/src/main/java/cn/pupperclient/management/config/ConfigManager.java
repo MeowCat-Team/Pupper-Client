@@ -36,15 +36,15 @@ import cn.pupperclient.utils.file.FileUtils;
 
 public class ConfigManager {
 
-	private final List<Config> configs = new ArrayList<>();
+    private final List<Config> configs = new ArrayList<>();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-	public ConfigManager() {
-		configs.add(new ModConfig());
-		load(ConfigType.MOD);
+    public ConfigManager() {
+        configs.add(new ModConfig());
+        load(ConfigType.MOD);
         configs.add(new KeyConfig());
         load(ConfigType.KEY);
-	}
+    }
 
     public void save(ConfigType type) {
         Config config = getConfig(type);
@@ -115,7 +115,7 @@ public class ConfigManager {
             }
         } catch (Exception e) {
             PupperClient.LOGGER.error("Failed to load config: {}, trying backup", config.getType(), e);
-            
+
             // Try backup if main file fails
             File backup = new File(config.getFile().getAbsolutePath() + ".bak");
             if (backup.exists() && !file.equals(backup)) {
@@ -133,13 +133,13 @@ public class ConfigManager {
         }
     }
 
-	/** @return the config for {@code type}, or {@code null} when that type is not registered */
-	public Config getConfig(ConfigType type) {
-		for (Config config : configs) {
-			if (config.getType() == type) {
-				return config;
-			}
-		}
-		return null;
-	}
+    /** @return the config for {@code type}, or {@code null} when that type is not registered */
+    public Config getConfig(ConfigType type) {
+        for (Config config : configs) {
+            if (config.getType() == type) {
+                return config;
+            }
+        }
+        return null;
+    }
 }

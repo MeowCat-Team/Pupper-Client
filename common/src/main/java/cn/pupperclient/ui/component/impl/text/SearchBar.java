@@ -36,135 +36,135 @@ import cn.pupperclient.utils.mouse.MouseUtils;
 
 public class SearchBar extends Component {
 
-	private Runnable shortcutEvent;
+    private Runnable shortcutEvent;
 
-	private SimpleAnimation cursorAnimation = new SimpleAnimation();
-	private SimpleAnimation focusAnimation = new SimpleAnimation();
-	private Animation cursorFlashAnimation;
-	private Animation hintTextAnimation;
+    private SimpleAnimation cursorAnimation = new SimpleAnimation();
+    private SimpleAnimation focusAnimation = new SimpleAnimation();
+    private Animation cursorFlashAnimation;
+    private Animation hintTextAnimation;
 
-	private TextInputHelper input = new TextInputHelper();
-	private String hintText;
+    private TextInputHelper input = new TextInputHelper();
+    private String hintText;
 
-	public SearchBar(float x, float y, float width, String text, Runnable shortcutEvent) {
-		super(x, y);
-		this.shortcutEvent = shortcutEvent;
-		this.width = width;
-		this.height = MaterialControls.SEARCH_HEIGHT;
-		this.setText(text);
+    public SearchBar(float x, float y, float width, String text, Runnable shortcutEvent) {
+        super(x, y);
+        this.shortcutEvent = shortcutEvent;
+        this.width = width;
+        this.height = MaterialControls.SEARCH_HEIGHT;
+        this.setText(text);
 
-		if (getText().isBlank()) {
-			this.hintTextAnimation = new DummyAnimation(1);
-		} else {
-			this.hintTextAnimation = new DummyAnimation(0);
-		}
+        if (getText().isBlank()) {
+            this.hintTextAnimation = new DummyAnimation(1);
+        } else {
+            this.hintTextAnimation = new DummyAnimation(0);
+        }
 
-		this.cursorFlashAnimation = new DummyAnimation(0, 0);
-		this.hintText = "text.search";
-	}
+        this.cursorFlashAnimation = new DummyAnimation(0, 0);
+        this.hintText = "text.search";
+    }
 
-	@Override
-	public void draw(double mouseX, double mouseY) {
+    @Override
+    public void draw(double mouseX, double mouseY) {
 
-		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+        ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		focusAnimation.onTick(isFocused() ? 1 : 0, 12);
-		updateCursor();
-		MaterialControls.textInput(x, y, width, height, true, palette, MaterialTheme.opacity(),
-				hoverState(mouseX, mouseY), focusAnimation.getValue(),
-				new MaterialControls.TextState(getText(), cursorAnimation.getValue(), cursorFlashAnimation.getValue(),
-						input.getCursorPosition(), input.getSelectionEnd(), I18n.get(hintText), hintTextAnimation.getValue()));
-	}
+        focusAnimation.onTick(isFocused() ? 1 : 0, 12);
+        updateCursor();
+        MaterialControls.textInput(x, y, width, height, true, palette, MaterialTheme.opacity(),
+                hoverState(mouseX, mouseY), focusAnimation.getValue(),
+                new MaterialControls.TextState(getText(), cursorAnimation.getValue(), cursorFlashAnimation.getValue(),
+                        input.getCursorPosition(), input.getSelectionEnd(), I18n.get(hintText), hintTextAnimation.getValue()));
+    }
 
-	private void updateCursor() {
+    private void updateCursor() {
 
-		int selectionEnd = input.getSelectionEnd();
-		int cursorPosition = input.getCursorPosition();
-		String text = getText();
-		boolean focused = isFocused();
+        int selectionEnd = input.getSelectionEnd();
+        int cursorPosition = input.getCursorPosition();
+        String text = getText();
+        boolean focused = isFocused();
 
-		if (focused && cursorPosition == selectionEnd) {
-			if (cursorFlashAnimation.getEnd() == 0 && cursorFlashAnimation.isFinished()) {
-				cursorFlashAnimation = new EaseStandard(Duration.SHORT_4, 0, 1);
-			} else if (cursorFlashAnimation.getEnd() == 1 && cursorFlashAnimation.isFinished()) {
-				cursorFlashAnimation = new EaseStandard(Duration.SHORT_4, 1, 0);
-			}
-		} else {
-			if (cursorFlashAnimation.getEnd() != 0) {
-				cursorFlashAnimation = new EaseStandard(Duration.SHORT_4, 1, 0);
-			}
-		}
+        if (focused && cursorPosition == selectionEnd) {
+            if (cursorFlashAnimation.getEnd() == 0 && cursorFlashAnimation.isFinished()) {
+                cursorFlashAnimation = new EaseStandard(Duration.SHORT_4, 0, 1);
+            } else if (cursorFlashAnimation.getEnd() == 1 && cursorFlashAnimation.isFinished()) {
+                cursorFlashAnimation = new EaseStandard(Duration.SHORT_4, 1, 0);
+            }
+        } else {
+            if (cursorFlashAnimation.getEnd() != 0) {
+                cursorFlashAnimation = new EaseStandard(Duration.SHORT_4, 1, 0);
+            }
+        }
 
-		float cursorOffset = Skia.getTextBounds(text.substring(0, cursorPosition), Fonts.getRegular(16)).getWidth();
-		cursorAnimation.onTick(cursorOffset, 16);
-	}
+        float cursorOffset = Skia.getTextBounds(text.substring(0, cursorPosition), Fonts.getRegular(16)).getWidth();
+        cursorAnimation.onTick(cursorOffset, 16);
+    }
 
-	@Override
-	public void mousePressed(double mouseX, double mouseY, int button) {
+    @Override
+    public void mousePressed(double mouseX, double mouseY, int button) {
 
-		boolean isInside = MouseUtils.isInside(mouseX, mouseY, x, y, width, height);
+        boolean isInside = MouseUtils.isInside(mouseX, mouseY, x, y, width, height);
 
-		if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
 
-			if (isInside && !isFocused()) {
+            if (isInside && !isFocused()) {
 
-				if (getText().isEmpty()) {
-					hintTextAnimation = new EaseStandard(Duration.MEDIUM_1, hintTextAnimation.getValue(), 0);
-				}
+                if (getText().isEmpty()) {
+                    hintTextAnimation = new EaseStandard(Duration.MEDIUM_1, hintTextAnimation.getValue(), 0);
+                }
 
-				input.setFocused(true);
-			} else if (!isInside && isFocused()) {
+                input.setFocused(true);
+            } else if (!isInside && isFocused()) {
 
-				if (getText().isEmpty()) {
-					hintTextAnimation = new EaseStandard(Duration.MEDIUM_1, hintTextAnimation.getValue(), 1);
-				}
+                if (getText().isEmpty()) {
+                    hintTextAnimation = new EaseStandard(Duration.MEDIUM_1, hintTextAnimation.getValue(), 1);
+                }
 
-				input.setFocused(false);
-			}
-		}
-	}
+                input.setFocused(false);
+            }
+        }
+    }
 
-	@Override
-	public void keyPressed(int keyCode, int scanCode, int modifiers) {
+    @Override
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
 
-		if (modifiers == GLFW.GLFW_MOD_CONTROL && keyCode == GLFW.GLFW_KEY_F && !isFocused()) {
+        if (modifiers == GLFW.GLFW_MOD_CONTROL && keyCode == GLFW.GLFW_KEY_F && !isFocused()) {
 
-			if (getText().isEmpty()) {
-				hintTextAnimation = new EaseStandard(Duration.MEDIUM_1, hintTextAnimation.getValue(), 0);
-			}
+            if (getText().isEmpty()) {
+                hintTextAnimation = new EaseStandard(Duration.MEDIUM_1, hintTextAnimation.getValue(), 0);
+            }
 
-			shortcutEvent.run();
-			input.setFocused(true);
-		} else {
-			input.keyPressed(keyCode, scanCode, modifiers);
-		}
-	}
+            shortcutEvent.run();
+            input.setFocused(true);
+        } else {
+            input.keyPressed(keyCode, scanCode, modifiers);
+        }
+    }
 
-	@Override
-	public void charTyped(int chr) {
-		input.charTyped(chr);
-	}
+    @Override
+    public void charTyped(int chr) {
+        input.charTyped(chr);
+    }
 
-	public String getHintText() {
-		return hintText;
-	}
+    public String getHintText() {
+        return hintText;
+    }
 
-	public void setHintText(String hintText) {
-		this.hintText = hintText;
-	}
+    public void setHintText(String hintText) {
+        this.hintText = hintText;
+    }
 
-	public String getText() {
-		return input.getText();
-	}
+    public String getText() {
+        return input.getText();
+    }
 
-	public void setText(String text) {
-		input.setText(text);
-		if (hintTextAnimation != null) hintTextAnimation = new DummyAnimation(text.isBlank() && !isFocused() ? 1 : 0);
-	}
+    public void setText(String text) {
+        input.setText(text);
+        if (hintTextAnimation != null) hintTextAnimation = new DummyAnimation(text.isBlank() && !isFocused() ? 1 : 0);
+    }
 
-	public boolean isFocused() {
-		return input.isFocused();
-	}
+    public boolean isFocused() {
+        return input.isFocused();
+    }
 
-	public void setWidth(float width) { this.width = width; }
+    public void setWidth(float width) { this.width = width; }
 }

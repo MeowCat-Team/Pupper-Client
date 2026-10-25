@@ -23,23 +23,23 @@ import cn.pupperclient.utils.server.ServerUtils;
 
 public class ServerIPDisplayMod extends SimpleHUDMod {
 
-	public ServerIPDisplayMod() {
-		super("mod.serveripdisplay.name", "mod.serveripdisplay.description", Icon.DNS);
-	}
+    public ServerIPDisplayMod() {
+        super("mod.serveripdisplay.name", "mod.serveripdisplay.description", Icon.DNS);
+    }
 
 
-	@Override
-	public String getText() {
+    @Override
+    public String getText() {
 
-		if (ServerUtils.isSingleplayer()) {
-			return "Singleplayer";
-		}
+        if (ServerUtils.isSingleplayer()) {
+            return "Singleplayer";
+        }
 
-		return ServerUtils.getAddress();
-	}
+        return ServerUtils.getAddress();
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.DNS;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.DNS;
+    }
 }

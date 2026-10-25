@@ -34,29 +34,29 @@ import cn.pupperclient.management.mod.settings.Setting;
 import cn.pupperclient.management.mod.settings.impl.KeybindSetting;
 
 public class ModManager {
-	private final List<Mod> mods = new CopyOnWriteArrayList<>();
-	private final List<Setting> settings = new CopyOnWriteArrayList<>();
-	private final List<HUDDesign> designs = new CopyOnWriteArrayList<>();
+    private final List<Mod> mods = new CopyOnWriteArrayList<>();
+    private final List<Setting> settings = new CopyOnWriteArrayList<>();
+    private final List<HUDDesign> designs = new CopyOnWriteArrayList<>();
 
     private static final String DEFAULT_DESIGN = "design.simple";
 
     private HUDDesign currentDesign;
 
-	public void init() {
-		initMods();
-		initDesigns();
-	}
+    public void init() {
+        initMods();
+        initDesigns();
+    }
 
-	private void initMods() {
+    private void initMods() {
         initHudMods();
-		initPlayerMods();
+        initPlayerMods();
         initRenderMods();
-		initMiscMods();
+        initMiscMods();
         initSettings();
         initFunMods();
 
-		sortMods();
-	}
+        sortMods();
+    }
 
     private void initHudMods()
     {
@@ -149,72 +149,72 @@ public class ModManager {
         mods.add(new SystemSettings());
     }
 
-	private void initDesigns() {
-		designs.add(new SimpleDesign());
-		designs.add(new ClassicDesign());
-		designs.add(new MaterialYouDesign());
-		setCurrentDesign("design.materialyou");
-		if (currentDesign == null) {
-			currentDesign = designs.getFirst();
-		}
-	}
+    private void initDesigns() {
+        designs.add(new SimpleDesign());
+        designs.add(new ClassicDesign());
+        designs.add(new MaterialYouDesign());
+        setCurrentDesign("design.materialyou");
+        if (currentDesign == null) {
+            currentDesign = designs.getFirst();
+        }
+    }
 
-	public List<Mod> getMods() {
-		return mods;
-	}
+    public List<Mod> getMods() {
+        return mods;
+    }
 
-	public List<Setting> getSettings() {
-		return settings;
-	}
+    public List<Setting> getSettings() {
+        return settings;
+    }
 
-	public List<HUDMod> getHUDMods() {
-		return mods.stream().filter(m -> m instanceof HUDMod).map(m -> (HUDMod) m).collect(Collectors.toList());
-	}
+    public List<HUDMod> getHUDMods() {
+        return mods.stream().filter(m -> m instanceof HUDMod).map(m -> (HUDMod) m).collect(Collectors.toList());
+    }
 
-	public List<KeybindSetting> getKeybindSettings() {
-		return settings.stream().filter(s -> s instanceof KeybindSetting).map(s -> (KeybindSetting) s)
-				.collect(Collectors.toList());
-	}
+    public List<KeybindSetting> getKeybindSettings() {
+        return settings.stream().filter(s -> s instanceof KeybindSetting).map(s -> (KeybindSetting) s)
+                .collect(Collectors.toList());
+    }
 
-	public List<Setting> getSettingsByMod(Mod m) {
-		return settings.stream().filter(s -> s.getParent().equals(m)).collect(Collectors.toList());
-	}
+    public List<Setting> getSettingsByMod(Mod m) {
+        return settings.stream().filter(s -> s.getParent().equals(m)).collect(Collectors.toList());
+    }
 
-	public void addSetting(Setting setting) {
-		settings.add(setting);
-	}
+    public void addSetting(Setting setting) {
+        settings.add(setting);
+    }
 
-	public HUDDesign getCurrentDesign() {
-		return currentDesign;
-	}
+    public HUDDesign getCurrentDesign() {
+        return currentDesign;
+    }
 
-	public void setCurrentDesign(String name) {
-		this.currentDesign = getDesignByName(name);
-	}
+    public void setCurrentDesign(String name) {
+        this.currentDesign = getDesignByName(name);
+    }
 
-	/**
-	 * @return the design registered under {@code name}, or the simple design when the
-	 *         saved name no longer exists
-	 */
-	public HUDDesign getDesignByName(String name) {
-		for (HUDDesign design : designs) {
-			if (design.getName().equals(name)) {
-				return design;
-			}
-		}
-		// Fall back once: recursing on the same lookup would never terminate when the
-		// fallback name is missing too.
-		for (HUDDesign design : designs) {
-			if (DEFAULT_DESIGN.equals(design.getName())) {
-				return design;
-			}
-		}
-		return designs.isEmpty() ? null : designs.getFirst();
-	}
+    /**
+     * @return the design registered under {@code name}, or the simple design when the
+     *         saved name no longer exists
+     */
+    public HUDDesign getDesignByName(String name) {
+        for (HUDDesign design : designs) {
+            if (design.getName().equals(name)) {
+                return design;
+            }
+        }
+        // Fall back once: recursing on the same lookup would never terminate when the
+        // fallback name is missing too.
+        for (HUDDesign design : designs) {
+            if (DEFAULT_DESIGN.equals(design.getName())) {
+                return design;
+            }
+        }
+        return designs.isEmpty() ? null : designs.getFirst();
+    }
 
-	private void sortMods() {
-		mods.sort(Comparator.comparing(Mod::getRawName));
-	}
+    private void sortMods() {
+        mods.sort(Comparator.comparing(Mod::getRawName));
+    }
 
     public void setModEnabledByName(boolean enabled, String modName) {
         Mod targetMod = getModByName(modName);

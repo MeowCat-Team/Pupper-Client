@@ -32,42 +32,42 @@ import cn.pupperclient.skia.font.Icon;
 
 public class HUDModSettings extends Mod {
 
-	private static HUDModSettings instance;
-	private final NumberSetting backgroundOpacitySetting = new NumberSetting("setting.hud.backgroundopacity",
-			"setting.hud.backgroundopacity.description", Icon.PALETTE, this, HUDColors.DEFAULT_OPACITY * 100, HUDColors.MIN_OPACITY * 100, 100, 1);
-	private final BooleanSetting backgroundBlurSetting = new BooleanSetting("setting.hud.backgroundblur",
-			"setting.hud.backgroundblur.description", Icon.BLUR_ON, this, true);
+    private static HUDModSettings instance;
+    private final NumberSetting backgroundOpacitySetting = new NumberSetting("setting.hud.backgroundopacity",
+            "setting.hud.backgroundopacity.description", Icon.PALETTE, this, HUDColors.DEFAULT_OPACITY * 100, HUDColors.MIN_OPACITY * 100, 100, 1);
+    private final BooleanSetting backgroundBlurSetting = new BooleanSetting("setting.hud.backgroundblur",
+            "setting.hud.backgroundblur.description", Icon.BLUR_ON, this, true);
 
-	private final BooleanSetting reducedMotionSetting = new BooleanSetting("setting.hud.reducedmotion",
-			"setting.hud.reducedmotion.description", Icon.MOVIE, this, false);
-	private ComboSetting designSetting = new ComboSetting("setting.design", "setting.design.description", Icon.PALETTE,
-			this, Arrays.asList("design.simple", "design.classic", "design.materialyou"),
-			"design.materialyou");
+    private final BooleanSetting reducedMotionSetting = new BooleanSetting("setting.hud.reducedmotion",
+            "setting.hud.reducedmotion.description", Icon.MOVIE, this, false);
+    private ComboSetting designSetting = new ComboSetting("setting.design", "setting.design.description", Icon.PALETTE,
+            this, Arrays.asList("design.simple", "design.classic", "design.materialyou"),
+            "design.materialyou");
 
-	public HUDModSettings() {
-		super("mod.hudsettings.name", "mod.hudsettings.description", Icon.BROWSE_ACTIVITY, ModCategory.MISC);
-		this.setHidden(true);
-		this.setEnabled(true);
+    public HUDModSettings() {
+        super("mod.hudsettings.name", "mod.hudsettings.description", Icon.BROWSE_ACTIVITY, ModCategory.MISC);
+        this.setHidden(true);
+        this.setEnabled(true);
 
-		instance = this;
-	}
+        instance = this;
+    }
 
-	public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> {
-		if (!designSetting.getOption().equals(PupperClient.getInstance().getModManager().getCurrentDesign().getName())) {
-			PupperClient.getInstance().getModManager().setCurrentDesign(designSetting.getOption());
-		}
-	};
+    public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> {
+        if (!designSetting.getOption().equals(PupperClient.getInstance().getModManager().getCurrentDesign().getName())) {
+            PupperClient.getInstance().getModManager().setCurrentDesign(designSetting.getOption());
+        }
+    };
 
-	@Override
-	public void onDisable() {
-		this.setEnabled(true);
-	}
+    @Override
+    public void onDisable() {
+        this.setEnabled(true);
+    }
 
-	public static HUDModSettings getInstance() {
-		return instance;
-	}
+    public static HUDModSettings getInstance() {
+        return instance;
+    }
 
-	public BooleanSetting getReducedMotionSetting() { return reducedMotionSetting; }
-	public BooleanSetting getBackgroundBlurSetting() { return backgroundBlurSetting; }
-	public float getBackgroundOpacity() { return backgroundOpacitySetting.getValue() / 100f; }
+    public BooleanSetting getReducedMotionSetting() { return reducedMotionSetting; }
+    public BooleanSetting getBackgroundBlurSetting() { return backgroundBlurSetting; }
+    public float getBackgroundOpacity() { return backgroundOpacitySetting.getValue() / 100f; }
 }

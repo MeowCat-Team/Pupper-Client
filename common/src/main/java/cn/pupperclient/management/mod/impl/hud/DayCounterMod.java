@@ -22,19 +22,19 @@ import cn.pupperclient.skia.font.Icon;
 
 public class DayCounterMod extends SimpleHUDMod {
 
-	public DayCounterMod() {
-		super("mod.daycounter.name", "mod.daycounter.description", Icon.TODAY);
-	}
+    public DayCounterMod() {
+        super("mod.daycounter.name", "mod.daycounter.description", Icon.TODAY);
+    }
 
 
-	@Override
-	public String getText() {
-		long time = client.level == null ? 0 : client.level.getGameTime() / 24000L;
-		return time + " Day" + (time > 1L ? "s" : "");
-	}
+    @Override
+    public String getText() {
+        long time = client.level == null ? 0 : client.level.getGameTime() / 24000L;
+        return time + " Day" + (time > 1L ? "s" : "");
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.TODAY;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.TODAY;
+    }
 }

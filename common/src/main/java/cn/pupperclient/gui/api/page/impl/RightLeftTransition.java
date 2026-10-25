@@ -19,7 +19,7 @@ package cn.pupperclient.gui.api.page.impl;
 
 public class RightLeftTransition extends SlideTransition {
 
-	public RightLeftTransition(boolean consecutive) {
-		super(consecutive, 1f, -1f);
-	}
+    public RightLeftTransition(boolean consecutive) {
+        super(consecutive, 1f, -1f);
+    }
 }

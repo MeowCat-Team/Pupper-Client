@@ -45,146 +45,146 @@ import com.mojang.blaze3d.platform.InputConstants;
 
 public class ModMenuSettings extends Mod {
 
-	private static ModMenuSettings instance;
-	private String previousLanguageOption = "language.english";
-	private boolean languageInitialized = false;
+    private static ModMenuSettings instance;
+    private String previousLanguageOption = "language.english";
+    private boolean languageInitialized = false;
 
-	private final KeybindSetting keybindSetting = new KeybindSetting("setting.keybind", "setting.keybind.description",
-			Icon.KEYBOARD, this, InputConstants.getKey(new KeyEvent(GLFW.GLFW_KEY_RIGHT_SHIFT, 0, 0)));
+    private final KeybindSetting keybindSetting = new KeybindSetting("setting.keybind", "setting.keybind.description",
+            Icon.KEYBOARD, this, InputConstants.getKey(new KeyEvent(GLFW.GLFW_KEY_RIGHT_SHIFT, 0, 0)));
     private final KeybindSetting keybindSetting_music = new KeybindSetting("setting.keybind_music", "setting.keybind_music.description",
         Icon.KEYBOARD, this, InputConstants.getKey(new KeyEvent(GLFW.GLFW_KEY_M, 0, 0)));
-	private final BooleanSetting darkModeSetting = new BooleanSetting("setting.darkmode", "setting.darkmode.description",
-			Icon.DARK_MODE, this, false);
-	private final HctColorSetting hctColorSetting = new HctColorSetting("setting.color", "setting.color.description",
-			Icon.PALETTE, this, Hct.from(220, 26, 6));
-	private final BooleanSetting blurSetting = new BooleanSetting("setting.blur", "setting.blur.description", Icon.LENS_BLUR,
-			this, true);
-	private final NumberSetting blurIntensitySetting = new NumberSetting("setting.blurintensity",
-			"setting.blurintensity.description", Icon.BLUR_LINEAR, this, 5, 1, 20, 1) {
+    private final BooleanSetting darkModeSetting = new BooleanSetting("setting.darkmode", "setting.darkmode.description",
+            Icon.DARK_MODE, this, false);
+    private final HctColorSetting hctColorSetting = new HctColorSetting("setting.color", "setting.color.description",
+            Icon.PALETTE, this, Hct.from(220, 26, 6));
+    private final BooleanSetting blurSetting = new BooleanSetting("setting.blur", "setting.blur.description", Icon.LENS_BLUR,
+            this, true);
+    private final NumberSetting blurIntensitySetting = new NumberSetting("setting.blurintensity",
+            "setting.blurintensity.description", Icon.BLUR_LINEAR, this, 5, 1, 20, 1) {
         @Override public boolean isVisible() { return blurSetting.isEnabled(); }
     };
-	private final NumberSetting backgroundOpacitySetting = new NumberSetting("setting.ui.backgroundopacity",
-			"setting.ui.backgroundopacity.description", Icon.PALETTE, this,
-			MaterialTokens.DEFAULT_OPACITY * 100, 0, 100, 1);
+    private final NumberSetting backgroundOpacitySetting = new NumberSetting("setting.ui.backgroundopacity",
+            "setting.ui.backgroundopacity.description", Icon.PALETTE, this,
+            MaterialTokens.DEFAULT_OPACITY * 100, 0, 100, 1);
 
-	private final ComboSetting languageSetting = new ComboSetting("setting.language", "setting.language.description",
-			Icon.LANGUAGE, this, Arrays.asList("language.english", "language.chinese"), "language.english");
+    private final ComboSetting languageSetting = new ComboSetting("setting.language", "setting.language.description",
+            Icon.LANGUAGE, this, Arrays.asList("language.english", "language.chinese"), "language.english");
 
-	private Screen modMenu;
+    private Screen modMenu;
 
-	public ModMenuSettings() {
-		super("mod.modmenu.name", "mod.modmenu.description", Icon.MENU, ModCategory.MISC);
+    public ModMenuSettings() {
+        super("mod.modmenu.name", "mod.modmenu.description", Icon.MENU, ModCategory.MISC);
 
-		instance = this;
-		this.setHidden(true);
-		this.setEnabled(true);
-	}
+        instance = this;
+        this.setHidden(true);
+        this.setEnabled(true);
+    }
 
-	private void initializeLanguageSetting() {
-		String configLanguage = languageSetting.getOption();
-		Language targetLanguage = null;
+    private void initializeLanguageSetting() {
+        String configLanguage = languageSetting.getOption();
+        Language targetLanguage = null;
 
-		if (configLanguage != null && !configLanguage.isEmpty() && languageSetting.has(configLanguage)) {
-			targetLanguage = getLanguageEnumFromOption(configLanguage);
-		} else {
-			targetLanguage = Language.ENGLISH;
-			configLanguage = "language.english";
-			languageSetting.setOption(configLanguage);
-		}
+        if (configLanguage != null && !configLanguage.isEmpty() && languageSetting.has(configLanguage)) {
+            targetLanguage = getLanguageEnumFromOption(configLanguage);
+        } else {
+            targetLanguage = Language.ENGLISH;
+            configLanguage = "language.english";
+            languageSetting.setOption(configLanguage);
+        }
 
-		I18n.setLanguage(targetLanguage);
-		previousLanguageOption = configLanguage;
-	}
+        I18n.setLanguage(targetLanguage);
+        previousLanguageOption = configLanguage;
+    }
 
-	private String getLanguageOptionFromEnum(Language language) {
+    private String getLanguageOptionFromEnum(Language language) {
         if (Objects.requireNonNull(language) == Language.CHINESE) {
             return "language.chinese";
         }
         return "language.english";
     }
 
-	private Language getLanguageEnumFromOption(String option) {
-		if (option.contains("chinese")) {
-			return Language.CHINESE;
-		} else {
-			return Language.ENGLISH;
-		}
-	}
+    private Language getLanguageEnumFromOption(String option) {
+        if (option.contains("chinese")) {
+            return Language.CHINESE;
+        } else {
+            return Language.ENGLISH;
+        }
+    }
 
-	public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> {
+    public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> {
 
-		if (!languageInitialized) {
-			initializeLanguageSetting();
-			languageInitialized = true;
-		}
+        if (!languageInitialized) {
+            initializeLanguageSetting();
+            languageInitialized = true;
+        }
 
-		if (keybindSetting.isPressed()) {
-			client.gui.setScreen(new GuiModMenu());
-		}
+        if (keybindSetting.isPressed()) {
+            client.gui.setScreen(new GuiModMenu());
+        }
 
         if (keybindSetting_music.isPressed()) {
             client.gui.setScreen(new MusicPlayGui());
         }
 
-		handleLanguageChange();
-	};
+        handleLanguageChange();
+    };
 
-	private void handleLanguageChange() {
-		String currentLanguageOption = languageSetting.getOption();
+    private void handleLanguageChange() {
+        String currentLanguageOption = languageSetting.getOption();
 
-		if (currentLanguageOption == null || currentLanguageOption.isEmpty()) {
-			return;
-		}
+        if (currentLanguageOption == null || currentLanguageOption.isEmpty()) {
+            return;
+        }
 
-		if (!currentLanguageOption.equals(previousLanguageOption)) {
-			Language targetLanguage = getLanguageEnumFromOption(currentLanguageOption);
+        if (!currentLanguageOption.equals(previousLanguageOption)) {
+            Language targetLanguage = getLanguageEnumFromOption(currentLanguageOption);
 
-			if (I18n.getCurrentLanguage() != targetLanguage) {
-				I18n.setLanguage(targetLanguage);
+            if (I18n.getCurrentLanguage() != targetLanguage) {
+                I18n.setLanguage(targetLanguage);
 
-				if (modMenu != null) {
-					modMenu = null;
-				}
-			}
+                if (modMenu != null) {
+                    modMenu = null;
+                }
+            }
 
-			previousLanguageOption = currentLanguageOption;
+            previousLanguageOption = currentLanguageOption;
 
-			// save config
-			PupperClient.getInstance().getConfigManager().save(ConfigType.MOD);
-		}
-	}
+            // save config
+            PupperClient.getInstance().getConfigManager().save(ConfigType.MOD);
+        }
+    }
 
-	@Override
-	public void onDisable() {
-		this.setEnabled(true);
-	}
+    @Override
+    public void onDisable() {
+        this.setEnabled(true);
+    }
 
-	public static ModMenuSettings getInstance() {
-		return instance;
-	}
+    public static ModMenuSettings getInstance() {
+        return instance;
+    }
 
-	public BooleanSetting getDarkModeSetting() {
-		return darkModeSetting;
-	}
+    public BooleanSetting getDarkModeSetting() {
+        return darkModeSetting;
+    }
 
-	public HctColorSetting getHctColorSetting() {
-		return hctColorSetting;
-	}
+    public HctColorSetting getHctColorSetting() {
+        return hctColorSetting;
+    }
 
-	public BooleanSetting getBlurSetting() {
-		return blurSetting;
-	}
+    public BooleanSetting getBlurSetting() {
+        return blurSetting;
+    }
 
-	public NumberSetting getBlurIntensitySetting() {
-		return blurIntensitySetting;
-	}
+    public NumberSetting getBlurIntensitySetting() {
+        return blurIntensitySetting;
+    }
 
-	public float getBackgroundOpacity() {
-		float value = backgroundOpacitySetting.getValue() / 100f;
-		return Float.isFinite(value) ? Math.max(0, Math.min(1, value)) : MaterialTokens.DEFAULT_OPACITY;
-	}
+    public float getBackgroundOpacity() {
+        float value = backgroundOpacitySetting.getValue() / 100f;
+        return Float.isFinite(value) ? Math.max(0, Math.min(1, value)) : MaterialTokens.DEFAULT_OPACITY;
+    }
 
-	public Screen getModMenu() {
-		return modMenu;
-	}
+    public Screen getModMenu() {
+        return modMenu;
+    }
 }

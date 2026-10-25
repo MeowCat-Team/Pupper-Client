@@ -24,20 +24,20 @@ import cn.pupperclient.skia.font.Icon;
 
 public class YawDisplayMod extends SimpleHUDMod {
 
-	private DecimalFormat df = new DecimalFormat("0.##");
+    private DecimalFormat df = new DecimalFormat("0.##");
 
-	public YawDisplayMod() {
-		super("mod.yawdisplay.name", "mod.yawdisplay.description", Icon.ARROW_RANGE);
-	}
+    public YawDisplayMod() {
+        super("mod.yawdisplay.name", "mod.yawdisplay.description", Icon.ARROW_RANGE);
+    }
 
 
-	@Override
-	public String getText() {
-		return "Yaw: " + (client.player == null ? "0" : df.format(Math.abs(client.player.getViewYRot(0.0f) % 90)));
-	}
+    @Override
+    public String getText() {
+        return "Yaw: " + (client.player == null ? "0" : df.format(Math.abs(client.player.getViewYRot(0.0f) % 90)));
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.ARROW_RANGE;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.ARROW_RANGE;
+    }
 }

@@ -27,34 +27,34 @@ import java.util.ArrayList;
 public class ColorManager {
 
     private ArrayList<AccentColor> colors = new ArrayList<AccentColor>();
-	private ColorPalette palette;
+    private ColorPalette palette;
     private AccentColor currentColor;
 
-	public ColorManager() {
-		updatePalette();
-	}
+    public ColorManager() {
+        updatePalette();
+    }
 
-	public void onTick() {
+    public void onTick() {
 
-		ModMenuSettings m = ModMenuSettings.getInstance();
-		Hct hct = m.getHctColorSetting().getHct();
+        ModMenuSettings m = ModMenuSettings.getInstance();
+        Hct hct = m.getHctColorSetting().getHct();
 
         if (palette == null || palette.isDarkMode() != m.getDarkModeSetting().isEnabled()
                 || palette.getHct().toInt() != hct.toInt()) {
             updatePalette();
         }
-	}
+    }
 
-	private void updatePalette() {
+    private void updatePalette() {
 
-		ModMenuSettings m = ModMenuSettings.getInstance();
+        ModMenuSettings m = ModMenuSettings.getInstance();
 
-		palette = new ColorPalette(m.getHctColorSetting().getHct(), m.getDarkModeSetting().isEnabled());
-	}
+        palette = new ColorPalette(m.getHctColorSetting().getHct(), m.getDarkModeSetting().isEnabled());
+    }
 
-	public ColorPalette getPalette() {
-		return palette;
-	}
+    public ColorPalette getPalette() {
+        return palette;
+    }
 
     public AccentColor getCurrentColor() {
         return currentColor;

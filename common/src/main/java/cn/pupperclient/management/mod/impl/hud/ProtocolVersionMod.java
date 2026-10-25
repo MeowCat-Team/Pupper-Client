@@ -23,18 +23,18 @@ import cn.pupperclient.platform.ProtocolAccess;
 
 public class ProtocolVersionMod extends SimpleHUDMod {
 
-	public ProtocolVersionMod() {
-		super("mod.protocolversion.name", "mod.protocolversion.description", Icon.BRING_YOUR_OWN_IP);
-	}
+    public ProtocolVersionMod() {
+        super("mod.protocolversion.name", "mod.protocolversion.description", Icon.BRING_YOUR_OWN_IP);
+    }
 
 
-	@Override
-	public String getText() {
-		return "Protocol Version: " + ProtocolAccess.target().name();
-	}
+    @Override
+    public String getText() {
+        return "Protocol Version: " + ProtocolAccess.target().name();
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.BRING_YOUR_OWN_IP;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.BRING_YOUR_OWN_IP;
+    }
 }

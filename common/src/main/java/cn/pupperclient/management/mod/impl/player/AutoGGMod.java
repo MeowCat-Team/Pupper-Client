@@ -37,63 +37,63 @@ import cn.pupperclient.utils.server.ServerUtils;
 
 public class AutoGGMod extends Mod {
 
-	private final Map<Server, List<String>> strings = new HashMap<>();
+    private final Map<Server, List<String>> strings = new HashMap<>();
 
-	private NumberSetting delaySetting = new NumberSetting("setting.delay", "setting.delay.description", Icon.TIMER,
-			this, 0, 0, 5, 1);
-	private StringSetting messageSetting = new StringSetting("setting.message", "setting.message.description",
-			Icon.TEXT_FIELDS, this, "gg");
-	private BooleanSetting hypixelSetting = new BooleanSetting("setting.hypixel", "setting.hypixel.description",
-			Icon.TOGGLE_OFF, this, true);
+    private NumberSetting delaySetting = new NumberSetting("setting.delay", "setting.delay.description", Icon.TIMER,
+            this, 0, 0, 5, 1);
+    private StringSetting messageSetting = new StringSetting("setting.message", "setting.message.description",
+            Icon.TEXT_FIELDS, this, "gg");
+    private BooleanSetting hypixelSetting = new BooleanSetting("setting.hypixel", "setting.hypixel.description",
+            Icon.TOGGLE_OFF, this, true);
 
-	public AutoGGMod() {
-		super("mod.autogg.name", "mod.autogg.description", Icon.TROPHY, ModCategory.PLAYER);
+    public AutoGGMod() {
+        super("mod.autogg.name", "mod.autogg.description", Icon.TROPHY, ModCategory.PLAYER);
 
-		strings.put(Server.HYPIXEL,
-				addToList("1st Killer -", "1st Place -", "Winner:", " - Damage Dealt -", "Winning Team -", "1st -",
-						"Winners:", "Winner:", "Winning Team:", " won the game!", "Top Seeker:", "1st Place:",
-						"Last team standing!", "Winner #1 (", "Top Survivors", "Winners -", "Sumo Duel -",
-						"Most Wool Placed -", "Your Overall Winstreak:"));
-	}
+        strings.put(Server.HYPIXEL,
+                addToList("1st Killer -", "1st Place -", "Winner:", " - Damage Dealt -", "Winning Team -", "1st -",
+                        "Winners:", "Winner:", "Winning Team:", " won the game!", "Top Seeker:", "1st Place:",
+                        "Last team standing!", "Winner #1 (", "Top Survivors", "Winners -", "Sumo Duel -",
+                        "Most Wool Placed -", "Your Overall Winstreak:"));
+    }
 
-	public final EventBus.EventListener<ReceiveChatEvent> onReceiveChat = event -> {
+    public final EventBus.EventListener<ReceiveChatEvent> onReceiveChat = event -> {
 
-		String message = event.getMessage();
-		if (message == null) return;
+        String message = event.getMessage();
+        if (message == null) return;
 
-		// Chat arrives on the network thread, but the current server and the
-		// setting are client state.
-		Multithreading.runMainThread(() -> {
-			if (!ServerUtils.isMultiplayer()) return;
-			if (!ServerUtils.isJoin(Server.HYPIXEL) || !hypixelSetting.isEnabled()) return;
-			processChat(strings.get(Server.HYPIXEL), message);
-		});
-	};
+        // Chat arrives on the network thread, but the current server and the
+        // setting are client state.
+        Multithreading.runMainThread(() -> {
+            if (!ServerUtils.isMultiplayer()) return;
+            if (!ServerUtils.isJoin(Server.HYPIXEL) || !hypixelSetting.isEnabled()) return;
+            processChat(strings.get(Server.HYPIXEL), message);
+        });
+    };
 
-	private void processChat(List<String> options, String message) {
-		for (String s : options) {
-			if (message.contains(s)) {
-				sendMessage(true);
-				break;
-			}
-		}
-	}
+    private void processChat(List<String> options, String message) {
+        for (String s : options) {
+            if (message.contains(s)) {
+                sendMessage(true);
+                break;
+            }
+        }
+    }
 
-	private void sendMessage(boolean hypixel) {
-		String message = messageSetting.getValue();
-		long delay = (long) delaySetting.getValue();
-		// The delayed task runs on the scheduler thread; the connection is client state.
-		Multithreading.schedule(() -> Multithreading.runMainThread(() -> {
-			if (client.player == null) return;
-			if (hypixel) {
-				client.player.connection.sendCommand("achat " + message);
-			} else {
-				client.player.connection.sendChat(message);
-			}
-		}), delay, TimeUnit.SECONDS);
-	}
+    private void sendMessage(boolean hypixel) {
+        String message = messageSetting.getValue();
+        long delay = (long) delaySetting.getValue();
+        // The delayed task runs on the scheduler thread; the connection is client state.
+        Multithreading.schedule(() -> Multithreading.runMainThread(() -> {
+            if (client.player == null) return;
+            if (hypixel) {
+                client.player.connection.sendCommand("achat " + message);
+            } else {
+                client.player.connection.sendChat(message);
+            }
+        }), delay, TimeUnit.SECONDS);
+    }
 
-	private List<String> addToList(String... strings) {
-		return Arrays.stream(strings).toList();
-	}
+    private List<String> addToList(String... strings) {
+        return Arrays.stream(strings).toList();
+    }
 }

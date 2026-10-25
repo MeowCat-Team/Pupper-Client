@@ -33,66 +33,66 @@ import cn.pupperclient.skia.font.Icon;
 
 public class ProjectileTrailMod extends Mod {
 
-	private ComboSetting effectSetting = new ComboSetting("setting.effect", "setting.effect.description",
-			Icon.EXPLOSION, this,
-			Arrays.asList("setting.blacksmoke", "setting.fire", "setting.greenstar", "setting.hearts", "setting.magic",
-					"setting.musicnote", "setting.slime", "setting.spark", "setting.swirl", "setting.whitesmoke"),
-			"setting.hearts");
+    private ComboSetting effectSetting = new ComboSetting("setting.effect", "setting.effect.description",
+            Icon.EXPLOSION, this,
+            Arrays.asList("setting.blacksmoke", "setting.fire", "setting.greenstar", "setting.hearts", "setting.magic",
+                    "setting.musicnote", "setting.slime", "setting.spark", "setting.swirl", "setting.whitesmoke"),
+            "setting.hearts");
 
-	public ProjectileTrailMod() {
-		super("mod.projectiletrail.name", "mod.projectiletrail.description", Icon.TRAIL_LENGTH, ModCategory.RENDER);
-	}
+    public ProjectileTrailMod() {
+        super("mod.projectiletrail.name", "mod.projectiletrail.description", Icon.TRAIL_LENGTH, ModCategory.RENDER);
+    }
 
-	public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> {
+    public final EventBus.EventListener<ClientTickEvent> onClientTick = event -> {
 
-		if (client.player != null && client.level != null) {
+        if (client.player != null && client.level != null) {
 
-			AABB box = new AABB(client.player.position().add(-150.0, -150.0, -150.0),
-					client.player.position().add(150.0, 150.0, 150.0));
+            AABB box = new AABB(client.player.position().add(-150.0, -150.0, -150.0),
+                    client.player.position().add(150.0, 150.0, 150.0));
 
-			for (Projectile projectile : client.level.getEntitiesOfClass(Projectile.class, box,
-					entity -> true)) {
+            for (Projectile projectile : client.level.getEntitiesOfClass(Projectile.class, box,
+                    entity -> true)) {
 
-				if (!(projectile.getDeltaMovement().lengthSqr() > 0.01) || projectile.onGround()
-						|| client.level.getBlockState(projectile.blockPosition()).isRedstoneConductor(client.level,
-								projectile.blockPosition()) && Objects.requireNonNull(projectile.getOwner()).getId() != client.player.getId()) {
-					continue;
-				}
+                if (!(projectile.getDeltaMovement().lengthSqr() > 0.01) || projectile.onGround()
+                        || client.level.getBlockState(projectile.blockPosition()).isRedstoneConductor(client.level,
+                                projectile.blockPosition()) && Objects.requireNonNull(projectile.getOwner()).getId() != client.player.getId()) {
+                    continue;
+                }
 
-				ParticleType<?> type = getCurrentType();
+                ParticleType<?> type = getCurrentType();
 
-				if (type instanceof ParticleOptions) {
-					client.level.addParticle((ParticleOptions) type, projectile.getX(), projectile.getY(),
-							projectile.getZ(), 0.0, 0.0, 0.0);
-				}
-			}
-		}
-	};
+                if (type instanceof ParticleOptions) {
+                    client.level.addParticle((ParticleOptions) type, projectile.getX(), projectile.getY(),
+                            projectile.getZ(), 0.0, 0.0, 0.0);
+                }
+            }
+        }
+    };
 
-	private ParticleType<?> getCurrentType() {
+    private ParticleType<?> getCurrentType() {
 
-		String option = effectSetting.getOption();
+        String option = effectSetting.getOption();
 
-		if (option.contains("blacksmoke")) {
-			return ParticleTypes.SMOKE;
-		} else if (option.contains("fire")) {
-			return ParticleTypes.FLAME;
-		} else if (option.contains("greenstar")) {
-			return ParticleTypes.HAPPY_VILLAGER;
-		} else if (option.contains("hearts")) {
-			return ParticleTypes.HEART;
-		} else if (option.contains("magic")) {
-			return ParticleTypes.WITCH;
-		} else if (option.contains("musicnote")) {
-			return ParticleTypes.NOTE;
-		} else if (option.contains("slime")) {
-			return ParticleTypes.ITEM_SLIME;
-		} else if (option.contains("spark")) {
-			return ParticleTypes.FIREWORK;
-		} else if (option.contains("whitesmoke")) {
-			return ParticleTypes.WHITE_SMOKE;
-		}
+        if (option.contains("blacksmoke")) {
+            return ParticleTypes.SMOKE;
+        } else if (option.contains("fire")) {
+            return ParticleTypes.FLAME;
+        } else if (option.contains("greenstar")) {
+            return ParticleTypes.HAPPY_VILLAGER;
+        } else if (option.contains("hearts")) {
+            return ParticleTypes.HEART;
+        } else if (option.contains("magic")) {
+            return ParticleTypes.WITCH;
+        } else if (option.contains("musicnote")) {
+            return ParticleTypes.NOTE;
+        } else if (option.contains("slime")) {
+            return ParticleTypes.ITEM_SLIME;
+        } else if (option.contains("spark")) {
+            return ParticleTypes.FIREWORK;
+        } else if (option.contains("whitesmoke")) {
+            return ParticleTypes.WHITE_SMOKE;
+        }
 
-		return null;
-	}
+        return null;
+    }
 }

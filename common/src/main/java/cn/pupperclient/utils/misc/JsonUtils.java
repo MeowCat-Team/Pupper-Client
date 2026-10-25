@@ -25,80 +25,80 @@ import com.google.gson.JsonObject;
 
 public class JsonUtils {
 
-	public static boolean hasProperty(JsonObject jsonObject, String key) {
-		return getProperty(jsonObject, key) != null;
-	}
+    public static boolean hasProperty(JsonObject jsonObject, String key) {
+        return getProperty(jsonObject, key) != null;
+    }
 
-	public static String getStringProperty(JsonObject jsonObject, String key, String defaultValue) {
+    public static String getStringProperty(JsonObject jsonObject, String key, String defaultValue) {
 
-		JsonElement value = getProperty(jsonObject, key);
+        JsonElement value = getProperty(jsonObject, key);
 
-		if (value == null || !value.isJsonPrimitive()) {
-			return defaultValue;
-		}
+        if (value == null || !value.isJsonPrimitive()) {
+            return defaultValue;
+        }
 
-		return value.getAsJsonPrimitive().getAsString();
-	}
+        return value.getAsJsonPrimitive().getAsString();
+    }
 
-	public static float getFloatProperty(JsonObject jsonObject, String key, float defaultValue) {
-		return getNumberProperty(jsonObject, key, defaultValue).floatValue();
-	}
+    public static float getFloatProperty(JsonObject jsonObject, String key, float defaultValue) {
+        return getNumberProperty(jsonObject, key, defaultValue).floatValue();
+    }
 
-	public static double getDoubleProperty(JsonObject jsonObject, String key, double defaultValue) {
-		return getNumberProperty(jsonObject, key, defaultValue).doubleValue();
-	}
+    public static double getDoubleProperty(JsonObject jsonObject, String key, double defaultValue) {
+        return getNumberProperty(jsonObject, key, defaultValue).doubleValue();
+    }
 
-	public static long getLongProperty(JsonObject jsonObject, String key, long defaultValue) {
-		return getNumberProperty(jsonObject, key, defaultValue).longValue();
-	}
+    public static long getLongProperty(JsonObject jsonObject, String key, long defaultValue) {
+        return getNumberProperty(jsonObject, key, defaultValue).longValue();
+    }
 
-	public static int getIntProperty(JsonObject jsonObject, String key, int defaultValue) {
-		return getNumberProperty(jsonObject, key, defaultValue).intValue();
-	}
+    public static int getIntProperty(JsonObject jsonObject, String key, int defaultValue) {
+        return getNumberProperty(jsonObject, key, defaultValue).intValue();
+    }
 
-	public static Number getNumberProperty(JsonObject jsonObject, String key, Number defaultValue) {
+    public static Number getNumberProperty(JsonObject jsonObject, String key, Number defaultValue) {
 
-		JsonElement value = getProperty(jsonObject, key);
+        JsonElement value = getProperty(jsonObject, key);
 
-		if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
-			return defaultValue;
-		}
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            return defaultValue;
+        }
 
-		return value.getAsJsonPrimitive().getAsNumber();
-	}
+        return value.getAsJsonPrimitive().getAsNumber();
+    }
 
-	public static boolean getBooleanProperty(JsonObject jsonObject, String key, boolean defaultValue) {
+    public static boolean getBooleanProperty(JsonObject jsonObject, String key, boolean defaultValue) {
 
-		JsonElement value = getProperty(jsonObject, key);
+        JsonElement value = getProperty(jsonObject, key);
 
-		if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isBoolean()) {
-			return defaultValue;
-		}
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isBoolean()) {
+            return defaultValue;
+        }
 
-		return value.getAsJsonPrimitive().getAsBoolean();
-	}
+        return value.getAsJsonPrimitive().getAsBoolean();
+    }
 
-	public static JsonArray getArrayProperty(JsonObject jsonObject, String key) {
+    public static JsonArray getArrayProperty(JsonObject jsonObject, String key) {
 
-		JsonElement result = getProperty(jsonObject, key);
+        JsonElement result = getProperty(jsonObject, key);
 
-		if (result == null || !result.isJsonArray()) {
-			return new JsonArray();
-		}
+        if (result == null || !result.isJsonArray()) {
+            return new JsonArray();
+        }
 
-		return result.getAsJsonArray();
-	}
+        return result.getAsJsonArray();
+    }
 
-	public static JsonObject getObjectProperty(JsonObject jsonObject, String key) {
+    public static JsonObject getObjectProperty(JsonObject jsonObject, String key) {
 
-		JsonElement result = getProperty(jsonObject, key);
+        JsonElement result = getProperty(jsonObject, key);
 
-		if (result == null || !result.isJsonObject()) {
-			return null;
-		}
+        if (result == null || !result.isJsonObject()) {
+            return null;
+        }
 
-		return result.getAsJsonObject();
-	}
+        return result.getAsJsonObject();
+    }
 
     public static JsonElement getProperty(JsonObject jsonObject, String key) {
 
@@ -133,7 +133,7 @@ public class JsonUtils {
         return null;
     }
 
-	private static String[] tokenizeKey(String key) {
-		return Pattern.compile("(?<!\\\\)\\,").split(key);
-	}
+    private static String[] tokenizeKey(String key) {
+        return Pattern.compile("(?<!\\\\)\\,").split(key);
+    }
 }

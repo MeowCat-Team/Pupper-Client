@@ -32,20 +32,20 @@ import net.minecraft.client.renderer.ScreenEffectRenderer;
 @Mixin(ScreenEffectRenderer.class)
 public class MixinInGameOverlayRenderer {
 
-	@Inject(method = "submitWater", at = @At("HEAD"), cancellable = true)
-	private static void renderUnderwaterOverlay(Minecraft client, PoseStack matrices,
-			SubmitNodeCollector vertexConsumers, CallbackInfo ci) {
+    @Inject(method = "submitWater", at = @At("HEAD"), cancellable = true)
+    private static void renderUnderwaterOverlay(Minecraft client, PoseStack matrices,
+            SubmitNodeCollector vertexConsumers, CallbackInfo ci) {
 
-		if (OverlayEditorMod.getInstance().isEnabled() && OverlayEditorMod.getInstance().isClearWater()) {
-			ci.cancel();
-		}
-	}
+        if (OverlayEditorMod.getInstance().isEnabled() && OverlayEditorMod.getInstance().isClearWater()) {
+            ci.cancel();
+        }
+    }
 
-	@Inject(method = "submitFire", at = @At("HEAD"), cancellable = true)
-	private static void renderFireOverlay(PoseStack poseStack, SubmitNodeCollector bufferSource, TextureAtlasSprite sprite, CallbackInfo ci) {
+    @Inject(method = "submitFire", at = @At("HEAD"), cancellable = true)
+    private static void renderFireOverlay(PoseStack poseStack, SubmitNodeCollector bufferSource, TextureAtlasSprite sprite, CallbackInfo ci) {
 
-		if (OverlayEditorMod.getInstance().isEnabled() && OverlayEditorMod.getInstance().isClearFire()) {
-			ci.cancel();
-		}
-	}
+        if (OverlayEditorMod.getInstance().isEnabled() && OverlayEditorMod.getInstance().isClearFire()) {
+            ci.cancel();
+        }
+    }
 }

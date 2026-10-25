@@ -22,19 +22,19 @@ import cn.pupperclient.skia.font.Icon;
 
 public class FPSDisplayMod extends SimpleHUDMod {
 
-	public FPSDisplayMod() {
-		super("mod.fpsdisplay.name", "mod.fpsdisplay.description", Icon.MONITOR);
-	}
+    public FPSDisplayMod() {
+        super("mod.fpsdisplay.name", "mod.fpsdisplay.description", Icon.MONITOR);
+    }
 
 
-	@Override
-	public String getText() {
-		return client.getFps() + " FPS";
-	}
+    @Override
+    public String getText() {
+        return client.getFps() + " FPS";
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.MONITOR;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.MONITOR;
+    }
     @Override protected String getUnit() { return "FPS"; }
 }

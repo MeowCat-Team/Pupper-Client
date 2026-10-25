@@ -23,15 +23,15 @@ import cn.pupperclient.skia.font.Icon;
 
 public class HitDelayFixMod extends Mod {
 
-	private static HitDelayFixMod instance;
+    private static HitDelayFixMod instance;
 
-	public HitDelayFixMod() {
-		super("mod.hitdelayfix.name", "mod.hitdelayfix.description", Icon.TIMER_OFF, ModCategory.PLAYER);
+    public HitDelayFixMod() {
+        super("mod.hitdelayfix.name", "mod.hitdelayfix.description", Icon.TIMER_OFF, ModCategory.PLAYER);
 
-		instance = this;
-	}
+        instance = this;
+    }
 
-	public static HitDelayFixMod getInstance() {
-		return instance;
-	}
+    public static HitDelayFixMod getInstance() {
+        return instance;
+    }
 }

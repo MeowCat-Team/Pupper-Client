@@ -24,20 +24,20 @@ import cn.pupperclient.skia.font.Icon;
 
 public class PitchDisplayMod extends SimpleHUDMod {
 
-	private DecimalFormat df = new DecimalFormat("0.##");
+    private DecimalFormat df = new DecimalFormat("0.##");
 
-	public PitchDisplayMod() {
-		super("mod.pitchdisplay.name", "mod.pitchdisplay.description", Icon.ARROW_UPWARD);
-	}
+    public PitchDisplayMod() {
+        super("mod.pitchdisplay.name", "mod.pitchdisplay.description", Icon.ARROW_UPWARD);
+    }
 
 
-	@Override
-	public String getText() {
-		return "Pitch: " + (client.player == null ? "0" : df.format(client.player.getViewXRot(0.0f)));
-	}
+    @Override
+    public String getText() {
+        return "Pitch: " + (client.player == null ? "0" : df.format(client.player.getViewXRot(0.0f)));
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.ARROW_UPWARD;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.ARROW_UPWARD;
+    }
 }

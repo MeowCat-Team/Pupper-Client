@@ -27,62 +27,62 @@ import net.minecraft.world.level.biome.Biome;
 
 public class WeatherDisplayMod extends SimpleHUDMod {
 
-	public WeatherDisplayMod() {
-		super("mod.weatherdisplay.name", "mod.weatherdisplay.description", Icon.SUNNY);
-	}
+    public WeatherDisplayMod() {
+        super("mod.weatherdisplay.name", "mod.weatherdisplay.description", Icon.SUNNY);
+    }
 
 
-	@Override
-	public String getText() {
+    @Override
+    public String getText() {
 
-		String prefix = "Weather: ";
-		ClientLevel world = client.level;
-		LocalPlayer player = client.player;
-		if (world == null || player == null) {
-			return prefix + "Unknown";
-		}
-		BlockPos playerPos = player.blockPosition();
-		Holder<Biome> biomeEntry = world.getBiome(playerPos);
+        String prefix = "Weather: ";
+        ClientLevel world = client.level;
+        LocalPlayer player = client.player;
+        if (world == null || player == null) {
+            return prefix + "Unknown";
+        }
+        BlockPos playerPos = player.blockPosition();
+        Holder<Biome> biomeEntry = world.getBiome(playerPos);
 
-		if (world.isThundering()) {
-			return prefix + "Thundering";
-		}
-		
-		if (world.isRaining()) {
-			if (biomeEntry.value().getPrecipitationAt(playerPos, world.getSeaLevel()).equals(Biome.Precipitation.SNOW)) {
-				return prefix + "Snowing";
-			} else {
-				return prefix + "Raining";
-			}
-		}
+        if (world.isThundering()) {
+            return prefix + "Thundering";
+        }
 
-		return prefix + "Clear";
-	}
+        if (world.isRaining()) {
+            if (biomeEntry.value().getPrecipitationAt(playerPos, world.getSeaLevel()).equals(Biome.Precipitation.SNOW)) {
+                return prefix + "Snowing";
+            } else {
+                return prefix + "Raining";
+            }
+        }
 
-	@Override
-	public String getIcon() {
-		ClientLevel world = client.level;
-		LocalPlayer player = client.player;
-		if (world == null || player == null) {
-			return Icon.SUNNY;
-		}
-		BlockPos playerPos = player.blockPosition();
-		Holder<Biome> biomeEntry = world.getBiome(playerPos);
+        return prefix + "Clear";
+    }
 
-		String iconFont = Icon.SUNNY;
+    @Override
+    public String getIcon() {
+        ClientLevel world = client.level;
+        LocalPlayer player = client.player;
+        if (world == null || player == null) {
+            return Icon.SUNNY;
+        }
+        BlockPos playerPos = player.blockPosition();
+        Holder<Biome> biomeEntry = world.getBiome(playerPos);
 
-		if (world.isThundering()) {
-			iconFont = Icon.THUNDERSTORM;
-		}
-		
-		if (world.isRaining()) {
-			if (biomeEntry.value().getPrecipitationAt(playerPos, world.getSeaLevel()).equals(Biome.Precipitation.SNOW)) {
-				iconFont = Icon.WEATHER_SNOWY;
-			} else {
-				iconFont = Icon.RAINY;
-			}
-		}
+        String iconFont = Icon.SUNNY;
 
-		return iconFont;
-	}
+        if (world.isThundering()) {
+            iconFont = Icon.THUNDERSTORM;
+        }
+
+        if (world.isRaining()) {
+            if (biomeEntry.value().getPrecipitationAt(playerPos, world.getSeaLevel()).equals(Biome.Precipitation.SNOW)) {
+                iconFont = Icon.WEATHER_SNOWY;
+            } else {
+                iconFont = Icon.RAINY;
+            }
+        }
+
+        return iconFont;
+    }
 }

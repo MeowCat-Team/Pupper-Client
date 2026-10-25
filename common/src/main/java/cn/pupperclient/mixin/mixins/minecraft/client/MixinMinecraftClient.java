@@ -71,70 +71,70 @@ import cn.pupperclient.skia.context.SkiaContext;
 @Mixin(value = Minecraft.class, priority = 300)
 public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
 
-	@Shadow
-	@Final
-	private Window window;
-
-	@Shadow
-	public int missTime;
-
-	@Shadow
-	public MultiPlayerGameMode gameMode;
-
-	@Final
-	@Shadow
-	public ParticleEngine particleEngine;
-
-	@Final
     @Shadow
-	public Options options;
+    @Final
+    private Window window;
 
-	@Shadow
-	public HitResult hitResult;
+    @Shadow
+    public int missTime;
 
-	@Shadow
-	public ClientLevel level;
+    @Shadow
+    public MultiPlayerGameMode gameMode;
 
-	@Shadow
-	public LocalPlayer player;
+    @Final
+    @Shadow
+    public ParticleEngine particleEngine;
 
-	@Shadow
+    @Final
+    @Shadow
+    public Options options;
+
+    @Shadow
+    public HitResult hitResult;
+
+    @Shadow
+    public ClientLevel level;
+
+    @Shadow
+    public LocalPlayer player;
+
+    @Shadow
     protected abstract String createTitle();
 
     @Unique
-	private File assetDir;
+    private File assetDir;
 
-	@Inject(method = "<init>(Lnet/minecraft/client/main/GameConfig;)V", at = @At("TAIL"))
-	public void onInit(GameConfig args, CallbackInfo ci) {
-		assetDir = args.location.assetDirectory;
-		try {
-			PupperClient.getInstance().start();
-		} catch (IOException failure) {
-			throw new IllegalStateException("Pupper Client failed to start", failure);
-		}
-	}
+    @Inject(method = "<init>(Lnet/minecraft/client/main/GameConfig;)V", at = @At("TAIL"))
+    public void onInit(GameConfig args, CallbackInfo ci) {
+        assetDir = args.location.assetDirectory;
+        try {
+            PupperClient.getInstance().start();
+        } catch (IOException failure) {
+            throw new IllegalStateException("Pupper Client failed to start", failure);
+        }
+    }
 
-	/** One shutdown hook: configs are written before the managers are torn down. */
-	@Inject(method = "close", at = @At("HEAD"))
-	public void onStop(CallbackInfo ci) {
-		PupperClient.getInstance().getConfigManager().save(ConfigType.MOD);
-		PupperClient.getInstance().onShutdown();
-	}
+    /** One shutdown hook: configs are written before the managers are torn down. */
+    @Inject(method = "close", at = @At("HEAD"))
+    public void onStop(CallbackInfo ci) {
+        PupperClient.getInstance().getConfigManager().save(ConfigType.MOD);
+        PupperClient.getInstance().onShutdown();
+    }
 
-	@Inject(method = "continueAttack", at = @At("HEAD"))
-	private void handleBlockBreaking(boolean breaking, CallbackInfo ci) {
+    @Inject(method = "continueAttack", at = @At("HEAD"))
+    private void handleBlockBreaking(boolean breaking, CallbackInfo ci) {
 
-		if (OldAnimationsMod.getInstance().isEnabled() && OldAnimationsMod.getInstance().isOldBreaking()) {
-			if (this.options.keyAttack.isDown() && this.options.keyUse.isDown()) {
+        if (OldAnimationsMod.getInstance().isEnabled() && OldAnimationsMod.getInstance().isOldBreaking()) {
+            if (this.options.keyAttack.isDown() && this.options.keyUse.isDown()) {
 
-				if (breaking && this.hitResult != null && this.hitResult.getType() == Type.BLOCK) {
+                if (breaking && this.hitResult != null && this.hitResult.getType() == Type.BLOCK) {
 
-					BlockHitResult blockHitResult = (BlockHitResult) this.hitResult;
-					BlockPos blockPos = blockHitResult.getBlockPos();
+                    BlockHitResult blockHitResult = (BlockHitResult) this.hitResult;
+                    BlockPos blockPos = blockHitResult.getBlockPos();
                     BlockState blockState = level.getBlockState(blockPos);
 
-					if (!blockState.isAir()) {
-						Direction direction = blockHitResult.getDirection();
+                    if (!blockState.isAir()) {
+                        Direction direction = blockHitResult.getDirection();
                         BlockParticleOption particleOption = new BlockParticleOption(ParticleTypes.BLOCK, blockState);
 
                         double x = blockPos.getX() + 0.5 + direction.getStepX() * 0.5;
@@ -146,35 +146,35 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
                         double zSpeed = direction.getStepZ() * 0.2;
 
                         level.addParticle(particleOption, x, y, z, xSpeed, ySpeed, zSpeed);
-						((IMixinLivingEntity) player).pupperClient$fakeSwingHand(InteractionHand.MAIN_HAND);
-					}
-				}
-			}
-		}
-	}
+                        ((IMixinLivingEntity) player).pupperClient$fakeSwingHand(InteractionHand.MAIN_HAND);
+                    }
+                }
+            }
+        }
+    }
 
-	@Inject(method = "startAttack", at = @At("HEAD"))
-	private void onHitDelayFix(CallbackInfoReturnable<Boolean> cir) {
-		if (HitDelayFixMod.getInstance().isEnabled()) {
-			missTime = 0;
-		}
-	}
+    @Inject(method = "startAttack", at = @At("HEAD"))
+    private void onHitDelayFix(CallbackInfoReturnable<Boolean> cir) {
+        if (HitDelayFixMod.getInstance().isEnabled()) {
+            missTime = 0;
+        }
+    }
 
-	/**
-	 * Replaces only the title text, so a Minecraft update to {@code updateTitle} keeps
-	 * whatever else that method does.
-	 */
-	@Redirect(method = "updateTitle", at = @At(value = "INVOKE",
-		target = "Lcom/mojang/blaze3d/platform/Window;setTitle(Ljava/lang/String;)V"))
-	private void onUpdateTitle(Window window, String title) {
-		window.setTitle(PupperClient.getInstance().getName() + " "
-				+ PupperClient.getInstance().getClientVersion() + " | " + title);
-	}
+    /**
+     * Replaces only the title text, so a Minecraft update to {@code updateTitle} keeps
+     * whatever else that method does.
+     */
+    @Redirect(method = "updateTitle", at = @At(value = "INVOKE",
+        target = "Lcom/mojang/blaze3d/platform/Window;setTitle(Ljava/lang/String;)V"))
+    private void onUpdateTitle(Window window, String title) {
+        window.setTitle(PupperClient.getInstance().getName() + " "
+                + PupperClient.getInstance().getClientVersion() + " | " + title);
+    }
 
-	@Inject(method = "tick", at = @At("HEAD"))
-	public void onClientTick(CallbackInfo ci) {
-		EventBus.getInstance().post(new ClientTickEvent());
-	}
+    @Inject(method = "tick", at = @At("HEAD"))
+    public void onClientTick(CallbackInfo ci) {
+        EventBus.getInstance().post(new ClientTickEvent());
+    }
 
     @Inject(
         method = {"renderFrame"},
@@ -243,10 +243,10 @@ public abstract class MixinMinecraftClient implements IMixinMinecraftClient {
         }, glassHud || glassGui);
     }
 
-	@Override
-	public File pupper$getAssetDir() {
-		return this.assetDir;
-	}
+    @Override
+    public File pupper$getAssetDir() {
+        return this.assetDir;
+    }
 
     @Inject(method = "resizeGui", at = @At("TAIL"))
     private void onResizeGui(CallbackInfo ci) {

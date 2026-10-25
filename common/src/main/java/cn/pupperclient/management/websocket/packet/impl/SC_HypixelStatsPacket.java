@@ -22,16 +22,16 @@ import cn.pupperclient.management.websocket.packet.PupperClientPacket;
 
 public class SC_HypixelStatsPacket extends PupperClientPacket {
 
-	private final String uuid;
-	
-	public SC_HypixelStatsPacket(String uuid) {
-		super("sc-hypixel-stats");
-		this.uuid = uuid;
-	}
+    private final String uuid;
 
-	@Override
-	public JsonObject toJson() {
-		jsonObject.addProperty("uuid", uuid);
-		return jsonObject;
-	}
+    public SC_HypixelStatsPacket(String uuid) {
+        super("sc-hypixel-stats");
+        this.uuid = uuid;
+    }
+
+    @Override
+    public JsonObject toJson() {
+        jsonObject.addProperty("uuid", uuid);
+        return jsonObject;
+    }
 }

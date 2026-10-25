@@ -37,352 +37,352 @@ import cn.pupperclient.ui.theme.MaterialTheme;
 import net.minecraft.client.gui.screens.Screen;
 
 public abstract class PupperClientGui extends SimplePupperClientGui {
-	private static final float MIN_SCREEN_SCALE = 0.96F;
-	private static final int SCREEN_ANIMATION_DURATION = Duration.MEDIUM_1;
-	private static final float SCREEN_CORNER_RADIUS = MaterialTheme.SURFACE_RADIUS;
+    private static final float MIN_SCREEN_SCALE = 0.96F;
+    private static final int SCREEN_ANIMATION_DURATION = Duration.MEDIUM_1;
+    private static final float SCREEN_CORNER_RADIUS = MaterialTheme.SURFACE_RADIUS;
 
-	protected List<Component> components = new ArrayList<>();
-	protected List<SimplePage> pages;
+    protected List<Component> components = new ArrayList<>();
+    protected List<SimplePage> pages;
 
-	protected SimplePage currentPage;
-	protected SimplePage lastPage;
+    protected SimplePage currentPage;
+    protected SimplePage lastPage;
 
-	private Animation inOutAnimation;
-	private boolean closable;
-	private boolean closing;
-	private Screen nextScreen;
+    private Animation inOutAnimation;
+    private boolean closable;
+    private boolean closing;
+    private Screen nextScreen;
 
-	public PupperClientGui() {
-		super();
+    public PupperClientGui() {
+        super();
 
-		this.pages = createPages();
+        this.pages = createPages();
 
-		if (!pages.isEmpty()) {
-			this.currentPage = pages.getFirst();
-		}
-	}
+        if (!pages.isEmpty()) {
+            this.currentPage = pages.getFirst();
+        }
+    }
 
-	@Override
-	public void init() {
-		super.init();
-		inOutAnimation = new EaseEmphasizedDecelerate(SCREEN_ANIMATION_DURATION, 0, 1);
-		closable = true;
-		closing = false;
-		nextScreen = null;
-		lastPage = null;
-		if (currentPage != null) {
-			setPageSize(currentPage);
-			currentPage.init();
-		}
-	}
+    @Override
+    public void init() {
+        super.init();
+        inOutAnimation = new EaseEmphasizedDecelerate(SCREEN_ANIMATION_DURATION, 0, 1);
+        closable = true;
+        closing = false;
+        nextScreen = null;
+        lastPage = null;
+        if (currentPage != null) {
+            setPageSize(currentPage);
+            currentPage.init();
+        }
+    }
 
-	public void setPageSize(SimplePage p) {
-		p.setX(getX());
-		p.setY(getY());
-		p.setWidth(getWidth());
-		p.setHeight(getHeight());
-	}
+    public void setPageSize(SimplePage p) {
+        p.setX(getX());
+        p.setY(getY());
+        p.setWidth(getWidth());
+        p.setHeight(getHeight());
+    }
 
-	@Override
-	public void draw(double mouseX, double mouseY) {
+    @Override
+    public void draw(double mouseX, double mouseY) {
 
-		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
-		float animationValue = inOutAnimation.getValue();
-		float screenScale = getLayoutScale() * (MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue));
-		double contentMouseX = toContentMouseX(mouseX, screenScale);
-		double contentMouseY = toContentMouseY(mouseY, screenScale);
+        ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+        float animationValue = inOutAnimation.getValue();
+        float screenScale = getLayoutScale() * (MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue));
+        double contentMouseX = toContentMouseX(mouseX, screenScale);
+        double contentMouseY = toContentMouseY(mouseY, screenScale);
 
-		int saveCount = Skia.getCanvas().getSaveCount();
-		Skia.save();
-		try {
-			Skia.scale(getX(), getY(), getWidth(), getHeight(), screenScale);
-			// Bound the animated layer after scaling; ten local pixels retain the panel shadow.
-			Skia.setAlpha((int) (animationValue * 255), getX() - 10, getY() - 10,
-					getWidth() + 20, getHeight() + 20);
+        int saveCount = Skia.getCanvas().getSaveCount();
+        Skia.save();
+        try {
+            Skia.scale(getX(), getY(), getWidth(), getHeight(), screenScale);
+            // Bound the animated layer after scaling; ten local pixels retain the panel shadow.
+            Skia.setAlpha((int) (animationValue * 255), getX() - 10, getY() - 10,
+                    getWidth() + 20, getHeight() + 20);
 
-			MaterialTheme.glassPanel(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS, palette);
-			Skia.save();
-			Skia.clip(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS);
+            MaterialTheme.glassPanel(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS, palette);
+            Skia.save();
+            Skia.clip(getX(), getY(), getWidth(), getHeight(), SCREEN_CORNER_RADIUS);
 
-			if (currentPage != null && lastPage == null) {
-				currentPage.draw(contentMouseX, contentMouseY);
-			}
+            if (currentPage != null && lastPage == null) {
+                currentPage.draw(contentMouseX, contentMouseY);
+            }
 
-			if (currentPage != null && lastPage != null) {
+            if (currentPage != null && lastPage != null) {
 
-				GuiTransition currentTransition = currentPage.getTransition();
-				GuiTransition lastTransition = lastPage.getTransition();
+                GuiTransition currentTransition = currentPage.getTransition();
+                GuiTransition lastTransition = lastPage.getTransition();
 
-				if (currentTransition != null && currentTransition.isConsecutive()) {
+                if (currentTransition != null && currentTransition.isConsecutive()) {
 
-					Skia.save();
-					float[] offset = getTransitionOffset(lastTransition, lastPage);
-					float offsetX = offset[0] * getWidth();
-					float offsetY = offset[1] * getHeight();
-					Skia.translate(offsetX, offsetY);
-					lastPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
-					Skia.restore();
-				}
+                    Skia.save();
+                    float[] offset = getTransitionOffset(lastTransition, lastPage);
+                    float offsetX = offset[0] * getWidth();
+                    float offsetY = offset[1] * getHeight();
+                    Skia.translate(offsetX, offsetY);
+                    lastPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
+                    Skia.restore();
+                }
 
-				Skia.save();
-				float[] offset = getTransitionOffset(currentTransition, currentPage);
-				float offsetX = offset[0] * getWidth();
-				float offsetY = offset[1] * getHeight();
-				Skia.translate(offsetX, offsetY);
-				currentPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
-				Skia.restore();
+                Skia.save();
+                float[] offset = getTransitionOffset(currentTransition, currentPage);
+                float offsetX = offset[0] * getWidth();
+                float offsetY = offset[1] * getHeight();
+                Skia.translate(offsetX, offsetY);
+                currentPage.draw(contentMouseX - offsetX, contentMouseY - offsetY);
+                Skia.restore();
 
-				if (lastPage.getAnimation().isFinished()) {
-					lastPage = null;
-				}
-			}
+                if (lastPage.getAnimation().isFinished()) {
+                    lastPage = null;
+                }
+            }
 
-			for (Component c : components) {
-				c.draw(contentMouseX, contentMouseY);
-			}
+            for (Component c : components) {
+                c.draw(contentMouseX, contentMouseY);
+            }
 
-		} finally {
-			Skia.getCanvas().restoreToCount(saveCount);
-		}
+        } finally {
+            Skia.getCanvas().restoreToCount(saveCount);
+        }
 
-	}
+    }
 
-	@Override
-	public void tick() {
-		super.tick();
-		if (closing && inOutAnimation.isFinished()) {
-			Screen target = nextScreen;
-			closing = false;
-			nextScreen = null;
-			if (client.gui.screen() == this) {
-				client.gui.setScreen(target);
-			}
-		}
-	}
+    @Override
+    public void tick() {
+        super.tick();
+        if (closing && inOutAnimation.isFinished()) {
+            Screen target = nextScreen;
+            closing = false;
+            nextScreen = null;
+            if (client.gui.screen() == this) {
+                client.gui.setScreen(target);
+            }
+        }
+    }
 
-	@Override
-	public boolean onMousePressed(double mouseX, double mouseY, int button, boolean doubled) {
-		if (closing) {
-			return true;
-		}
+    @Override
+    public boolean onMousePressed(double mouseX, double mouseY, int button, boolean doubled) {
+        if (closing) {
+            return true;
+        }
 
-		float screenScale = getScreenScale();
-		double contentMouseX = toContentMouseX(mouseX, screenScale);
-		double contentMouseY = toContentMouseY(mouseY, screenScale);
-		double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
+        float screenScale = getScreenScale();
+        double contentMouseX = toContentMouseX(mouseX, screenScale);
+        double contentMouseY = toContentMouseY(mouseY, screenScale);
+        double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
 
-		if (currentPage != null) {
-			currentPage.mousePressed(pageMouse[0], pageMouse[1], button);
-		}
+        if (currentPage != null) {
+            currentPage.mousePressed(pageMouse[0], pageMouse[1], button);
+        }
 
-		for (Component c : components) {
-			c.mousePressed(contentMouseX, contentMouseY, button);
-		}
+        for (Component c : components) {
+            c.mousePressed(contentMouseX, contentMouseY, button);
+        }
         return true;
-	}
+    }
 
-	@Override
-	public boolean onMouseReleased(double mouseX, double mouseY, int button) {
-		if (closing) {
-			return true;
-		}
+    @Override
+    public boolean onMouseReleased(double mouseX, double mouseY, int button) {
+        if (closing) {
+            return true;
+        }
 
-		float screenScale = getScreenScale();
-		double contentMouseX = toContentMouseX(mouseX, screenScale);
-		double contentMouseY = toContentMouseY(mouseY, screenScale);
-		double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
+        float screenScale = getScreenScale();
+        double contentMouseX = toContentMouseX(mouseX, screenScale);
+        double contentMouseY = toContentMouseY(mouseY, screenScale);
+        double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
 
-		if (currentPage != null) {
-			currentPage.mouseReleased(pageMouse[0], pageMouse[1], button);
-		}
+        if (currentPage != null) {
+            currentPage.mouseReleased(pageMouse[0], pageMouse[1], button);
+        }
 
-		for (Component c : components) {
-			c.mouseReleased(contentMouseX, contentMouseY, button);
-		}
+        for (Component c : components) {
+            c.mouseReleased(contentMouseX, contentMouseY, button);
+        }
         return true;
-	}
+    }
 
-	@Override
-	public boolean onMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-		if (closing) {
-			return true;
-		}
+    @Override
+    public boolean onMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (closing) {
+            return true;
+        }
 
-		float screenScale = getScreenScale();
-		double contentMouseX = toContentMouseX(mouseX, screenScale);
-		double contentMouseY = toContentMouseY(mouseY, screenScale);
-		double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
+        float screenScale = getScreenScale();
+        double contentMouseX = toContentMouseX(mouseX, screenScale);
+        double contentMouseY = toContentMouseY(mouseY, screenScale);
+        double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
 
-		if (currentPage != null) {
-			currentPage.mouseScrolled(pageMouse[0], pageMouse[1], horizontalAmount, verticalAmount);
-		}
+        if (currentPage != null) {
+            currentPage.mouseScrolled(pageMouse[0], pageMouse[1], horizontalAmount, verticalAmount);
+        }
 
-		for (Component c : components) {
-			c.mouseScrolled(contentMouseX, contentMouseY, horizontalAmount, verticalAmount);
-		}
-		return true;
-	}
-
-	@Override
-	public boolean onCharTyped(int chr) {
-
-		if (currentPage != null) {
-			currentPage.charTyped(chr);
-		}
-
-		for (Component c : components) {
-			c.charTyped(chr);
-		}
+        for (Component c : components) {
+            c.mouseScrolled(contentMouseX, contentMouseY, horizontalAmount, verticalAmount);
+        }
         return true;
-	}
+    }
 
-	@Override
-	public boolean onKeyPressed(int keyCode, int scanCode, int modifiers) {
+    @Override
+    public boolean onCharTyped(int chr) {
 
-		if (keyCode == GLFW.GLFW_KEY_ESCAPE && closable) {
-			onClose();
-			return true;
-		}
+        if (currentPage != null) {
+            currentPage.charTyped(chr);
+        }
 
-		if (currentPage != null) {
-			currentPage.keyPressed(keyCode, scanCode, modifiers);
-		}
-
-		for (Component c : components) {
-			c.keyPressed(keyCode, scanCode, modifiers);
-		}
+        for (Component c : components) {
+            c.charTyped(chr);
+        }
         return true;
-	}
+    }
 
-	public void close(Screen nextScreen) {
-		if (!closing && inOutAnimation.getEnd() == 1) {
-			this.nextScreen = nextScreen;
-			closing = true;
-			inOutAnimation = new EaseEmphasizedDecelerate(SCREEN_ANIMATION_DURATION, 1, 0);
-			client.execute(() -> {
-				PupperClient.getInstance().getConfigManager().save(ConfigType.MOD);
-			});
-		}
-	}
+    @Override
+    public boolean onKeyPressed(int keyCode, int scanCode, int modifiers) {
 
-	public void close() {
-		close(null);
-	}
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE && closable) {
+            onClose();
+            return true;
+        }
 
-	@Override
-	public void onClose() {
-		if (closable) {
-			close();
-		}
-	}
+        if (currentPage != null) {
+            currentPage.keyPressed(keyCode, scanCode, modifiers);
+        }
 
-	public SimplePage getCurrentPage() {
-		return currentPage;
-	}
+        for (Component c : components) {
+            c.keyPressed(keyCode, scanCode, modifiers);
+        }
+        return true;
+    }
 
-	public void setCurrentPage(SimplePage page) {
-		if (page == null || page == currentPage) {
-			return;
-		}
+    public void close(Screen nextScreen) {
+        if (!closing && inOutAnimation.getEnd() == 1) {
+            this.nextScreen = nextScreen;
+            closing = true;
+            inOutAnimation = new EaseEmphasizedDecelerate(SCREEN_ANIMATION_DURATION, 1, 0);
+            client.execute(() -> {
+                PupperClient.getInstance().getConfigManager().save(ConfigType.MOD);
+            });
+        }
+    }
 
-		if (currentPage == null) {
-			currentPage = page;
-			setPageSize(currentPage);
-			currentPage.init();
-			return;
-		}
+    public void close() {
+        close(null);
+    }
 
-		lastPage = currentPage;
-		currentPage.onClosed();
-		this.currentPage = page;
-		currentPage.setAnimation(new EaseEmphasizedDecelerate(Duration.MEDIUM_1, 0, 1));
-		lastPage.setAnimation(new EaseEmphasizedDecelerate(Duration.MEDIUM_1, 1, 0));
+    @Override
+    public void onClose() {
+        if (closable) {
+            close();
+        }
+    }
 
-		setPageSize(currentPage);
-		currentPage.init();
-	}
+    public SimplePage getCurrentPage() {
+        return currentPage;
+    }
 
-	public void setCurrentPage(Class<? extends SimplePage> clazz) {
+    public void setCurrentPage(SimplePage page) {
+        if (page == null || page == currentPage) {
+            return;
+        }
 
-		SimplePage page = getPage(clazz);
+        if (currentPage == null) {
+            currentPage = page;
+            setPageSize(currentPage);
+            currentPage.init();
+            return;
+        }
 
-		if (page != null) {
-			setCurrentPage(page);
-		}
-	}
+        lastPage = currentPage;
+        currentPage.onClosed();
+        this.currentPage = page;
+        currentPage.setAnimation(new EaseEmphasizedDecelerate(Duration.MEDIUM_1, 0, 1));
+        lastPage.setAnimation(new EaseEmphasizedDecelerate(Duration.MEDIUM_1, 1, 0));
 
-	public SimplePage getPage(Class<? extends SimplePage> clazz) {
+        setPageSize(currentPage);
+        currentPage.init();
+    }
 
-		SimplePage page = null;
+    public void setCurrentPage(Class<? extends SimplePage> clazz) {
 
-		for (SimplePage p : pages) {
-			if (p.getClass().equals(clazz)) {
-				page = p;
-				break;
-			}
-		}
+        SimplePage page = getPage(clazz);
 
-		return page;
-	}
+        if (page != null) {
+            setCurrentPage(page);
+        }
+    }
 
-	public List<SimplePage> getPages() {
-		return pages;
-	}
+    public SimplePage getPage(Class<? extends SimplePage> clazz) {
 
-	public boolean isClosable() {
-		return closable;
-	}
+        SimplePage page = null;
 
-	public void setClosable(boolean closable) {
-		this.closable = closable;
-	}
+        for (SimplePage p : pages) {
+            if (p.getClass().equals(clazz)) {
+                page = p;
+                break;
+            }
+        }
 
-	private float getScreenScale() {
-		if (inOutAnimation == null) {
-			return getLayoutScale();
-		}
-		float animationValue = inOutAnimation.getValue();
-		return getLayoutScale() * (MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue));
-	}
+        return page;
+    }
 
-	private float getLayoutScale() {
-		float availableWidth = Math.max(1, client.getWindow().getWidth() - 32);
-		float availableHeight = Math.max(1, client.getWindow().getHeight() - 32);
-		return Math.min(1, Math.min(availableWidth / getWidth(), availableHeight / getHeight()));
-	}
+    public List<SimplePage> getPages() {
+        return pages;
+    }
 
-	private double toContentMouseX(double mouseX, float screenScale) {
-		double centerX = getX() + getWidth() / 2.0;
-		return centerX + ((mouseX - centerX) / screenScale);
-	}
+    public boolean isClosable() {
+        return closable;
+    }
 
-	private double toContentMouseY(double mouseY, float screenScale) {
-		double centerY = getY() + getHeight() / 2.0;
-		return centerY + ((mouseY - centerY) / screenScale);
-	}
+    public void setClosable(boolean closable) {
+        this.closable = closable;
+    }
 
-	private double[] toCurrentPageMouse(double mouseX, double mouseY) {
-		if (currentPage == null || lastPage == null) {
-			return new double[] { mouseX, mouseY };
-		}
-		float[] offset = getTransitionOffset(currentPage.getTransition(), currentPage);
-		return new double[] {
-				mouseX - offset[0] * getWidth(),
-				mouseY - offset[1] * getHeight()
-		};
-	}
+    private float getScreenScale() {
+        if (inOutAnimation == null) {
+            return getLayoutScale();
+        }
+        float animationValue = inOutAnimation.getValue();
+        return getLayoutScale() * (MIN_SCREEN_SCALE + ((1 - MIN_SCREEN_SCALE) * animationValue));
+    }
 
-	private float[] getTransitionOffset(GuiTransition transition, SimplePage page) {
-		return transition == null ? new float[] { 0, 0 } : transition.onTransition(page.getAnimation());
-	}
+    private float getLayoutScale() {
+        float availableWidth = Math.max(1, client.getWindow().getWidth() - 32);
+        float availableHeight = Math.max(1, client.getWindow().getHeight() - 32);
+        return Math.min(1, Math.min(availableWidth / getWidth(), availableHeight / getHeight()));
+    }
 
-	public abstract List<SimplePage> createPages();
+    private double toContentMouseX(double mouseX, float screenScale) {
+        double centerX = getX() + getWidth() / 2.0;
+        return centerX + ((mouseX - centerX) / screenScale);
+    }
 
-	public abstract float getX();
+    private double toContentMouseY(double mouseY, float screenScale) {
+        double centerY = getY() + getHeight() / 2.0;
+        return centerY + ((mouseY - centerY) / screenScale);
+    }
 
-	public abstract float getY();
+    private double[] toCurrentPageMouse(double mouseX, double mouseY) {
+        if (currentPage == null || lastPage == null) {
+            return new double[] { mouseX, mouseY };
+        }
+        float[] offset = getTransitionOffset(currentPage.getTransition(), currentPage);
+        return new double[] {
+                mouseX - offset[0] * getWidth(),
+                mouseY - offset[1] * getHeight()
+        };
+    }
 
-	public abstract float getWidth();
+    private float[] getTransitionOffset(GuiTransition transition, SimplePage page) {
+        return transition == null ? new float[] { 0, 0 } : transition.onTransition(page.getAnimation());
+    }
 
-	public abstract float getHeight();
+    public abstract List<SimplePage> createPages();
+
+    public abstract float getX();
+
+    public abstract float getY();
+
+    public abstract float getWidth();
+
+    public abstract float getHeight();
 }

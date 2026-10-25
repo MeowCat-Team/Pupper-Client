@@ -36,33 +36,33 @@ import cn.pupperclient.mixin.interfaces.IMixinCameraEntity;
 
 @Mixin(Entity.class)
 public abstract class MixinEntity implements IMixinCameraEntity {
-	@Unique
-	private float cameraPitch;
+    @Unique
+    private float cameraPitch;
 
-	@Unique
-	private float cameraYaw;
+    @Unique
+    private float cameraYaw;
 
-	@Shadow
-	public abstract float getXRot();
+    @Shadow
+    public abstract float getXRot();
 
-	@Shadow
-	public abstract float getYRot();
+    @Shadow
+    public abstract float getYRot();
 
     @Inject(method = "turn", at = @At("HEAD"))
-	private void onPlayerDirectionChange(double cursorDeltaX, double cursorDeltaY, CallbackInfo ci) {
+    private void onPlayerDirectionChange(double cursorDeltaX, double cursorDeltaY, CallbackInfo ci) {
 
-		float prevPitch = getXRot();
-		float prevYaw = getYRot();
-		float pitch = prevPitch + (float) (cursorDeltaY * .15);
-		float yaw = prevYaw + (float) (cursorDeltaX * .15);
-		pitch = Mth.clamp(pitch, -90.0F, 90.0F);
+        float prevPitch = getXRot();
+        float prevYaw = getYRot();
+        float pitch = prevPitch + (float) (cursorDeltaY * .15);
+        float yaw = prevYaw + (float) (cursorDeltaX * .15);
+        pitch = Mth.clamp(pitch, -90.0F, 90.0F);
 
-		EventBus.getInstance().post(new PlayerDirectionChangeEvent(prevPitch, prevYaw, pitch, yaw));
-	}
+        EventBus.getInstance().post(new PlayerDirectionChangeEvent(prevPitch, prevYaw, pitch, yaw));
+    }
 
-	@Inject(method = "turn", at = @At("HEAD"), cancellable = true)
-	public void changeCameraLookDirection(double xDelta, double yDelta, CallbackInfo ci) {
-		if (FreelookMod.getInstance().isEnabled() && FreelookMod.getInstance().isActive()) {
+    @Inject(method = "turn", at = @At("HEAD"), cancellable = true)
+    public void changeCameraLookDirection(double xDelta, double yDelta, CallbackInfo ci) {
+        if (FreelookMod.getInstance().isEnabled() && FreelookMod.getInstance().isActive()) {
             if ((Entity) (Object) this instanceof LocalPlayer) {
                 double pitchDelta = (yDelta * 0.15);
                 double yawDelta = (xDelta * 0.15);
@@ -73,31 +73,31 @@ public abstract class MixinEntity implements IMixinCameraEntity {
                 ci.cancel();
             }
         }
-	}
+    }
 
-	@Override
-	@Unique
-	public float pupperClient$getCameraPitch() {
-		return this.cameraPitch;
-	}
+    @Override
+    @Unique
+    public float pupperClient$getCameraPitch() {
+        return this.cameraPitch;
+    }
 
-	@Override
-	@Unique
-	public float pupperClient$getCameraYaw() {
-		return this.cameraYaw;
-	}
+    @Override
+    @Unique
+    public float pupperClient$getCameraYaw() {
+        return this.cameraYaw;
+    }
 
-	@Override
-	@Unique
-	public void pupperClient$setCameraPitch(float pitch) {
-		this.cameraPitch = pitch;
-	}
+    @Override
+    @Unique
+    public void pupperClient$setCameraPitch(float pitch) {
+        this.cameraPitch = pitch;
+    }
 
-	@Override
-	@Unique
-	public void pupperClient$setCameraYaw(float yaw) {
-		this.cameraYaw = yaw;
-	}
+    @Override
+    @Unique
+    public void pupperClient$setCameraYaw(float yaw) {
+        this.cameraYaw = yaw;
+    }
 
     @Inject(method = "playSound(Lnet/minecraft/sounds/SoundEvent;FF)V", at = @At("HEAD"))
     private void onPlaySound(SoundEvent sound, float volume, float pitch, CallbackInfo ci) {

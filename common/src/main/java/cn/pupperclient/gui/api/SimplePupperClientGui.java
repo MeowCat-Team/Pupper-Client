@@ -109,7 +109,7 @@ public abstract class SimplePupperClientGui extends Screen {
     }
 
     // Abstract or hook methods for subclasses to implement without overriding Screen methods directly
-    
+
     public boolean onMousePressed(double mouseX, double mouseY, int button, boolean doubled) { return false; }
     public boolean onMouseReleased(double mouseX, double mouseY, int button) { return false; }
     public boolean onMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) { return false; }

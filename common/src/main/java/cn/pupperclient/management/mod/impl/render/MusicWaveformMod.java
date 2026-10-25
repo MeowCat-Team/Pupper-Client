@@ -31,27 +31,27 @@ import cn.pupperclient.utils.color.ColorUtils;
 
 public class MusicWaveformMod extends Mod {
 
-	public MusicWaveformMod() {
-		super("mod.musicwaveform.name", "mod.musicwaveform.description", Icon.AIRWAVE, ModCategory.RENDER);
-	}
+    public MusicWaveformMod() {
+        super("mod.musicwaveform.name", "mod.musicwaveform.description", Icon.AIRWAVE, ModCategory.RENDER);
+    }
 
-	public EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
+    public EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
 
-		MusicManager musicManager = PupperClient.getInstance().getMusicManager();
-		Music m = musicManager.getCurrentMusic();
+        MusicManager musicManager = PupperClient.getInstance().getMusicManager();
+        Music m = musicManager.getCurrentMusic();
 
-		int offsetX = 0;
+        int offsetX = 0;
 
-		if (musicManager.isPlaying()) {
+        if (musicManager.isPlaying()) {
 
-			for (int i = 0; i < MusicPlayer.SPECTRUM_BANDS; i++) {
+            for (int i = 0; i < MusicPlayer.SPECTRUM_BANDS; i++) {
 
-				MusicPlayer.ANIMATIONS[i].onTick(MusicPlayer.VISUALIZER[i], 10);
-				Skia.drawRect(offsetX, client.getWindow().getGuiScaledHeight() + MusicPlayer.ANIMATIONS[i].getValue(), 10,
-						client.getWindow().getGuiScaledHeight(), ColorUtils.applyAlpha(m.getColor(), 80));
+                MusicPlayer.ANIMATIONS[i].onTick(MusicPlayer.VISUALIZER[i], 10);
+                Skia.drawRect(offsetX, client.getWindow().getGuiScaledHeight() + MusicPlayer.ANIMATIONS[i].getValue(), 10,
+                        client.getWindow().getGuiScaledHeight(), ColorUtils.applyAlpha(m.getColor(), 80));
 
-				offsetX += 10;
-			}
-		}
-	};
+                offsetX += 10;
+            }
+        }
+    };
 }

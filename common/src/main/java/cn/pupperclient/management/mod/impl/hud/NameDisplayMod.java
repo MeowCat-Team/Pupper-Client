@@ -22,18 +22,18 @@ import cn.pupperclient.skia.font.Icon;
 
 public class NameDisplayMod extends SimpleHUDMod {
 
-	public NameDisplayMod() {
-		super("mod.namedisplay.name", "mod.namedisplay.description", Icon.PERSON);
-	}
+    public NameDisplayMod() {
+        super("mod.namedisplay.name", "mod.namedisplay.description", Icon.PERSON);
+    }
 
 
-	@Override
-	public String getText() {
-		return client.player == null ? "Unknown" : client.player.getGameProfile().name();
-	}
+    @Override
+    public String getText() {
+        return client.player == null ? "Unknown" : client.player.getGameProfile().name();
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.PERSON;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.PERSON;
+    }
 }

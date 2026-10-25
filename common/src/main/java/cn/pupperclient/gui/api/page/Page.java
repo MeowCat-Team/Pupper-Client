@@ -23,57 +23,57 @@ import cn.pupperclient.utils.mouse.ScrollHelper;
 
 public class Page extends SimplePage {
 
-	protected ScrollHelper scrollHelper = new ScrollHelper();
-	protected SearchBar searchBar;
+    protected ScrollHelper scrollHelper = new ScrollHelper();
+    protected SearchBar searchBar;
 
-	public Page(PupperClientGui parent, String title, String icon, GuiTransition transition) {
-		super(parent, title, icon, transition);
-	}
+    public Page(PupperClientGui parent, String title, String icon, GuiTransition transition) {
+        super(parent, title, icon, transition);
+    }
 
-	@Override
-	public void init() {
+    @Override
+    public void init() {
 
-		String text = "";
+        String text = "";
 
-		if (searchBar != null) {
-			text = searchBar.getText();
-		}
+        if (searchBar != null) {
+            text = searchBar.getText();
+        }
 
-		searchBar = new SearchBar(x + width - 260 - 32, y + 32, 260, text, () -> {
-			scrollHelper.reset();
-		});
-	}
+        searchBar = new SearchBar(x + width - 260 - 32, y + 32, 260, text, () -> {
+            scrollHelper.reset();
+        });
+    }
 
-	@Override
-	public void draw(double mouseX, double mouseY) {
+    @Override
+    public void draw(double mouseX, double mouseY) {
 
-		scrollHelper.onUpdate();
+        scrollHelper.onUpdate();
 
-		searchBar.draw(mouseX, mouseY);
-	}
+        searchBar.draw(mouseX, mouseY);
+    }
 
-	@Override
-	public void mousePressed(double mouseX, double mouseY, int button) {
-		searchBar.mousePressed(mouseX, mouseY, button);
-	}
+    @Override
+    public void mousePressed(double mouseX, double mouseY, int button) {
+        searchBar.mousePressed(mouseX, mouseY, button);
+    }
 
-	@Override
-	public void mouseReleased(double mouseX, double mouseY, int button) {
-		searchBar.mouseReleased(mouseX, mouseY, button);
-	}
+    @Override
+    public void mouseReleased(double mouseX, double mouseY, int button) {
+        searchBar.mouseReleased(mouseX, mouseY, button);
+    }
 
-	@Override
-	public void charTyped(int chr) {
-		searchBar.charTyped(chr);
-	}
+    @Override
+    public void charTyped(int chr) {
+        searchBar.charTyped(chr);
+    }
 
-	@Override
-	public void keyPressed(int keyCode, int scanCode, int modifiers) {
-		searchBar.keyPressed(keyCode, scanCode, modifiers);
-	}
+    @Override
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
+        searchBar.keyPressed(keyCode, scanCode, modifiers);
+    }
 
-	@Override
-	public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-		scrollHelper.onScroll(verticalAmount);
-	}
+    @Override
+    public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        scrollHelper.onScroll(verticalAmount);
+    }
 }

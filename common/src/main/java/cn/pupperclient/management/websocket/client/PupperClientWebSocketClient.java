@@ -33,53 +33,53 @@ import cn.pupperclient.utils.misc.JsonUtils;
 
 public class PupperClientWebSocketClient extends WebSocketClient {
 
-	private final Map<String, WebSocketHandler> handlers = new HashMap<>();
-	private final Gson gson = new Gson();
-	private final Runnable closeTask;
+    private final Map<String, WebSocketHandler> handlers = new HashMap<>();
+    private final Gson gson = new Gson();
+    private final Runnable closeTask;
 
-	public PupperClientWebSocketClient(URI endpoint, Map<String, String> headers, Runnable closeTask) {
-		super(endpoint, headers);
-		this.closeTask = closeTask;
-		initializeHandlers();
-	}
+    public PupperClientWebSocketClient(URI endpoint, Map<String, String> headers, Runnable closeTask) {
+        super(endpoint, headers);
+        this.closeTask = closeTask;
+        initializeHandlers();
+    }
 
     private void initializeHandlers() {
-    	register("sc-hypixel-stats", new HypixelStatsHandler());
+        register("sc-hypixel-stats", new HypixelStatsHandler());
     }
-    
-	@Override
-	public void onOpen(ServerHandshake handshakedata) {
-		PupperLogger.info("API", "WebSocket connection opened");
-	}
 
-	@Override
-	public void onMessage(String message) {
+    @Override
+    public void onOpen(ServerHandshake handshakedata) {
+        PupperLogger.info("API", "WebSocket connection opened");
+    }
 
-		JsonObject jsonObject = gson.fromJson(message, JsonObject.class);
-		
-		String type = JsonUtils.getStringProperty(jsonObject, "type", "");
+    @Override
+    public void onMessage(String message) {
 
-		WebSocketHandler handler = handlers.get(type);
+        JsonObject jsonObject = gson.fromJson(message, JsonObject.class);
 
-		if (handler != null) {
-			handler.handle(jsonObject);
-		} else {
-			//PupperLogger.warn("API", "No handler found for message type: " + type);
-		}
-	}
+        String type = JsonUtils.getStringProperty(jsonObject, "type", "");
 
-	@Override
-	public void onClose(int code, String reason, boolean remote) {
-		//PupperLogger.info("API", "WebSocket connection closed: " + reason);
-		closeTask.run();
-	}
+        WebSocketHandler handler = handlers.get(type);
 
-	@Override
-	public void onError(Exception ex) {
-		//PupperLogger.error("API", "WebSocket error occurred", ex);
-	}
+        if (handler != null) {
+            handler.handle(jsonObject);
+        } else {
+            //PupperLogger.warn("API", "No handler found for message type: " + type);
+        }
+    }
 
-	private void register(String type, WebSocketHandler handler) {
-		handlers.put(type, handler);
-	}
+    @Override
+    public void onClose(int code, String reason, boolean remote) {
+        //PupperLogger.info("API", "WebSocket connection closed: " + reason);
+        closeTask.run();
+    }
+
+    @Override
+    public void onError(Exception ex) {
+        //PupperLogger.error("API", "WebSocket error occurred", ex);
+    }
+
+    private void register(String type, WebSocketHandler handler) {
+        handlers.put(type, handler);
+    }
 }

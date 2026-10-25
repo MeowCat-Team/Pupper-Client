@@ -25,20 +25,20 @@ import cn.pupperclient.skia.font.Icon;
 
 public class ClockMod extends SimpleHUDMod{
 
-	private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
-	
-	public ClockMod() {
-		super("mod.clock.name", "mod.clock.description", Icon.SCHEDULE);
-	}
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
-	
-	@Override
-	public String getText() {
-		return TIME_FORMAT.format(LocalTime.now());
-	}
+    public ClockMod() {
+        super("mod.clock.name", "mod.clock.description", Icon.SCHEDULE);
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.SCHEDULE;
-	}
+
+    @Override
+    public String getText() {
+        return TIME_FORMAT.format(LocalTime.now());
+    }
+
+    @Override
+    public String getIcon() {
+        return Icon.SCHEDULE;
+    }
 }

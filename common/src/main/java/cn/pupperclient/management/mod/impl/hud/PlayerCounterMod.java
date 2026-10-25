@@ -22,21 +22,21 @@ import cn.pupperclient.skia.font.Icon;
 
 public class PlayerCounterMod extends SimpleHUDMod {
 
-	public PlayerCounterMod() {
-		super("mod.playercounter.name", "mod.playercounter.description", Icon.GROUPS);
-	}
+    public PlayerCounterMod() {
+        super("mod.playercounter.name", "mod.playercounter.description", Icon.GROUPS);
+    }
 
 
-	@Override
-	public String getText() {
-		if (client.getConnection() == null) {
-			return "Players: 1";
-		}
-		return "Players: " + client.getConnection().getOnlinePlayers().size();
-	}
+    @Override
+    public String getText() {
+        if (client.getConnection() == null) {
+            return "Players: 1";
+        }
+        return "Players: " + client.getConnection().getOnlinePlayers().size();
+    }
 
-	@Override
-	public String getIcon() {
-		return Icon.GROUPS;
-	}
+    @Override
+    public String getIcon() {
+        return Icon.GROUPS;
+    }
 }

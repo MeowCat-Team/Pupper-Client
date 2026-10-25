@@ -33,58 +33,58 @@ import cn.pupperclient.utils.mouse.MouseUtils;
 
 public class HctColorPicker extends Component {
 
-	private SimpleAnimation slideAnimation = new SimpleAnimation();
+    private SimpleAnimation slideAnimation = new SimpleAnimation();
 
-	private Hct hct;
-	private float minValue, maxValue, value;
-	private boolean dragging;
+    private Hct hct;
+    private float minValue, maxValue, value;
+    private boolean dragging;
 
-	public HctColorPicker(float x, float y, Hct hct) {
-		super(x, y);
-		this.hct = hct;
-		minValue = 0;
-		maxValue = 360;
-		value = (float) (hct.getHue() - minValue) / (maxValue - minValue);
-		width = MaterialControls.COMPACT_WIDTH;
-		height = MaterialControls.COMPACT_HEIGHT;
-	}
+    public HctColorPicker(float x, float y, Hct hct) {
+        super(x, y);
+        this.hct = hct;
+        minValue = 0;
+        maxValue = 360;
+        value = (float) (hct.getHue() - minValue) / (maxValue - minValue);
+        width = MaterialControls.COMPACT_WIDTH;
+        height = MaterialControls.COMPACT_HEIGHT;
+    }
 
-	@Override
-	public void draw(double mouseX, double mouseY) {
+    @Override
+    public void draw(double mouseX, double mouseY) {
 
-		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+        ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		float inset = 12;
-		float travelWidth = width - inset * 2;
-		slideAnimation.onTick(value, 20);
-		MaterialControls.hue(x, y, width, height, slideAnimation.getValue(), new Color(hct.toInt(), true),
-				palette, MaterialTheme.opacity(), hoverState(mouseX, mouseY));
+        float inset = 12;
+        float travelWidth = width - inset * 2;
+        slideAnimation.onTick(value, 20);
+        MaterialControls.hue(x, y, width, height, slideAnimation.getValue(), new Color(hct.toInt(), true),
+                palette, MaterialTheme.opacity(), hoverState(mouseX, mouseY));
 
-		if (dragging) {
+        if (dragging) {
 
-			value = (float) Math.min(1, Math.max(0, (mouseX - x - inset) / travelWidth));
-			hct = Hct.from((value * (maxValue - minValue) + minValue), hct.getChroma(), hct.getTone());
+            value = (float) Math.min(1, Math.max(0, (mouseX - x - inset) / travelWidth));
+            hct = Hct.from((value * (maxValue - minValue) + minValue), hct.getChroma(), hct.getTone());
 
-			onPicking(hct);
-		}
-	}
+            onPicking(hct);
+        }
+    }
 
-	@Override
-	public void mousePressed(double mouseX, double mouseY, int button) {
+    @Override
+    public void mousePressed(double mouseX, double mouseY, int button) {
 
-		if (MouseUtils.isInside(mouseX, mouseY, x, y, width, height) && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-			dragging = true;
-		}
-	}
+        if (MouseUtils.isInside(mouseX, mouseY, x, y, width, height) && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            dragging = true;
+        }
+    }
 
-	@Override
-	public void mouseReleased(double mouseX, double mouseY, int button) {
-		dragging = false;
-	}
+    @Override
+    public void mouseReleased(double mouseX, double mouseY, int button) {
+        dragging = false;
+    }
 
-	private void onPicking(Hct hct) {
-		if (handler instanceof HctColorPickerHandler) {
-			((HctColorPickerHandler) handler).onPicking(hct);
-		}
-	}
+    private void onPicking(Hct hct) {
+        if (handler instanceof HctColorPickerHandler) {
+            ((HctColorPickerHandler) handler).onPicking(hct);
+        }
+    }
 }

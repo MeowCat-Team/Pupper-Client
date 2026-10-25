@@ -21,17 +21,17 @@ import cn.pupperclient.event.Event;
 
 public class ReceiveChatEvent extends Event {
 
-	private String message;
+    private String message;
 
-	public ReceiveChatEvent(String message) {
-		this.message = message;
-	}
+    public ReceiveChatEvent(String message) {
+        this.message = message;
+    }
 
-	public String getMessage() {
-		return message;
-	}
+    public String getMessage() {
+        return message;
+    }
 
-	public void setMessage(String message) {
-		this.message = message;
-	}
+    public void setMessage(String message) {
+        this.message = message;
+    }
 }

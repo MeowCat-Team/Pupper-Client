@@ -37,10 +37,10 @@ public class MixinInGameHud {
         var itemInfo = ItemInfoMod.getInstance();
         if (itemInfo != null && itemInfo.isEnabled()) ci.cancel();
     }
-	// Both loaders extract effects immediately after the hotbar and its decorations.
-	// NeoForge splits the decorations into layers and removes the vanilla dispatcher.
-	@Inject(method = "extractEffects", at = @At("HEAD"), require = 1)
-	private void renderMainHud(GuiGraphicsExtractor context, DeltaTracker tickCounter, CallbackInfo ci) {
-		EventBus.getInstance().post(new RenderGameOverlayEvent(context));
-	}
+    // Both loaders extract effects immediately after the hotbar and its decorations.
+    // NeoForge splits the decorations into layers and removes the vanilla dispatcher.
+    @Inject(method = "extractEffects", at = @At("HEAD"), require = 1)
+    private void renderMainHud(GuiGraphicsExtractor context, DeltaTracker tickCounter, CallbackInfo ci) {
+        EventBus.getInstance().post(new RenderGameOverlayEvent(context));
+    }
 }

@@ -18,15 +18,15 @@
 package cn.pupperclient.utils.server;
 
 public enum Server {
-	HYPIXEL("hypixel"), MINEMEN("minemen");
-	
-	private final String address;
-	
-	private Server(String address) {
-		this.address = address;
-	}
+    HYPIXEL("hypixel"), MINEMEN("minemen");
 
-	public String getAddress() {
-		return address;
-	}
+    private final String address;
+
+    private Server(String address) {
+        this.address = address;
+    }
+
+    public String getAddress() {
+        return address;
+    }
 }

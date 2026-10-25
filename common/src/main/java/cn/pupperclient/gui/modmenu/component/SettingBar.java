@@ -53,9 +53,9 @@ import com.mojang.blaze3d.platform.InputConstants;
 
 public class SettingBar extends Component {
 
-	private SimpleAnimation yAnimation = new SimpleAnimation();
-	private String title, description, icon;
-	private Component component;
+    private SimpleAnimation yAnimation = new SimpleAnimation();
+    private String title, description, icon;
+    private Component component;
 
     private static final Map<Class<? extends Setting>, Function<Setting, Component>> COMPONENT_FACTORIES = new LinkedHashMap<>();
 
@@ -152,85 +152,85 @@ public class SettingBar extends Component {
         return null;
     }
 
-	public SettingBar(Setting setting, float x, float y, float width) {
-		super(x, y);
-		this.title = setting.getName();
-		this.description = setting.getDescription();
-		this.icon = setting.getIcon();
-		this.width = width;
-		this.height = 68;
+    public SettingBar(Setting setting, float x, float y, float width) {
+        super(x, y);
+        this.title = setting.getName();
+        this.description = setting.getDescription();
+        this.icon = setting.getIcon();
+        this.width = width;
+        this.height = 68;
         component = createComponent(setting);
-	}
+    }
 
-	@Override
-	public void draw(double mouseX, double mouseY) {
+    @Override
+    public void draw(double mouseX, double mouseY) {
 
-		ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
+        ColorPalette palette = PupperClient.getInstance().getColorManager().getPalette();
 
-		float itemY = y;
+        float itemY = y;
 
-		yAnimation.onTick(itemY, 14);
-		itemY = yAnimation.getValue();
+        yAnimation.onTick(itemY, 14);
+        itemY = yAnimation.getValue();
 
-		if (component != null) {
-			component.setX(x + width - component.getWidth() - 22);
-			component.setY(itemY + (height - component.getHeight()) / 2);
-		}
+        if (component != null) {
+            component.setX(x + width - component.getWidth() - 22);
+            component.setY(itemY + (height - component.getHeight()) / 2);
+        }
 
-		MaterialTheme.card(x, itemY, width, height, MaterialTheme.CARD_RADIUS, palette);
-		Skia.drawFullCenteredText(icon, x + 30, itemY + (height / 2), palette.getPrimary(), Fonts.getIcon(28));
-		float textWidth = Math.max(40, component == null ? width - 76 : component.getX() - x - 68);
-		Skia.drawText(Skia.getLimitText(I18n.get(title), Fonts.getMedium(17), textWidth), x + 52, itemY + 20,
-				palette.getOnSurface(), Fonts.getMedium(17));
-		Skia.drawText(Skia.getLimitText(I18n.get(description), Fonts.getRegular(14), textWidth), x + 52, itemY + 39,
-				palette.getOnSurfaceVariant(), Fonts.getRegular(14));
+        MaterialTheme.card(x, itemY, width, height, MaterialTheme.CARD_RADIUS, palette);
+        Skia.drawFullCenteredText(icon, x + 30, itemY + (height / 2), palette.getPrimary(), Fonts.getIcon(28));
+        float textWidth = Math.max(40, component == null ? width - 76 : component.getX() - x - 68);
+        Skia.drawText(Skia.getLimitText(I18n.get(title), Fonts.getMedium(17), textWidth), x + 52, itemY + 20,
+                palette.getOnSurface(), Fonts.getMedium(17));
+        Skia.drawText(Skia.getLimitText(I18n.get(description), Fonts.getRegular(14), textWidth), x + 52, itemY + 39,
+                palette.getOnSurfaceVariant(), Fonts.getRegular(14));
 
-		if (component != null) {
-			component.draw(mouseX, mouseY);
-		}
-	}
+        if (component != null) {
+            component.draw(mouseX, mouseY);
+        }
+    }
 
-	@Override
-	public void mousePressed(double mouseX, double mouseY, int button) {
+    @Override
+    public void mousePressed(double mouseX, double mouseY, int button) {
 
-		if (component != null) {
-			component.mousePressed(mouseX, mouseY, button);
-		}
-	}
+        if (component != null) {
+            component.mousePressed(mouseX, mouseY, button);
+        }
+    }
 
-	@Override
-	public void mouseReleased(double mouseX, double mouseY, int button) {
+    @Override
+    public void mouseReleased(double mouseX, double mouseY, int button) {
 
-		if (component != null) {
-			component.mouseReleased(mouseX, mouseY, button);
-		}
-	}
+        if (component != null) {
+            component.mouseReleased(mouseX, mouseY, button);
+        }
+    }
 
-	@Override
-	public void charTyped(int chr) {
+    @Override
+    public void charTyped(int chr) {
 
-		if (component != null) {
-			component.charTyped(chr);
-		}
-	}
+        if (component != null) {
+            component.charTyped(chr);
+        }
+    }
 
-	@Override
-	public void keyPressed(int keyCode, int scanCode, int modifiers) {
+    @Override
+    public void keyPressed(int keyCode, int scanCode, int modifiers) {
 
-		if (component != null) {
-			component.keyPressed(keyCode, scanCode, modifiers);
-		}
-	}
+        if (component != null) {
+            component.keyPressed(keyCode, scanCode, modifiers);
+        }
+    }
 
-	public String getTitle() {
-		return title;
-	}
+    public String getTitle() {
+        return title;
+    }
 
-	public String getDescription() {
-		return description;
-	}
+    public String getDescription() {
+        return description;
+    }
 
-	public String getIcon() {
-		return icon;
-	}
+    public String getIcon() {
+        return icon;
+    }
 }
