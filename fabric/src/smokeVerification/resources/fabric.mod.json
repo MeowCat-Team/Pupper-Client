@@ -6,5 +6,6 @@
   "environment": "client",
   "entrypoints": {"client": ["cn.pupperclient.smoke.fabric.PupperFabricSmoke"]},
   "mixins": ["pupper-smoke.mixins.json"],
-  "depends": {"pupper": "*", "architectury": "*", "viafabricplus": "*"}
+  "depends": {"pupper": "*", "architectury": "*"},
+  "recommends": {"viafabricplus": "*"}
 }

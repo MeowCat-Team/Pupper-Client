@@ -114,9 +114,9 @@ in `common`; loader modules hold only platform glue.
   `management/mod/impl/`
 - **Rendering**: Blaze3D UI and shaders, with Skia generating CPU assets; no raw
   GL/Vulkan or Skia GPU contexts
-- **Integration**: Shared `ProtocolAccess`; Fabric delegates to ViaFabricPlus,
-  NeoForge reports native Minecraft protocol. WebSocket supplies real-time
-  features.
+- **Integration**: Shared `ProtocolAccess`; Fabric reads ViaFabricPlus when it is
+  installed and otherwise reports the native protocol, NeoForge always reports the
+  native protocol. WebSocket supplies real-time features.
 
 ## Key Workflows
 
@@ -162,9 +162,11 @@ in `common`; loader modules hold only platform glue.
 
 ## Integration Points
 
-- **ViaFabricPlus**: `ProtocolAccess` consumes a `FabricProtocolProvider`; keep
-  ViaFabricPlus imports inside `fabric`. NeoForge has no equivalent native
-  ViaFabricPlus distribution; do not pretend to support translated protocols.
+- **ViaFabricPlus** (optional): `ProtocolAccess` consumes a `FabricProtocolProvider`
+  that reaches the mod by reflection, so nothing compiles against it and the client
+  loads without it. Keep it that way: no ViaFabricPlus imports, and the mod must stay
+  out of `depends` in `fabric.mod.json`. NeoForge has no equivalent native
+  distribution; do not pretend to support translated protocols.
 - **WebSocket**: Real-time communication in `management/websocket/`
 - **Hypixel**: Server-specific features in `management/hypixel/`
 - **Music**: NetEase/Audius catalog, downloads, playlists and audio playback in

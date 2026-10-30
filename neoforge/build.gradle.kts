@@ -133,7 +133,8 @@ modrinth {
     required.project("architectury-api")
     if (loader == "fabric") {
         required.project("fabric-api")
-        required.project("viafabricplus")
+        // Optional: the client loads without it, losing only protocol translation.
+        optional.project("viafabricplus")
     }
 }
 

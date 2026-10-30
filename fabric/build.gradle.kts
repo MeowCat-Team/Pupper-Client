@@ -47,7 +47,8 @@ dependencies {
     implementation("net.fabricmc:fabric-loader:${rootProject.property("loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${rootProject.property("fabric_api_version")}")
     implementation(libs.architectury.fabric)
-    implementation(libs.viafabricplus.api)
+    // ViaFabricPlus is optional: the provider reaches it by reflection, so nothing here
+    // compiles against it. It is only present in the development runtime.
     runtimeOnly(libs.viafabricplus)
     runtimeOnly(libs.sodium)
     runtimeOnly(libs.iris)
@@ -129,7 +130,8 @@ modrinth {
     required.project("architectury-api")
     if (loader == "fabric") {
         required.project("fabric-api")
-        required.project("viafabricplus")
+        // Optional: the client loads without it, losing only protocol translation.
+        optional.project("viafabricplus")
     }
 }
 
@@ -153,6 +155,19 @@ tasks.register<JavaExec>("verifyFabricProtocol") {
     mainClass.set("cn.pupperclient.fabric.FabricProtocolChecks")
 }
 tasks.named("check") { dependsOn("verifyFabricProtocol") }
+
+// Runs the provider with ViaFabricPlus removed from the runtime classpath, proving the
+// client still loads when the optional mod is not installed.
+val verifyFabricProtocolAbsent = tasks.register<JavaExec>("verifyFabricProtocolAbsent") {
+    group = "verification"
+    description = "Checks the provider falls back to the native protocol without ViaFabricPlus."
+    dependsOn(tasks.named("protocolVerificationClasses"))
+    classpath = protocolVerification.runtimeClasspath.filter {
+        !it.name.contains("viafabricplus") && !it.name.contains("viaversion")
+    }
+    mainClass.set("cn.pupperclient.fabric.FabricProtocolAbsentChecks")
+}
+tasks.named("check") { dependsOn(verifyFabricProtocolAbsent) }
 
 // This creates a separate test mod and run; no smoke classes/resources are part of main, jar or shadowJar.
 val smoke = sourceSets.create("smokeVerification") {

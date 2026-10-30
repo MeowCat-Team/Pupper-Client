@@ -17,18 +17,36 @@
 
 package cn.pupperclient.smoke.fabric;
 
+import cn.pupperclient.platform.ProtocolAccess;
 import cn.pupperclient.platform.ProtocolSnapshot;
 import cn.pupperclient.smoke.StartupSmoke;
-import com.viaversion.viafabricplus.ViaFabricPlus;
-import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
 import net.fabricmc.api.ClientModInitializer;
 
+/**
+ * Arms the startup smoke, describing the protocol target it expects.
+ *
+ * <p>ViaFabricPlus is optional, so the expectation is read the same way the client reads
+ * it: by reflection, falling back to the native protocol when the mod is absent.
+ */
 public final class PupperFabricSmoke implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        StartupSmoke.arm("fabric", () -> {
-            var target = ViaFabricPlus.getImpl().getTargetVersion();
-            return new ProtocolSnapshot(target.getName(), target.getVersion(), target.equals(ProtocolVersion.v1_8), true);
-        });
+        StartupSmoke.arm("fabric", PupperFabricSmoke::expectedTarget);
+    }
+
+    private static ProtocolSnapshot expectedTarget() {
+        try {
+            Class<?> facade = Class.forName("com.viaversion.viafabricplus.ViaFabricPlus");
+            Object api = facade.getMethod("getImpl").invoke(null);
+            Object version = api.getClass().getMethod("getTargetVersion").invoke(api);
+            if (version == null) {
+                return ProtocolAccess.nativeProtocol();
+            }
+            String name = (String) version.getClass().getMethod("getName").invoke(version);
+            int protocol = (int) version.getClass().getMethod("getVersion").invoke(version);
+            return new ProtocolSnapshot(name, protocol, name != null && name.startsWith("1.8"), true);
+        } catch (ReflectiveOperationException | RuntimeException absentOrNotReady) {
+            return ProtocolAccess.nativeProtocol();
+        }
     }
 }

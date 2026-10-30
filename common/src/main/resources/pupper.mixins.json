@@ -55,7 +55,7 @@
     "minecraft.world.MixinClientWorldProperties",
     "minecraft.world.MixinSignBlockEntity",
     "minecraft.world.MixinWorld",
-    "viafabricplus.MixinMinecraftClient"
+    "oldanimations.MixinMinecraftClient"
   ],
   "injectors": {
     "defaultRequire": 1
