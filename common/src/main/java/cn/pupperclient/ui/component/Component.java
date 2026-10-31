@@ -50,8 +50,13 @@ public class Component {
         MaterialControls.surface(x, y, width, height, radius, palette, MaterialTheme.opacity(), hoverState(mouseX, mouseY), 0);
     }
 
+    /** Whether the cursor is over this component's bounds. */
+    public boolean isHovered(double mouseX, double mouseY) {
+        return MouseUtils.isInside(mouseX, mouseY, x, y, width, height);
+    }
+
     protected float hoverState(double mouseX, double mouseY) {
-        hoverAnimation.onTick(MouseUtils.isInside(mouseX, mouseY, x, y, width, height) ? 1 : 0, 12);
+        hoverAnimation.onTick(isHovered(mouseX, mouseY) ? 1 : 0, 12);
         return hoverAnimation.getValue();
     }
 

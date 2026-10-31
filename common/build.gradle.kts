@@ -67,6 +67,16 @@ dependencies {
     add("verificationRuntimeOnly", libs.skija.linux.get())
 }
 
+// A wheel event must reach only what is under the cursor.
+val verifyScrollRouting = tasks.register<JavaExec>("verifyScrollRouting") {
+    group = "verification"
+    description = "Checks that scroll events are routed to the hovered component only."
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
+    mainClass.set("cn.pupperclient.ui.ScrollRoutingChecks")
+}
+tasks.check { dependsOn(verifyScrollRouting) }
+
 // The bus scans declared members, so a listener moved to a base class must still register.
 val verifyEventBus = tasks.register<JavaExec>("verifyEventBus") {
     group = "verification"

@@ -213,12 +213,20 @@ public abstract class PupperClientGui extends SimplePupperClientGui {
         double contentMouseY = toContentMouseY(mouseY, screenScale);
         double[] pageMouse = toCurrentPageMouse(contentMouseX, contentMouseY);
 
-        if (currentPage != null) {
-            currentPage.mouseScrolled(pageMouse[0], pageMouse[1], horizontalAmount, verticalAmount);
+        // A wheel event belongs to whatever is under the cursor: the page content, or a
+        // chrome component such as the navigation rail. Delivering it to both made the
+        // rail scroll while the list underneath it scrolled.
+        boolean handledByChrome = false;
+        for (Component c : components) {
+            if (!c.isHovered(contentMouseX, contentMouseY)) {
+                continue;
+            }
+            c.mouseScrolled(contentMouseX, contentMouseY, horizontalAmount, verticalAmount);
+            handledByChrome = true;
         }
 
-        for (Component c : components) {
-            c.mouseScrolled(contentMouseX, contentMouseY, horizontalAmount, verticalAmount);
+        if (!handledByChrome && currentPage != null) {
+            currentPage.mouseScrolled(pageMouse[0], pageMouse[1], horizontalAmount, verticalAmount);
         }
         return true;
     }

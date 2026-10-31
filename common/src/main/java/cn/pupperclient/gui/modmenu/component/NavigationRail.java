@@ -197,6 +197,7 @@ public class NavigationRail extends Component {
         }
     }
 
+    @Override
     public void mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         scrollHelper.onScroll(verticalAmount);
     }
