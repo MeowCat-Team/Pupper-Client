@@ -17,8 +17,6 @@
 
 package cn.pupperclient.management.mod.impl.hud;
 
-import cn.pupperclient.event.EventBus;
-import cn.pupperclient.event.skia.RenderSkiaEvent;
 import cn.pupperclient.management.mod.api.hud.SimpleHUDMod;
 import cn.pupperclient.skia.font.Icon;
 import net.minecraft.client.Minecraft;
@@ -34,10 +32,6 @@ public class FallDamageHelp extends SimpleHUDMod {
     public FallDamageHelp() {
         super("mod.fallDamageHelp.name", "mod.fallDamageHelp.description", Icon.FALLING);
     }
-
-    public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = e -> {
-        this.draw();
-    };
 
     public static boolean willFallToDeath() {
         Minecraft client = Minecraft.getInstance();

@@ -69,7 +69,8 @@ public class MusicInfoMod extends SimpleHUDMod {
         if (lyric == null) lyric = "";
     };
 
-    public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> {
+    @Override
+    protected void onFrame() {
         if (typeSetting.getOption().equals("setting.simple")) { draw(); return; }
         MusicManager manager = PupperClient.getInstance().getMusicManager();
         Music music = manager.getCurrentMusic();
@@ -151,7 +152,7 @@ public class MusicInfoMod extends SimpleHUDMod {
                     faded(colors().secondaryText(), lyricReveal), HUDTokens.label());
             }
         } finally { finish(); }
-    };
+    }
 
     private static Color faded(Color color, float fraction) {
         if (fraction >= 0.99f) return color;

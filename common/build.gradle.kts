@@ -67,6 +67,16 @@ dependencies {
     add("verificationRuntimeOnly", libs.skija.linux.get())
 }
 
+// A HUD module that re-declares the frame listener draws its panel twice.
+val verifyHudListeners = tasks.register<JavaExec>("verifyHudListeners") {
+    group = "verification"
+    description = "Checks that no HUD subclass declares a second frame listener."
+    dependsOn(verification.classesTaskName)
+    classpath = verification.runtimeClasspath
+    mainClass.set("cn.pupperclient.hud.HudListenerChecks")
+}
+tasks.check { dependsOn(verifyHudListeners) }
+
 // A wheel event must reach only what is under the cursor.
 val verifyScrollRouting = tasks.register<JavaExec>("verifyScrollRouting") {
     group = "verification"

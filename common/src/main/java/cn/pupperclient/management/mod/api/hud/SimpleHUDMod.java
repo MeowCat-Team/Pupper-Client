@@ -49,8 +49,19 @@ public abstract class SimpleHUDMod extends HUDMod {
 
     public SimpleHUDMod(String name, String description, String icon) { super(name, description, icon); }
 
-    /** Draws this metric once per frame; subclasses that need more override {@link #draw()}. */
-    public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> draw();
+    /**
+     * The one frame listener for every simple metric.
+     *
+     * <p>Subclasses must not declare their own {@code onRenderSkia}: the bus walks the
+     * superclass chain, so a second field would register a second listener and draw the
+     * panel twice. Override {@link #onFrame()} instead.
+     */
+    public final EventBus.EventListener<RenderSkiaEvent> onRenderSkia = event -> onFrame();
+
+    /** Called once per frame; the default draws the standard metric. */
+    protected void onFrame() {
+        draw();
+    }
 
     protected void draw() {
         float dt = motion.deltaSeconds();
