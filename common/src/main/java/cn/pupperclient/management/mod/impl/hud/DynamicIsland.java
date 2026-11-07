@@ -22,7 +22,6 @@ import java.util.List;
 import cn.pupperclient.event.EventBus;
 import cn.pupperclient.event.EventListener;
 import cn.pupperclient.event.skia.RenderSkiaEvent;
-import cn.pupperclient.event.mod.AutoAgainEvent;
 import cn.pupperclient.event.mod.ModStateChangeEvent;
 import cn.pupperclient.management.mod.api.hud.HUDMod;
 import cn.pupperclient.management.mod.api.hud.design.HUDMotion;
@@ -37,7 +36,6 @@ import cn.pupperclient.utils.language.I18n;
 /** A compact status card with bounded, readable notifications. */
 public class DynamicIsland extends HUDMod {
     private static boolean configLoading;
-    private static long nextGameUntil;
     private final StringSetting name = new StringSetting("mod.DynamicIsland.customname",
         "mod.DynamicIsland.customname.description", Icon.FLIGHT_LAND, this, "Pupper Client");
     private final List<Notice> notices = new ArrayList<>();
@@ -46,8 +44,6 @@ public class DynamicIsland extends HUDMod {
     private HUDMotion.Spring heightMotion = new HUDMotion.Spring(20);
     private String displayedTitle;
     private String outgoingTitle;
-    private boolean displayedNextGame;
-    private boolean outgoingNextGame;
     private float titleReveal = 1;
     private float entrance;
 
@@ -55,10 +51,6 @@ public class DynamicIsland extends HUDMod {
         super("mod.DynamicIsland.name", "mod.DynamicIsland.description", Icon.PETS);
     }
     public static void setConfigLoading(boolean loading) { configLoading = loading; }
-    @EventListener public void onHeypixelAgain(AutoAgainEvent event) {
-        nextGameUntil = System.currentTimeMillis() + 3000;
-    }
-
     @EventListener private void handleModStateChange(ModStateChangeEvent event) {
         if (configLoading || !isEnabled() || event.getMod() == this) return;
         String module = event.getMod().getName();
@@ -90,17 +82,13 @@ public class DynamicIsland extends HUDMod {
         String player = client.player == null ? "Player" : client.player.getName().getString();
         String server = client.getCurrentServer() == null ? I18n.get("hud.singleplayer") : client.getCurrentServer().ip;
         String detail = player + " · " + server + " · " + client.getFps() + " FPS";
-        boolean nextGame = now < nextGameUntil;
-        String title = nextGame ? I18n.get("hud.nextgame") : name.getValue();
+        String title = name.getValue();
         if (title == null) title = "";
         if (displayedTitle == null) {
             displayedTitle = title;
-            displayedNextGame = nextGame;
-        } else if (!displayedTitle.equals(title) || displayedNextGame != nextGame) {
+        } else if (!displayedTitle.equals(title)) {
             outgoingTitle = displayedTitle;
-            outgoingNextGame = displayedNextGame;
             displayedTitle = title;
-            displayedNextGame = nextGame;
             titleReveal = 0;
         }
         titleReveal = HUDMotion.approach(titleReveal, 1, dt, reducedMotion());
@@ -126,17 +114,17 @@ public class DynamicIsland extends HUDMod {
             Skia.clip(getX(), getY(), width, height, getRadius());
             if (outgoingTitle != null) {
                 float leaving = 1 - titleReveal;
-                HUDText.drawFullCenteredText(outgoingNextGame ? Icon.CHECK : Icon.PETS,
+                HUDText.drawFullCenteredText(Icon.PETS,
                     getX() + 18, getY() + 18 - 4 * titleReveal,
-                    ColorUtils.applyAlpha(outgoingNextGame ? colors().accent() : colors().secondaryText(), leaving), HUDTokens.icon());
+                    ColorUtils.applyAlpha(colors().secondaryText(), leaving), HUDTokens.icon());
                 HUDText.drawHeightCenteredText(Skia.getLimitText(outgoingTitle, HUDTokens.title(), width - 44),
                     getX() + 34, getY() + 15 - 4 * titleReveal,
                     ColorUtils.applyAlpha(colors().text(), leaving), HUDTokens.title());
             }
             float entering = outgoingTitle == null ? 1 : titleReveal;
-            HUDText.drawFullCenteredText(nextGame ? Icon.CHECK : Icon.PETS,
+            HUDText.drawFullCenteredText(Icon.PETS,
                 getX() + 18, getY() + 18 + 4 * (1 - entering),
-                ColorUtils.applyAlpha(nextGame ? colors().accent() : colors().secondaryText(), entering), HUDTokens.icon());
+                ColorUtils.applyAlpha(colors().secondaryText(), entering), HUDTokens.icon());
             HUDText.drawHeightCenteredText(Skia.getLimitText(title, HUDTokens.title(), width - 44),
                 getX() + 34, getY() + 15 + 4 * (1 - entering),
                 ColorUtils.applyAlpha(colors().text(), entering), HUDTokens.title());

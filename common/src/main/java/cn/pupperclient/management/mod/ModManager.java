@@ -94,7 +94,6 @@ public class ModManager {
         mods.add(new ArrayListMod());
         mods.add(new DynamicIsland());
         mods.add(new FallDamageHelp());
-        mods.add(new CloudMusicHudMod());
         mods.add(new CooldownHudMod());
         mods.add(new PotionHudMod());
         mods.add(new ItemInfoMod());
@@ -133,14 +132,12 @@ public class ModManager {
         mods.add(new DiscordRPCMod());
         mods.add(new HypixelMod());
         mods.add(new MiniMessageCompletionMod());
-        mods.add(new ServerTextPrivacyMod());
         mods.add(new TimeChangerMod());
         mods.add(new WeatherChangerMod());
     }
 
     private void initFunMods() {
         mods.add(new FakeFpsMod());
-        mods.add(new HeypixelMod());
         mods.add(new TotemTracker());
     }
 
