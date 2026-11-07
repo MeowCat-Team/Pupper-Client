@@ -378,10 +378,6 @@ setting.hypixel.description=Set the hypixel
 setting.showLogo=Show Logo
 setting.showLogo.description=Show the logo
 
-mod.autoplay.name=Auto Play
-mod.autoplay.desc=Set the auto play
-setting.heypixel.mode.heypixel_sw=Heypixel sw
-setting.heypixel.mode.description=Set the heypixel sw mode
 
 #Auto Text
 mod.autotext.name=Auto Text
@@ -450,8 +446,6 @@ mod.DynamicIsland.logging.description=Logging
 mod.fallDamageHelp.name=Fall Damage Help
 mod.fallDamageHelp.description=Fall Damage Help
 
-mod.autoplay.logging.name=Logging
-mod.autoplay.logging.description=Logging
 
 mod.disabled=Disabled
 mod.enabled=Enabled
@@ -497,8 +491,8 @@ setting.health.display.text.description=Set health display to text
 setting.health.display.bar=Bar
 setting.health.display.bar.description=Set health display to bar
 
-mod.Island.customname=Custom Name
-mod.Island.customname.description=Set the custom name
+mod.DynamicIsland.customname=Custom Name
+mod.DynamicIsland.customname.description=Set the custom name
 
 text.accept=Accept
 text.decline=Decline

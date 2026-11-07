@@ -471,10 +471,6 @@ mod.notFound=未找到Mod
 modManager.notInitialized=Mod管理器尚未初始化
 command.help.unknown=未知命令，输入 .help 查看帮助
 command.help.toggle.usage=用法: .t <mod名称>
-mod.eagle.autoplace.name=自动放置
-mod.eagle.autoplace.description=自动放置
-mod.eagle.delay.name=Delay
-mod.eagle.delay.description=Set BlockEdge Sensitivity
 
 command.help.modlist.refresh=刷新
 command.help.modlist.refresh.tip=点击刷新mod列表
@@ -495,10 +491,7 @@ setting.health.display.text.description=设置健康显示为文本
 setting.health.display.bar=进度条
 setting.health.display.bar.description=设置健康显示为进度条
 
-mod.smtcDisplay.name=SMTC Display
-mod.smtcDisplay.description=SMTC Display
 
-text.accpet=接受条款
 text.decline=拒绝条款
 
 mod.nohurtfov.name=取消伤害fov
@@ -509,8 +502,6 @@ mod.nohurtfov.nohurtFov.description=取消伤害fov
 mod.autogg.name=自动GG
 mod.autogg.description=自动GG
 
-mod.heypixel.autoAgain.name=自动再次开始游戏
-mod.heypixel.autoAgain.description=自动再次开始游戏
 
 # IRC Mod
 mod.irc.name=IRC Chat
@@ -989,3 +980,15 @@ music.recent.clear=清空最近播放
 music.empty.recent=还没有最近播放的歌曲
 music.action.downloadall=下载全部
 music.browse.downloadloaded=下载已加载的歌曲
+
+setting.rightclick=右键
+setting.rightclick.description=右键时显示 CPS
+setting.language.english=English
+setting.language.chinese=中文
+setting.showLogo=显示图标
+setting.showLogo.description=显示客户端图标
+multiplayer.add_server=添加服务器
+multiplayer.direct_connect=直接连接
+
+mod.DynamicIsland.customname=自定义名称
+mod.DynamicIsland.customname.description=设置灵动岛显示的名称
