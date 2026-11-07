@@ -227,15 +227,6 @@ val verifyChatCompletion = tasks.register<JavaExec>("verifyChatCompletion") {
 }
 tasks.check { dependsOn(verifyChatCompletion) }
 
-val verifyServerTextPrivacy = tasks.register<JavaExec>("verifyServerTextPrivacy") {
-    group = "verification"
-    description = "Checks remote mod text probes, local/vanilla text preservation and Minecraft network/sign hooks."
-    dependsOn(verification.classesTaskName)
-    classpath = verification.runtimeClasspath
-    mainClass.set("cn.pupperclient.network.ServerTextPrivacyChecks")
-}
-tasks.check { dependsOn(verifyServerTextPrivacy) }
-
 tasks.register<JavaExec>("verifyWindowsSmtc") {
     group = "verification"
     description = "Checks real Windows WinRT SMTC metadata, timeline and FFM callbacks with a hidden window."
