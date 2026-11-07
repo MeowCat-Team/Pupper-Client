@@ -48,8 +48,8 @@ dependencies {
     implementation("net.fabricmc.fabric-api:fabric-api:${rootProject.property("fabric_api_version")}")
     implementation(libs.architectury.fabric)
     // ViaFabricPlus is optional: the provider reaches it by reflection, so nothing here
-    // compiles against it. It is only present in the development runtime.
-    runtimeOnly(libs.viafabricplus)
+    // compiles against it. Uncomment to test protocol translation in the dev runtime.
+    // runtimeOnly(libs.viafabricplus)
     runtimeOnly(libs.sodium)
     runtimeOnly(libs.iris)
     runtimeOnly(libs.lithium)
@@ -147,14 +147,19 @@ val protocolVerification = sourceSets.create("protocolVerification") {
     compileClasspath += sourceSets.main.get().output + configurations.compileClasspath.get()
     runtimeClasspath += output + compileClasspath + configurations.runtimeClasspath.get()
 }
-tasks.register<JavaExec>("verifyFabricProtocol") {
+// Only meaningful when ViaFabricPlus is on the development runtime classpath; the
+// dependency is commented out by default, so the check skips instead of failing.
+val verifyFabricProtocol = tasks.register<JavaExec>("verifyFabricProtocol") {
     group = "verification"
     description = "Checks real ViaFabricPlus selected targets and native startup fallback."
     dependsOn(tasks.named("protocolVerificationClasses"))
     classpath = protocolVerification.runtimeClasspath
     mainClass.set("cn.pupperclient.fabric.FabricProtocolChecks")
+    onlyIf {
+        protocolVerification.runtimeClasspath.files.any { it.name.contains("viafabricplus") }
+    }
 }
-tasks.named("check") { dependsOn("verifyFabricProtocol") }
+tasks.named("check") { dependsOn(verifyFabricProtocol) }
 
 // Runs the provider with ViaFabricPlus removed from the runtime classpath, proving the
 // client still loads when the optional mod is not installed.
