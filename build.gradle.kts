@@ -14,6 +14,8 @@ allprojects {
     version = "${rootProject.property("mod_version")}+mc$minecraftVersion"
     repositories {
         mavenCentral()
+        maven("https://neoforged.forgecdn.net/releases")
+        maven("https://neoforged.forgecdn.net/mojang-meta")
         maven("https://maven.architectury.dev/")
         maven("https://maven.neoforged.net/releases/")
         maven("https://maven.fabricmc.net/")
