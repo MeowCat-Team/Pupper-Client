@@ -17,10 +17,13 @@
 
 package cn.pupperclient.management.config;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +35,6 @@ import cn.pupperclient.PupperClient;
 import cn.pupperclient.management.config.impl.KeyConfig;
 import cn.pupperclient.management.config.impl.ModConfig;
 import cn.pupperclient.management.keybind.KeybindManager;
-import cn.pupperclient.utils.file.FileUtils;
 
 public class ConfigManager {
 
@@ -48,37 +50,85 @@ public class ConfigManager {
 
     public void save(ConfigType type) {
         Config config = getConfig(type);
-
         if (config == null || config.getFile() == null) {
             return;
         }
 
-        File targetFile = config.getFile();
-        File tempFile = new File(targetFile.getAbsolutePath() + ".tmp");
-        File backupFile = new File(targetFile.getAbsolutePath() + ".bak");
+        Path targetPath = config.getFile().toPath();
+        Path tempPath = Path.of(targetPath.toAbsolutePath() + ".tmp");
+        Path backupPath = Path.of(targetPath.toAbsolutePath() + ".bak");
 
-        FileUtils.createFile(tempFile);
+        try {
+            Path parent = targetPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
 
-        if (config.getJsonObject() == null) {
-            config.setJsonObject(new JsonObject());
+            try (BufferedWriter writer = Files.newBufferedWriter(tempPath)) {
+                config.onSave();
+                GSON.toJson(config.getJsonObject(), writer);
+            }
+        } catch (IOException e) {
+            PupperClient.LOGGER.error("Failed to write temp config: {}", type, e);
+            return;
         }
 
-        try (FileWriter writer = new FileWriter(tempFile)) {
-            config.onSave();
-            GSON.toJson(config.getJsonObject(), writer);
-            writer.flush();
+        if (Files.exists(targetPath)) {
+            try {
+                Files.copy(targetPath, backupPath, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                PupperClient.LOGGER.warn("Failed to backup config: {}", type, e);
+            }
+        }
 
-            // Atomic move/replace
-            if (targetFile.exists()) {
-                Files.copy(targetFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        boolean moved = false;
+        boolean atomic = true;
+        int maxRetries = 3;
+        long retryDelayMs = 100L;
+
+        for (int i = 0; i < maxRetries && !moved; i++) {
+            try {
+                if (atomic) {
+                    Files.move(tempPath, targetPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                } else {
+                    Files.move(tempPath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+                moved = true;
+            } catch (AtomicMoveNotSupportedException e) {
+                atomic = false;
+                PupperClient.LOGGER.warn("Atomic move not supported, falling back for: {}", type);
+            } catch (IOException e) {
+                PupperClient.LOGGER.warn("Attempt {} to move config failed for {}: {}", i + 1, type, e.getMessage());
+                if (i < maxRetries - 1) {
+                    try {
+                        Thread.sleep(retryDelayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
             }
-            Files.move(tempFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        } catch (Exception e) {
-            PupperClient.LOGGER.error("Failed to save config: {}", config.getType(), e);
-        } finally {
-            if (tempFile.exists()) {
-                tempFile.delete();
+        }
+
+        if (!moved && atomic) {
+            try {
+                Files.move(tempPath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                moved = true;
+            } catch (IOException e) {
+                PupperClient.LOGGER.error("Fallback move failed: {}", type, e);
             }
+        }
+
+        if (!moved && Files.exists(tempPath)) {
+            try {
+                Files.deleteIfExists(tempPath);
+            } catch (IOException e) {
+                PupperClient.LOGGER.warn("Failed to delete temp file: {}", tempPath, e);
+            }
+        }
+
+        if (!moved) {
+            PupperClient.LOGGER.error("Failed to save config after all attempts: {}", type);
         }
     }
 
