@@ -27,6 +27,7 @@ public final class ProtocolAccess {
     private ProtocolAccess() { }
 
     /** Install before client managers start so both loaders use the same feature implementation. */
+    @SuppressWarnings("DataFlowIssue")
     public static void install(Provider platformProvider) {
         provider = Objects.requireNonNull(platformProvider, "platformProvider");
     }
