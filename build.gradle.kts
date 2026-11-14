@@ -52,6 +52,7 @@ subprojects {
 // Older versions are cleared first: the folder otherwise accumulates every jar this
 // checkout has ever built, which makes it ambiguous which files belong to a release.
 val stageReleaseJars = tasks.register<Copy>("stageReleaseJars") {
+    description = "Copies the final distributable jars to build/libs for release automation."
     group = "build"
     dependsOn(":fabric:shadowJar", ":neoforge:shadowJar")
     doFirst {
